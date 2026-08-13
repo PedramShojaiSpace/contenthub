@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+  buildControlledEmailCheckoutLink,
+  CONTROLLED_EMAIL_DEFAULT_DESTINATIONS,
+} from "@/lib/controlledEmailCheckoutLink";
+import {
   Loader2, RefreshCw, TrendingUp, DollarSign, Users, Zap,
   ChevronDown, Lock, CheckCircle2, ShoppingCart, BookOpen, Filter,
   CalendarDays, Mail, Target, Copy, Link2,
@@ -62,7 +66,7 @@ export default function Reconciliation() {
   const [attrFilter, setAttrFilter]     = useState<AttributionFilter>("all");
   const [trackingSource, setTrackingSource] = useState<"kajabi" | "klaviyo">("kajabi");
   const [trackingMedium, setTrackingMedium] = useState<"email" | "sms">("email");
-  const [trackingDestination, setTrackingDestination] = useState("https://shop.theurbanmonk.com/cart/48994340077722:1");
+  const [trackingDestination, setTrackingDestination] = useState(CONTROLLED_EMAIL_DEFAULT_DESTINATIONS.kajabi);
   const [trackingContent, setTrackingContent] = useState("d01_episode");
 
   const { data: funnels = [] } = trpc.funnelRecon.listFunnels.useQuery();
@@ -80,15 +84,19 @@ export default function Reconciliation() {
   const cohortTotalRevenue = cohortAnalytics?.cohorts.reduce((sum, cohort) => sum + cohort.total14DayRevenueCents, 0) ?? 0;
   const trackedEmailLink = useMemo(() => {
     if (!trackingDestination.trim()) return "";
-    const params = new URLSearchParams({
+    return buildControlledEmailCheckoutLink({
+      source: trackingSource,
+      medium: trackingMedium,
+      content: trackingContent,
       destination: trackingDestination.trim(),
-      utm_source: trackingSource,
-      utm_medium: trackingMedium,
-      utm_campaign: "interconnected_14day",
-      utm_content: trackingContent.trim() || "email_link",
+      baseOrigin: window.location.origin,
     });
-    return `${window.location.origin}/r/checkout?${params.toString()}`;
   }, [trackingContent, trackingDestination, trackingMedium, trackingSource]);
+
+  const selectTrackingSource = (source: "kajabi" | "klaviyo") => {
+    setTrackingSource(source);
+    setTrackingDestination(CONTROLLED_EMAIL_DEFAULT_DESTINATIONS[source]);
+  };
 
   const copyTrackedLink = async () => {
     if (trackedEmailLink) await navigator.clipboard.writeText(trackedEmailLink);
@@ -545,7 +553,7 @@ export default function Reconciliation() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <label className="text-xs text-muted-foreground space-y-1">
                   <span>Sequence path</span>
-                  <select value={trackingSource} onChange={(event) => setTrackingSource(event.target.value as "kajabi" | "klaviyo")} className="w-full h-9 rounded-md border border-border bg-background px-2 text-foreground">
+                  <select value={trackingSource} onChange={(event) => selectTrackingSource(event.target.value as "kajabi" | "klaviyo")} className="w-full h-9 rounded-md border border-border bg-background px-2 text-foreground">
                     <option value="kajabi">Kajabi sequence</option>
                     <option value="klaviyo">Klaviyo sequence</option>
                   </select>
@@ -562,7 +570,7 @@ export default function Reconciliation() {
                   <input value={trackingContent} onChange={(event) => setTrackingContent(event.target.value)} placeholder="d03_episode" className="w-full h-9 rounded-md border border-border bg-background px-2 text-foreground" />
                 </label>
                 <label className="text-xs text-muted-foreground space-y-1">
-                  <span>Shopify checkout destination</span>
+                  <span>{trackingSource === "kajabi" ? "Kajabi checkout destination" : "Shopify checkout destination"}</span>
                   <input value={trackingDestination} onChange={(event) => setTrackingDestination(event.target.value)} className="w-full h-9 rounded-md border border-border bg-background px-2 text-foreground" />
                 </label>
               </div>
@@ -573,7 +581,7 @@ export default function Reconciliation() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Keep the campaign as <code>interconnected_14day</code> and vary only the message marker: for example, <code>d01_episode</code>, <code>d10_offer</code>, or <code>d12_last_call</code>. Do not use a Kajabi-generated link in the Klaviyo/SMS sequence, or vice versa.
+                Kajabi links go directly to the selected Kajabi checkout with UTMs. Klaviyo/SMS links use the first-party bridge to the selected Shopify cart so the click token can be written to the paid Shopify order. Keep the campaign as <code>interconnected_14day</code> and vary only the message marker: for example, <code>d01_episode</code>, <code>d10_offer</code>, or <code>d12_last_call</code>.
               </p>
             </CardContent>
           </Card>

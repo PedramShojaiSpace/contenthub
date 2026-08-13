@@ -38,7 +38,7 @@ export function reviewWinningCopyPatterns(html: string): CopyPatternReview[] {
   const hasReframe = /\b(not (?:a |an |because)|does(?:n't| not) mean|isn't .*?(?:problem|verdict)|it's .*?(?:signal|wiring|biology|pattern)|rather than)\b/i.test(text);
   const teachesBeforeAsk = firstCtaPosition >= 220;
   const hasFocusedCta = linkCount >= 1 && linkCount <= 3;
-  const hasHumanClose = /\bP\.?S\.?\b/i.test(text) || /\b(reply|tell me|write back)\b/i.test(finalQuarter);
+  const hasHumanClose = /\b(reply|tell me|write back|let me know|hit reply)\b/i.test(finalQuarter);
 
   return [
     {
@@ -70,11 +70,11 @@ export function reviewWinningCopyPatterns(html: string): CopyPatternReview[] {
         : "Use one primary action and, at most, a small supporting action so the reader knows what to do next.",
     },
     {
-      name: "Human close or P.S.",
+      name: "Human invitation to reply",
       status: hasHumanClose ? "present" : "consider",
       detail: hasHumanClose
-        ? "The close creates a low-pressure continuation of the conversation."
-        : "Consider a brief P.S. that adds a useful detail, handles one objection, or invites a human reply.",
+        ? "The close creates a low-pressure continuation of the conversation without a second sales pitch."
+        : "Consider a brief invitation to reply or share a reaction, rather than adding a P.S. sales pitch.",
     },
   ];
 }

@@ -7,9 +7,12 @@ describe("emailBoost", () => {
     expect(html).toContain("<!DOCTYPE html>");
     expect(html).toContain("Hello world.");
     expect(html).toContain('role="presentation"');
-    expect(html).toContain("background-color:#f3f0e9");
-    expect(html).toContain("The Urban Monk");
+    expect(html).toContain("background-color:#ffffff");
+    expect(html).toContain('class="email-content"');
     expect(html).toContain("@media only screen and (max-width: 620px)");
+    expect(html).not.toContain("box-shadow");
+    expect(html).not.toContain("text-transform:uppercase");
+    expect(html).not.toContain("The Urban Monk");
   });
 
   it("passes through existing HTML body without double-wrapping paragraphs", () => {
@@ -35,7 +38,7 @@ describe("emailBoost", () => {
     expect(mime).toContain("multipart/alternative");
     expect(mime).toContain("text/plain");
     expect(mime).toContain("text/html");
-    expect(mime).toContain("The Urban Monk");
+    expect(mime).not.toContain("The Urban Monk");
     expect(mime).toContain("Hello there.");
   });
 

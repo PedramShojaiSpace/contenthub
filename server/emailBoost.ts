@@ -35,25 +35,18 @@ export function buildEmailHtml(bodyContent: string, _firstName = "there"): strin
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <style>
     @media only screen and (max-width: 620px) {
-      .email-shell { padding: 18px 12px !important; }
-      .email-card { border-radius: 10px !important; }
-      .email-header { padding: 24px 24px 12px !important; }
-      .email-content { padding: 20px 24px 26px !important; }
+      .email-shell { padding: 16px !important; }
+      .email-content { padding: 18px 8px !important; }
     }
   </style>
 </head>
-<body style="margin:0;padding:0;background-color:#f3f0e9;font-family:Arial,Helvetica,sans-serif;color:#26323a;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background-color:#f3f0e9;">
+<body style="margin:0;padding:0;background-color:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#26323a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background-color:#ffffff;">
     <tr>
-      <td class="email-shell" align="center" style="padding:34px 18px;">
-        <table class="email-card" role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;background-color:#fffdf9;border:1px solid #dfd8ca;border-radius:14px;overflow:hidden;box-shadow:0 8px 28px rgba(53,45,33,0.08);">
+      <td class="email-shell" align="center" style="padding:28px 18px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;background-color:#ffffff;">
           <tr>
-            <td class="email-header" style="padding:28px 34px 14px;border-top:5px solid #b88a32;">
-              <p style="margin:0;font-size:12px;line-height:1.2;letter-spacing:1.7px;text-transform:uppercase;font-weight:700;color:#8a6726;">The Urban Monk</p>
-            </td>
-          </tr>
-          <tr>
-            <td class="email-content" style="padding:10px 34px 30px;">
+            <td class="email-content" style="padding:10px 18px 24px;">
               ${bodyHtml}
             </td>
           </tr>

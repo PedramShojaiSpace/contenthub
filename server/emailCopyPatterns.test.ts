@@ -9,7 +9,7 @@ describe("reviewWinningCopyPatterns", () => {
       <p>Here is what changes in the nervous system when attention is stretched thin, and why it matters.</p>
       <p>Try this short explanation before you decide what comes next.</p>
       <p><a href="https://example.com/video">Watch the video</a></p>
-      <p>P.S. Reply and tell me whether this feels familiar.</p>
+      <p>Reply and tell me whether this feels familiar.</p>
     `);
 
     expect(reviews.every((review) => review.status === "present")).toBe(true);
@@ -19,6 +19,6 @@ describe("reviewWinningCopyPatterns", () => {
     const reviews = reviewWinningCopyPatterns('<p><a href="https://example.com">Buy now</a></p>');
 
     expect(reviews.find((review) => review.name === "Teach before the ask")?.status).toBe("consider");
-    expect(reviews.find((review) => review.name === "Human close or P.S.")?.status).toBe("consider");
+    expect(reviews.find((review) => review.name === "Human invitation to reply")?.status).toBe("consider");
   });
 });

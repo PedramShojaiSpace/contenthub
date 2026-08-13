@@ -87,6 +87,7 @@ const TantraContentDivorce = lazy(() => import("./pages/TantraContentDivorce"));
 const TantraContentKingQueen = lazy(() => import("./pages/TantraContentKingQueen"));
 const TantraContentFlower = lazy(() => import("./pages/TantraContentFlower"));
 const TantraContentHim = lazy(() => import("./pages/TantraContentHim"));
+const TantraContentLoveBank = lazy(() => import("./pages/TantraContentLoveBank"));
 const Interconnected = lazy(() => import("./pages/Interconnected"));
 const InterconnectedThankYou = lazy(() => import("./pages/InterconnectedThankYou"));
 const InterconnectedThankYouB = lazy(() => import("./pages/InterconnectedThankYouB"));
@@ -208,6 +209,7 @@ function Router() {
         <Route path={"/tantra/king-and-queen"} component={TantraContentKingQueen} />
         <Route path={"/tantra/sex-is-the-flower"} component={TantraContentFlower} />
         <Route path={"/tantra/why-he-stopped"} component={TantraContentHim} />
+        <Route path={"/tantra/love-bank"} component={TantraContentLoveBank} />
         <Route path={"/interconnected"} component={Interconnected} />
         <Route path={"/interconnected/thank-you"} component={InterconnectedThankYouB} />
         <Route path={"/interconnected/thank-you-b"} component={InterconnectedThankYouB} />

@@ -52,6 +52,10 @@ The phone screenshot was not showing the draft template `Smbiqi`. It was showing
 
 The active template was updated in place after guarded template-ID and name verification. The existing copy, name, text version, and flow linkage were preserved. The repair adds a warm neutral outer canvas, 38px desktop content padding, 28px mobile side padding, 17px readable body type, more generous line height, a constrained mobile logo, and simplified vertical rhythm. API readback confirmed the readability marker and spacing changes were stored on `XTHuPY`.
 
+## Direct Draft Review Route
+
+The Day 0 draft can be opened in an authenticated Klaviyo browser session at `https://www.klaviyo.com/email-template-editor/universal/template/Smbiqi`. The route opens the editor shell, but Klaviyo currently reports a template-load error for this API-created code template. This is an editor-preview limitation; the draft HTML remains saved via API and is not associated with any flow. A separate `/code/` editor route is not available.
+
 ## Sources
 
 [1] Google Workspace, “Making Gmail’s tabbed inbox work better for you,” https://workspace.google.com/blog/productivity-collaboration/how-gmail-sorts-your-email-based-on-your-preferences

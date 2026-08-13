@@ -721,6 +721,17 @@
 - [x] Analyze hourly and evening-versus-non-evening purchase concentration with day-of-week and sample-size checks — evening cluster is real today but represents 24.4% of month-to-date sales; morning represents 46.7%.
 - [x] Compare purchase timing to available campaign-delivery and traffic data, then propose a conservative dayparting test only if supported — current evidence does not support moving core acquisition spend; recommends an evening retargeting/reminder test after approval.
 
+## Current-Day Agora ROAS Reconciliation
+
+- [ ] Retrieve current-day Agora-only Meta spend and confirmed Interconnected revenue using matching Central Time boundaries.
+- [ ] Reconcile the latest $67 transactions against Kajabi and the Content Hub calculation rules, excluding duplicate or non-completed revenue.
+- [ ] Report current ROAS, spend, revenue, sale count, and crossover status without changing campaigns.
+
+## Kajabi $199 Upsell and Klaviyo Draft Verification
+
+- [x] Verify the current Kajabi $199 upsell identifier is classified correctly in source transactions and Content Hub attribution rules — 3 dedicated regression checks passed: explicit OCU ID, generic post-$67 OCU fallback, and $199 revenue inclusion.
+- [x] Confirm the direct Klaviyo review URL and non-sending status for the Day 0 draft email — template `Smbiqi` is non-sending and unlinked from any flow; authenticated editor route recorded.
+
 ## Interconnected Day 0 Gmail Deliverability Diagnosis
 
 - [x] Retrieve and compare the supplied original and enhanced Day 0 HTML for structural, link, image, and promotional-signal differences — the visible content, links, images, and promotional text are materially identical; the Content Hub file only minifies markup.

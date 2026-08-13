@@ -745,6 +745,8 @@
 - [x] Prepare the exact SPF consolidation, DMARC monitoring, and Gmail seed-test instructions for the domain administrator.
 - [ ] Obtain explicit approval before replacing the current live Day 0 email or activating any new email action.
 - [x] Revise the non-sending Day 0 draft to include one concise $67 redemption link and one-time-offer language, without repeated CTAs or P.S. sections — template `Smbiqi` now uses one first-party tracked checkout link with `utm_content=day0_one_time_67_offer`; Klaviyo API readback verified the copy and link.
+- [x] Create a separate complete draft clone of the live Interconnected Klaviyo flow for VA review, preserving the trigger, timing, email/SMS sequence, and all messages as Draft while leaving the live flow untouched — created Klaviyo flow `YyFZPu` with 66 actions and 40 draft email/SMS messages; Day 0’s embedded flow template has the approved one-link $67 content.
+- [x] Correct the Version 2 Interconnected thank-you-page FAQ to explain that Day 1 begins tomorrow and daily episode access arrives through Urban Monk email and SMS — focused control-routing and FAQ regression test passed.
 
 ## Day 0 Email Layout and Reusable Template Quality
 

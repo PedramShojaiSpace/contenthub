@@ -13,4 +13,16 @@ describe("Interconnected Thank You control routing", () => {
     expect(appSource).not.toContain("InterconnectedThankYouSplitter");
     expect(pageSource).not.toContain("Don't Miss Your Chance to Own the Entire Series");
   });
+
+  it("explains that free daily episode access arrives through Urban Monk email and SMS", () => {
+    const pageSource = readFileSync(
+      new URL("../client/src/pages/InterconnectedThankYouB.tsx", import.meta.url),
+      "utf8"
+    );
+
+    expect(pageSource).toContain("Day 1 begins tomorrow");
+    expect(pageSource).toContain("an email and an SMS from The Urban Monk");
+    expect(pageSource).toContain("access link to that day's episode");
+    expect(pageSource).not.toContain("You'll receive login credentials immediately after purchase");
+  });
 });

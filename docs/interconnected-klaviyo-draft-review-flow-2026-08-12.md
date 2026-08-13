@@ -31,9 +31,21 @@ The first-party destination is tagged as follows:
 | `utm_campaign` | `interconnected_14day` |
 | `utm_content` | `day0_one_time_67_offer` |
 
+## Full Draft Sequence Standardization
+
+All 27 draft emails now use the same compact warm-neutral reading frame as the Day 0 email. The legacy coral/red canvas, redundant navigation and social links, repeated buttons, and extra footer clutter were removed from the review-flow emails. Each message now preserves one primary action link, selected from its original episode, replay, offer, or other main destination; the Day 0 email remains the approved one-time $67 offer treatment.
+
+The Draft Day 0 SMS now reads:
+
+> Interconnected starts tomorrow. Daily episode links are on the way. One-time $67 all-access offer: `https://content.theurbanmonk.com/r/ic67`
+
+The short first-party `/r/ic67` link preserves attribution through the existing checkout bridge with the `sms` medium and `day0_sms_one_time_67_offer` content tag. It was added only to the Draft Day 0 SMS.
+
 ## VA Review Checklist
 
 1. Open the direct review URL above and confirm the banner says **Draft**.
 2. Review the Day 0 email first. Confirm the single $67 button, no duplicate CTA, and correct mobile spacing.
-3. Review the remaining draft email and SMS messages in order against the current live flow; timing and sequence should match, while no action should be activated.
-4. Do **not** change the live flow or click any activation control. The owner will decide whether and how to replace the live flow after review.
+3. Review Day 1 and the remaining draft emails. Each should use the same warm neutral frame, no coral/red background, one primary button, and no social/navigation-link strip.
+4. Confirm the Draft Day 0 SMS contains the concise `content.theurbanmonk.com/r/ic67` one-time-offer link.
+5. Review the remaining draft email and SMS messages in order against the current live flow; timing and sequence should match, while no action should be activated.
+6. Do **not** change the live flow or click any activation control. The owner will decide whether and how to replace the live flow after review.

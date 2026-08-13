@@ -56,6 +56,10 @@ The active template was updated in place after guarded template-ID and name veri
 
 The Day 0 draft can be opened in an authenticated Klaviyo browser session at `https://www.klaviyo.com/email-template-editor/universal/template/Smbiqi`. The route opens the editor shell, but Klaviyo currently reports a template-load error for this API-created code template. This is an editor-preview limitation; the draft HTML remains saved via API and is not associated with any flow. A separate `/code/` editor route is not available.
 
+## Approved Single-Link Offer Revision
+
+At the owner’s direction, the non-sending Day 0 draft was revised to include one restrained optional offer: permanent access to the complete nine-part series for a one-time `$67` price. It uses exactly one first-party checkout link, with `utm_source=klaviyo`, `utm_medium=email`, `utm_campaign=interconnected_14day`, and `utm_content=day0_one_time_67_offer`, so its performance can be isolated in attribution reporting. The copy states that it is the only time that price is available, but deliberately avoids repeated CTAs, countdowns, P.S./P.P.S. sections, or extra promotional blocks. Klaviyo API readback confirmed the saved template includes the single approved link. The live Day 0 template and flow remain unchanged.
+
 ## Sources
 
 [1] Google Workspace, “Making Gmail’s tabbed inbox work better for you,” https://workspace.google.com/blog/productivity-collaboration/how-gmail-sorts-your-email-based-on-your-preferences

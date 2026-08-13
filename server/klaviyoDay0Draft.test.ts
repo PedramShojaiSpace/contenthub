@@ -2,18 +2,22 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("Interconnected Day 0 deliverability draft", () => {
-  it("keeps the draft-only confirmation free of checkout and promotional calls to action", () => {
+  it("keeps the draft-only confirmation to one approved, tracked $67 redemption link", () => {
     const source = readFileSync(
-      new URL("../scripts/create-klaviyo-day0-confirmation-draft.mjs", import.meta.url),
+      new URL("../scripts/update-klaviyo-day0-draft-layout.mjs", import.meta.url),
       "utf8"
     );
 
     expect(source).toContain('const TEMPLATE_NAME = "[DRAFT] Interconnected Day 0 — Plain Confirmation Deliverability Test"');
     expect(source).toContain('liveFlowChanged: false');
     expect(source).toContain('liveEmailChanged: false');
-    expect(source).not.toContain("checkout");
-    expect(source).not.toContain("$67");
+    expect(source).toContain("utm_content=day0_one_time_67_offer");
+    expect(source).toContain("Redeem your one-time $67 offer");
+    expect(source.match(/href="\$\{CHECKOUT_URL\}"/g)).toHaveLength(1);
+    expect(source).toContain("This is the only time this price is available.");
     expect(source).not.toContain("2 hours");
+    expect(source).not.toContain("P.S.");
+    expect(source).not.toContain("P.P.S.");
   });
 
   it("uses the readable shared email frame for direct email delivery", () => {

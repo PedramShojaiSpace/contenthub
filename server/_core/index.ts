@@ -1747,7 +1747,9 @@ async function startServer() {
       // Offer ID 2151031660 = Upstream: Complete Microbiome Solution ($100/$297) → upstream_webinar
       // Amount-based fallback: $67/$199/$299/$399/$499/$1450/$1650 → interconnected
       //                        $100/$297 → upstream_webinar
-      const amountCents = Math.round(amount * 100);
+      // NOTE: amountCents MUST be computed after the inference block above so that
+      // isInterconnectedKajabiAmount() receives the resolved price, not the raw $0.
+      const amountCents = rawAmountCents > 0 ? rawAmountCents : knownPriceCents;
       let funnelSource = "unknown";
       const offerNameLower = offerName.toLowerCase();
       if (offerId === "2150211911" || offerId === "2151031660") {

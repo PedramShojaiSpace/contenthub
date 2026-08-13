@@ -33,20 +33,22 @@ v=spf1 include:dc-aa8e722993._spfm.theurbanmonk.com ~all
 
 ### Required final state
 
-There must be **one—and only one—SPF TXT record** beginning `v=spf1`. Keep the established include mechanisms in the first record and delete only its duplicate/subset record. The final root SPF value should be:
+The owner has confirmed that HubSpot is no longer used. The `include:23830440.spf57.hubspotemail.net` authorization is obsolete and must be removed. The remaining `dc-aa8e722993._spfm.theurbanmonk.com` include resolves to Google Workspace SPF authorization (`include:_spf.google.com`), so it is not a HubSpot record.
+
+There must be **one—and only one—SPF TXT record** beginning `v=spf1`. The final root SPF value should be:
 
 ```text
-v=spf1 include:dc-aa8e722993._spfm.theurbanmonk.com include:23830440.spf57.hubspotemail.net ~all
+v=spf1 include:dc-aa8e722993._spfm.theurbanmonk.com ~all
 ```
 
 | DNS field | Value |
 |---|---|
 | Type | TXT |
 | Host / Name | `@` (or blank, depending on DNS provider) |
-| Value | `v=spf1 include:dc-aa8e722993._spfm.theurbanmonk.com include:23830440.spf57.hubspotemail.net ~all` |
+| Value | `v=spf1 include:dc-aa8e722993._spfm.theurbanmonk.com ~all` |
 | TTL | Leave provider default, or 1800–3600 seconds |
 
-**Important:** Delete only the duplicate/subset SPF record. Do **not** delete Google site-verification TXT records, Kajabi records, HubSpot records, website records, or any unrelated TXT records. If the DNS administrator believes Kajabi depends on an additional root SPF include not listed above, stop and send a screenshot of the record set for review rather than guessing.
+**Important:** Remove both the duplicate root SPF record and the obsolete HubSpot include by replacing the existing two SPF records with the one final value above. Do **not** delete Google site-verification TXT records, Kajabi records, website records, or any unrelated TXT records. This final SPF record preserves the existing Google Workspace authorization. Do not change any Kajabi domain, DKIM, or email settings.
 
 ## Part 2 — Add DMARC Monitoring
 
@@ -87,17 +89,19 @@ dmarc=pass
 ```
 
 5. Confirm the test still shows the intended visible sender: **Interconnected Series by The Urban Monk**.
+6. Send one ordinary Kajabi email to a seed Gmail inbox after DNS propagation and confirm it still delivers normally before any further Kajabi changes are considered.
 
 ## Do Not Do These Things
 
 - Do not change the live flow, email status, or subject line.
-- Do not delete HubSpot, Google verification, website, or unrelated DNS records.
+- Do not delete Google verification, website, Kajabi, or unrelated DNS records.
+- Do remove the obsolete HubSpot mechanism **only** from the root SPF value, as shown in Part 1.
 - Do not publish a strict DMARC policy (`p=quarantine` or `p=reject`) at this stage.
 - Do not add any second SPF or DMARC record.
 
 ## Completion Standard
 
-This task is complete only when the public DNS has one SPF record and one DMARC record, the Klaviyo branded subdomain is verified, and a new Gmail header shows SPF, DKIM, and DMARC all passing. A DMARC record alone is useful monitoring, but it will not make DMARC pass until Klaviyo sends through the verified branded subdomain.
+This task is complete only when the public DNS has one SPF record without HubSpot authorization, one DMARC record, the Klaviyo branded subdomain is verified, a new Klaviyo Gmail header shows SPF, DKIM, and DMARC all passing, and a separate Kajabi seed email still delivers normally. A DMARC record alone is useful monitoring, but it will not make Klaviyo DMARC pass until Klaviyo sends through the verified branded subdomain.
 
 ## References
 

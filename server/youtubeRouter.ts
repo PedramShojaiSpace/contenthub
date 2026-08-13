@@ -2,7 +2,7 @@ import { Supadata } from "@supadata/js";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { wrapLLM } from "./llmUtils";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { getYouTubeClient } from "./youtubeOAuth";
 import { getAvatarContextBlock } from "./avatarRouter";
@@ -209,7 +209,7 @@ function formatVideo(item: any, channelTotalViews: number, channelVideoCount: nu
 export const youtubeRouter = router({
   // ── Existing: Competitor Video Search (Supadata) ──────────────────────────
 
-  searchSimilar: publicProcedure
+  searchSimilar: protectedProcedure
     .input(
       z.object({
         query: z.string().min(3).max(300),
@@ -250,7 +250,7 @@ export const youtubeRouter = router({
 
   // ── Existing: Transcript Fetch ────────────────────────────────────────────
 
-  fetchTranscripts: publicProcedure
+  fetchTranscripts: protectedProcedure
     .input(
       z.object({
         videoIds: z.array(z.string()).min(1).max(3),
@@ -312,7 +312,7 @@ export const youtubeRouter = router({
 
   // ── Existing: LLM Differentiation Analysis ───────────────────────────────
 
-  analyzeCompetitors: publicProcedure
+  analyzeCompetitors: protectedProcedure
     .input(
       z.object({
         idea: z.string().min(3).max(500),
@@ -405,7 +405,7 @@ Be specific, actionable, and grounded in Pedram's actual voice and positioning. 
 
   // ── Existing: Video Summarizer ────────────────────────────────────────────
 
-  summarizeVideo: publicProcedure
+  summarizeVideo: protectedProcedure
     .input(
       z.object({
         videoId: z.string(),
@@ -446,7 +446,7 @@ Produce exactly 5 bullet points. Each bullet should be 1-2 sentences, specific, 
 
   // ── Existing: Script Library ──────────────────────────────────────────────
 
-  saveToScript: publicProcedure
+  saveToScript: protectedProcedure
     .input(
       z.object({
         title: z.string().min(1).max(255),
@@ -475,7 +475,7 @@ Produce exactly 5 bullet points. Each bullet should be 1-2 sentences, specific, 
 
   // ── New: Generate Full Script from Differentiation Brief ─────────────────
 
-  generateScriptFromBrief: publicProcedure
+  generateScriptFromBrief: protectedProcedure
     .input(
       z.object({
         brief: z.string().min(50),
@@ -522,7 +522,7 @@ Write the complete script now:`;
 
   // ── New: Create Video Job from Script ───────────────────────────────────
 
-  createVideoJobFromScript: publicProcedure
+  createVideoJobFromScript: protectedProcedure
     .input(
       z.object({
         title: z.string().min(1).max(255),
@@ -576,7 +576,7 @@ Write the complete script now:`;
 
   // ── Existing: Channel Watchlist ───────────────────────────────────────────
 
-  trackChannel: publicProcedure
+  trackChannel: protectedProcedure
     .input(
       z.object({
         channelId: z.string().min(1),
@@ -608,7 +608,7 @@ Write the complete script now:`;
       return { success: true };
     }),
 
-  listTrackedChannels: publicProcedure.query(async () => {
+  listTrackedChannels: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) return { channels: [] };
     const { competitorChannels } = await import("../drizzle/schema");
@@ -616,7 +616,7 @@ Write the complete script now:`;
     return { channels };
   }),
 
-  untrackChannel: publicProcedure
+  untrackChannel: protectedProcedure
     .input(z.object({ channelId: z.string() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -627,7 +627,7 @@ Write the complete script now:`;
       return { success: true };
     }),
 
-  getChannelNewUploads: publicProcedure
+  getChannelNewUploads: protectedProcedure
     .input(
       z.object({
         channelId: z.string(),
@@ -654,7 +654,7 @@ Write the complete script now:`;
       return { videos: results.results ?? [] };
     }),
 
-  runChannelDigest: publicProcedure.mutation(async () => {
+  runChannelDigest: protectedProcedure.mutation(async () => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
     const { competitorChannels } = await import("../drizzle/schema");
@@ -690,7 +690,7 @@ Write the complete script now:`;
     return { sent: true, channelCount: channels.length };
   }),
 
-  validateApiKey: publicProcedure.query(async () => {
+  validateApiKey: protectedProcedure.query(async () => {
     try {
       const supadata = getSupadata();
       await supadata.youtube.search({ query: "health wellness", type: "video", limit: 1 });
@@ -708,7 +708,7 @@ Write the complete script now:`;
    * - Longs vs Shorts breakdown
    * - Upload frequency (videos per week over last 90 days)
    */
-  analyzeChannel: publicProcedure
+  analyzeChannel: protectedProcedure
     .input(
       z.object({
         channelHandle: z.string().min(1).max(100),
@@ -798,7 +798,7 @@ Write the complete script now:`;
    * Search a topic and return the 10 videos with the highest outlier scores.
    * Uses Supadata (already configured) for search, then enriches with channel data.
    */
-  getOutlierVideos: publicProcedure
+  getOutlierVideos: protectedProcedure
     .input(
       z.object({
         query: z.string().min(3).max(300),
@@ -866,7 +866,7 @@ Write the complete script now:`;
   /**
    * Search a topic and return 10 videos ranked by view velocity (views/day since upload).
    */
-  getTopicTrends: publicProcedure
+  getTopicTrends: protectedProcedure
     .input(
       z.object({
         query: z.string().min(3).max(300),
@@ -923,7 +923,7 @@ Write the complete script now:`;
    * Search a topic, collect the top 10 video titles, and use LLM to extract
    * the winning title patterns, hooks, and emotional triggers.
    */
-  getTitlePatterns: publicProcedure
+  getTitlePatterns: protectedProcedure
     .input(
       z.object({
         query: z.string().min(3).max(300),
@@ -1007,7 +1007,7 @@ Be specific, data-driven, and actionable. Reference the actual titles above.`;
   /**
    * Search a topic and return 10 distinct competitor channels with their stats.
    */
-  searchChannels: publicProcedure
+  searchChannels: protectedProcedure
     .input(
       z.object({
         query: z.string().min(3).max(300),
@@ -1052,7 +1052,7 @@ Be specific, data-driven, and actionable. Reference the actual titles above.`;
 
   // ── NEW: Teleprompter Script Generator ───────────────────────────────────────
 
-  generateTeleprompterScript: publicProcedure
+  generateTeleprompterScript: protectedProcedure
     .input(
       z.object({
         topic: z.string().min(3).max(300),

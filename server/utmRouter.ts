@@ -1,19 +1,19 @@
 import { z } from "zod";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { utmLinks } from "../drizzle/schema";
 import { desc, eq } from "drizzle-orm";
 
 export const utmRouter = router({
   // List all saved UTM links, newest first
-  list: publicProcedure.query(async () => {
+  list: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];
     return db.select().from(utmLinks).orderBy(desc(utmLinks.createdAt)).limit(100);
   }),
 
   // Save a generated UTM link to persistent history (deduplicates by exact URL)
-  save: publicProcedure
+  save: protectedProcedure
     .input(
       z.object({
         url: z.string().min(1),
@@ -56,7 +56,7 @@ export const utmRouter = router({
     }),
 
   // Delete a saved UTM link by id
-  delete: publicProcedure
+  delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -66,7 +66,7 @@ export const utmRouter = router({
     }),
 
   // Look up the base CTA URL for a given ctaBlockLabel (for building full UTM URLs in the UI)
-  getCtaUrlForLabel: publicProcedure
+  getCtaUrlForLabel: protectedProcedure
     .input(z.object({ label: z.string() }))
     .query(async ({ input }) => {
       const db = await getDb();

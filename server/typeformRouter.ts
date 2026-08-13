@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { wrapLLM, parseLLMJson } from "./llmUtils";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { safeParseJson } from "./fetchUtils";
 
@@ -59,7 +59,7 @@ function flattenResponse(item: any, fields: any[]): Record<string, string> {
 
 export const typeformRouter = router({
   // ── List all forms ────────────────────────────────────────────────────────
-  listForms: publicProcedure.query(async () => {
+  listForms: protectedProcedure.query(async () => {
     const data = await typeformGet("/forms?page_size=50");
     const forms = (data.items ?? []).map((f: any) => ({
       id: f.id,
@@ -71,7 +71,7 @@ export const typeformRouter = router({
   }),
 
   // ── Get form questions ────────────────────────────────────────────────────
-  getFormFields: publicProcedure
+  getFormFields: protectedProcedure
     .input(z.object({ formId: z.string() }))
     .query(async ({ input }) => {
       const data = await typeformGet(`/forms/${input.formId}`);
@@ -85,7 +85,7 @@ export const typeformRouter = router({
     }),
 
   // ── Get responses (paginated, up to 200 at a time) ────────────────────────
-  getResponses: publicProcedure
+  getResponses: protectedProcedure
     .input(
       z.object({
         formId: z.string(),
@@ -118,7 +118,7 @@ export const typeformRouter = router({
     }),
 
   // ── Analyze audience from form responses ─────────────────────────────────
-  analyzeAudience: publicProcedure
+  analyzeAudience: protectedProcedure
     .input(
       z.object({
         formId: z.string(),
@@ -223,7 +223,7 @@ Analyze the responses and return a JSON object with these exact keys:
     }),
 
   // ── Enrich a persona with Typeform insights ───────────────────────────────
-  enrichPersona: publicProcedure
+  enrichPersona: protectedProcedure
     .input(
       z.object({
         personaId: z.number(),
@@ -270,7 +270,7 @@ Analyze the responses and return a JSON object with these exact keys:
     }),
 
   // ── Segment Typeform responses by Urban Monk persona ───────────────────────
-  segmentByPersona: publicProcedure
+  segmentByPersona: protectedProcedure
     .input(
       z.object({
         formId: z.string(),
@@ -419,7 +419,7 @@ Return a JSON array of 8 persona segment objects.`;
     }),
 
   // ── Validate API key ──────────────────────────────────────────────────────
-  validateApiKey: publicProcedure.query(async () => {
+  validateApiKey: protectedProcedure.query(async () => {
     try {
       const data = await typeformGet("/me");
       return { valid: true, email: data.email, alias: data.alias };

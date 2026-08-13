@@ -740,6 +740,7 @@
 
 - [x] Verify the current Kajabi $199 upsell identifier is classified correctly in source transactions and Content Hub attribution rules — 3 dedicated regression checks passed: explicit OCU ID, generic post-$67 OCU fallback, and $199 revenue inclusion.
 - [x] Confirm the direct Klaviyo review URL and non-sending status for the Day 0 draft email — template `Smbiqi` is non-sending and unlinked from any flow; authenticated editor route recorded.
+- [x] Correct the Controlled Email Checkout Link Builder so Kajabi source links use Kajabi cart/checkout destinations and Klaviyo source links use the tracked Shopify cart destination — Kajabi now defaults to its native $67 offer checkout with UTM tagging, while Klaviyo/SMS defaults to the tracked first-party Shopify cart bridge; 7 focused checkout tests passed.
 
 ## Interconnected Day 0 Gmail Deliverability Diagnosis
 

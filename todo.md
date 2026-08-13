@@ -750,6 +750,9 @@
 - [x] Standardize every draft email in the Interconnected review-flow clone to the clean Day 0 visual frame and single-link offer discipline, without changing the live flow — all 27 emails are now clean-frame drafts; API verification confirmed every non-Day 0 email has one primary link and no legacy coral background.
 - [x] Add the tracked one-time $67 offer link to the Day 0 SMS in the draft review flow only — Draft Day 0 SMS now includes the short first-party offer link `https://content.theurbanmonk.com/r/ic67`.
 - [x] Add a short first-party tracked $67 checkout redirect for the Day 0 draft SMS, preserving SMS readability and attribution — `/r/ic67` carries `utm_medium=sms` and `utm_content=day0_sms_one_time_67_offer` through the existing tracked checkout bridge.
+- [x] Set every draft email in the Interconnected review flow to sender name `Interconnected Series by The Urban Monk`, preserving the live flow unchanged — API verification confirmed all 27 actions remain Draft and use the approved sender name.
+- [x] Add `Host of the Interconnected Series` beneath Dr. Pedram Shojai in every draft-email signature — API verification confirmed all 27 draft bodies contain the approved signature and title.
+- [x] Remove mistakenly inserted address/footer text from the draft email bodies while retaining only the required unsubscribe mechanism — API verification confirmed the visible boilerplate was removed and each draft retains `{% unsubscribe %}`.
 
 ## Day 0 Email Layout and Reusable Template Quality
 

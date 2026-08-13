@@ -14,4 +14,15 @@ describe("Interconnected Klaviyo treatment exit-intent recovery", () => {
     expect(source).toContain("No thanks, I’ll watch one episode at a time");
     expect(source).not.toContain("Don't Miss Your Chance to Own the Entire Series");
   });
+
+  it("uses the owner-approved Wistia media while retaining the isolated treatment checkout path", () => {
+    const source = readFileSync(
+      new URL("../client/src/pages/InterconnectedThankYouKlaviyo.tsx", import.meta.url),
+      "utf8"
+    );
+
+    expect(source).toContain("89xb1oskij");
+    expect(source).not.toContain("10cdtpm3il");
+    expect(source).toContain("buildInterconnectedKlaviyoCheckoutUrl(window.location.search)");
+  });
 });

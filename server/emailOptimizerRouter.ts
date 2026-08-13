@@ -45,6 +45,9 @@ interface SpamSignal {
   tip: string;
 }
 
+const SOCIAL_HOSTS = /(?:facebook\.com|instagram\.com|linkedin\.com|twitter\.com|x\.com|youtube\.com|tiktok\.com|pinterest\.com)/i;
+const PROMOTIONAL_TERMS = /\b(?:offer|discount|sale|save \$?\d|limited time|last chance|redeem|buy now|shop now|order now|only today|ends? (?:today|tonight)|free access)\b/gi;
+
 /** Analyze HTML for spam/promotional signals */
 function analyzeHtml(html: string): { score: number; signals: SpamSignal[] } {
   const $ = cheerio.load(html);
@@ -189,6 +192,16 @@ function analyzeHtml(html: string): { score: number; signals: SpamSignal[] } {
     if (fontSizeSpans > 8) score += 1;
   }
 
+  const promotionalTermCount = (textContent.match(PROMOTIONAL_TERMS) || []).length;
+  signals.push({
+    name: "Promotional language",
+    value: promotionalTermCount,
+    severity: promotionalTermCount > 4 ? "bad" : promotionalTermCount > 0 ? "warning" : "ok",
+    tip: "Gmail classifies deals, offers, and call-to-action emails as Promotions. Keep sales language to messages where an offer is genuinely the purpose; formatting alone cannot move an offer email to Primary.",
+  });
+  if (promotionalTermCount > 4) score += 3;
+  else if (promotionalTermCount > 0) score += 1;
+
   return { score, signals };
 }
 
@@ -252,6 +265,52 @@ function consolidateFontSizes($: cheerio.CheerioAPI, changes: string[]): void {
       "Consolidated " + stripped + " per-element font-size:" + dominant +
       " declarations into a single wrapper (reduces spam score)"
     );
+  }
+}
+
+function reduceMarketingChrome($: cheerio.CheerioAPI, changes: string[], warnings: string[]): void {
+  let removedSocialBlocks = 0;
+  $("a[href]").each((_, link) => {
+    const href = $(link).attr("href") || "";
+    if (!SOCIAL_HOSTS.test(href)) return;
+
+    const parent = $(link).parent();
+    const parentText = parent.text().replace(/\s+/g, " ").trim();
+    const parentLinks = parent.find("a").length;
+    const allSocial = parent.find("a").toArray().every((anchor) => SOCIAL_HOSTS.test($(anchor).attr("href") || ""));
+    if (parentLinks > 0 && allSocial && parentText.length < 160) {
+      const block = parent.closest("p, div, td");
+      if (block.length) {
+        block.remove();
+        removedSocialBlocks++;
+      }
+    }
+  });
+  if (removedSocialBlocks > 0) {
+    changes.push(`Removed ${removedSocialBlocks} social-navigation block(s) that added no reader value`);
+  }
+
+  let flattenedButtons = 0;
+  $("a[style]").each((_, link) => {
+    const style = $(link).attr("style") || "";
+    const isButton = /background(?:-color)?\s*:|border-radius\s*:|display\s*:\s*(?:inline-block|block)/i.test(style);
+    if (!isButton) return;
+    $(link).attr("style", "color:#1a4b7a;text-decoration:underline;");
+    flattenedButtons++;
+  });
+  if (flattenedButtons > 0) {
+    changes.push(`Converted ${flattenedButtons} button-style link(s) to simple underlined text links`);
+  }
+
+  let unsubscribeLinks = 0;
+  $("a").each((_, link) => {
+    const linkTextAndHref = `${$(link).text()} ${$(link).attr("href") || ""}`;
+    if (/unsubscribe|manage preferences/i.test(linkTextAndHref)) {
+      unsubscribeLinks++;
+    }
+  });
+  if (unsubscribeLinks === 0) {
+    warnings.push("No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email.");
   }
 }
 
@@ -364,6 +423,8 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
     );
   }
 
+  reduceMarketingChrome($, changes, warnings);
+
   // Detect raw S3/CDN links and warn (cannot auto-fix — needs domain redirect)
   const s3Links: string[] = [];
   $("a").each((_, el) => {
@@ -445,6 +506,9 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
   const beforeAnalysis = analyzeHtml(rawHtml);
   const afterAnalysis = analyzeHtml(html);
   const copyReview = reviewWinningCopyPatterns(html);
+  warnings.unshift(
+    "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement."
+  );
 
   return {
     optimizedHtml: html,

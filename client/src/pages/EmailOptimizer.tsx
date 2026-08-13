@@ -123,8 +123,8 @@ const WINNING_COPY_PATTERNS = [
     body: "Use a direct, low-friction CTA such as “Watch the video,” “Read the breakdown,” or “See what testing reveals.”",
   },
   {
-    title: "Use the P.S. as a conversion assist",
-    body: "Add one final detail, objection answer, or invitation to reply—not a second sales pitch.",
+    title: "Close like a person, not a campaign",
+    body: "Invite a reply or a reaction when appropriate. Avoid adding a P.S. as a second sales pitch.",
   },
 ];
 
@@ -322,7 +322,7 @@ export default function EmailOptimizer() {
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground ml-12">
-            Strips marketing template signals from Kajabi emails so they land in the Primary inbox instead of Promotions.
+            Reduces avoidable marketing-template signals and explains remaining placement risks. Gmail—not this tool—decides each recipient's Primary versus Promotions placement.
           </p>
         </div>
       </div>
@@ -464,7 +464,7 @@ export default function EmailOptimizer() {
                     { step: "Click into a text block to make it active", detail: "The TinyMCE editor toolbar should appear above the text area" },
                     { step: "Click '⚡ Optimize Kajabi Email' in your bookmarks bar", detail: "A status badge will appear in the top-right corner of your screen" },
                     { step: "Wait 1–2 seconds for the green confirmation", detail: "The email content is automatically replaced with the optimized version" },
-                    { step: "Click Save in Kajabi, then send as normal", detail: "That's it — the email is now stripped of promotional signals" },
+                    { step: "Click Save in Kajabi, then send as normal", detail: "Preview it first. The cleanup reduces avoidable template signals but cannot guarantee an inbox-tab outcome." },
                   ].map((item, i) => (
                     <li key={i} className="flex gap-3">
                       <span className="w-5 h-5 rounded-full bg-muted text-muted-foreground text-xs flex items-center justify-center shrink-0 mt-0.5 border border-border">{i + 1}</span>

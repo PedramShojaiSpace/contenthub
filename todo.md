@@ -781,6 +781,7 @@
 - [x] Remove the malformed duplicate `_dmarc` TXT record while preserving Kajabi’s valid monitoring-only DMARC record, then re-verify a single valid public DMARC policy before Klaviyo activation — public DNS now returns exactly one valid root DMARC record.
 - [ ] Obtain explicit approval before replacing the current live Day 0 email or activating any new email action.
 - [x] Revise the non-sending Day 0 draft to include one concise $67 redemption link and one-time-offer language, without repeated CTAs or P.S. sections — template `Smbiqi` now uses one first-party tracked checkout link with `utm_content=day0_one_time_67_offer`; Klaviyo API readback verified the copy and link.
+- [ ] Compare the VA-supplied Primary versus Promotions email examples with the Content Hub’s current generator and revise avoidable promotional markup/copy signals without promising a guaranteed Gmail-tab result.
 - [ ] Correct the owner test profile’s first-name field from `Corina` to `Pedram` so future test emails do not display the wrong greeting.
 - [x] Create a separate complete draft clone of the live Interconnected Klaviyo flow for VA review, preserving the trigger, timing, email/SMS sequence, and all messages as Draft while leaving the live flow untouched — created Klaviyo flow `YyFZPu` with 66 actions and 40 draft email/SMS messages; Day 0’s embedded flow template has the approved one-link $67 content.
 - [x] Correct the Version 2 Interconnected thank-you-page FAQ to explain that Day 1 begins tomorrow and daily episode access arrives through Urban Monk email and SMS — focused control-routing and FAQ regression test passed.
@@ -4772,6 +4773,7 @@ Pricing model (corrected):
 - [x] Fire a Tantra Purchase event only after confirmed Shopify payment and return it to Meta for conversion optimization
 - [x] Separate Kajabi and Klaviyo/SMS cohorts with distinct UTMs, conversion events, purchase paths, and 14-day reconciliation metrics
 - [x] Credit downstream Kajabi and Klaviyo/SMS purchases to original lead cohorts while separately reporting the closing email or SMS touch
+- [x] Harden the Email Optimizer against avoidable marketing-template signals: remove social navigation, flatten button-style links, flag promotional language, preserve unsubscribe warnings, and explicitly state that Gmail Primary placement cannot be guaranteed.
 - [x] Repair the specific WordPress draft whose persisted H2/H3 headings still fail Yoast’s keyphrase-subheading check
 - [ ] Analyze Interconnected launch-to-yesterday funnel conversion and propose $67/$199 CRO tests without changing the live funnel
 - [x] Reconcile the Content Hub Interconnected dashboard against exact Agora Meta spend and verified Kajabi/Shopify revenue before further CRO analysis

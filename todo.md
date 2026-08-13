@@ -712,6 +712,7 @@
 
 - [x] Assess OuterSignal’s current capabilities, pricing, implementation lift, and practical revenue applications for Urban Monk’s Klaviyo and Shopify funnels — current vendor pricing, Shopify app permissions, integrations, and prior project findings reviewed and documented.
 - [x] Provide a plain-English recommendation, lowest-risk pilot scope, success metrics, and stop/go criteria before any OuterSignal data is shared — recommend a 30-day purchaser-only free-trial/Starter pilot, not Pro or a Content Hub API build at the outset.
+- [x] Define the granular OuterSignal-to-Klaviyo profile fields, segments, flow branches, message strategy, measurement plan, and human follow-up workflow for a purchaser-only pilot — documented in `docs/outersignal-klaviyo-activation-playbook-2026-08-13.md` with native and hybrid options, required fields, Draft segments, one controlled flow, and a 30-day operating plan.
 
 ## Interconnected Internal Split Conclusion
 

@@ -4776,6 +4776,7 @@ Pricing model (corrected):
 - [x] Harden the Email Optimizer against avoidable marketing-template signals: remove social navigation, flatten button-style links, flag promotional language, preserve unsubscribe warnings, and explicitly state that Gmail Primary placement cannot be guaranteed.
 - [x] Audit the Klaviyo draft review flow against the current optimizer and provide the VA's proofread, seed-test, and traffic-readiness checklist before activation — findings and launch gates saved in `docs/interconnected-klaviyo-traffic-readiness-2026-08-13.md`; no traffic or message-status changes were made.
 - [ ] Reconcile today's Interconnected Shopify/Kajabi revenue, confirm the reported $199 OCUS purchase is included in funnel attribution, and compare true Agora-only ROAS against the dashboard.
+- [x] Built four Tantra content-first landing pages: /tantra/considering-divorce, /tantra/king-and-queen, /tantra/sex-is-the-flower, /tantra/why-he-stopped — each with Wistia placeholder, written content, and soft quiz CTA. Video IDs to be swapped after recording.
 - [ ] Fix reconciliation dashboard "Today" preset — clicking Today leaves both date pickers on the previous day instead of updating them to the current date.
 - [ ] Fix $199 OCUS Kajabi revenue storage — webhook stores amount_cents=0; verify inference logic fired and correct the stored amount so the dashboard revenue total is accurate.
 - [x] Fixed reconciliation dashboard "Today" preset — PRESETS now uses getRange() functions called at click time; no more stale module-load date.

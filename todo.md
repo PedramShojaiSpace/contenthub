@@ -708,6 +708,11 @@
 - [x] Replace the redundant bottom CTA with a minimum-friction end-of-page treatment and a controlled desktop exit-intent recovery option, without changing the Kajabi champion.
 - [x] Validate the treatment-only page behavior, checkout tracking, and mobile-safe fallback before publishing — targeted exit-intent and checkout-link regression tests passed; desktop-only and one-time guards are enforced in the treatment source.
 
+## OuterSignal Value and Integration Assessment
+
+- [x] Assess OuterSignal’s current capabilities, pricing, implementation lift, and practical revenue applications for Urban Monk’s Klaviyo and Shopify funnels — current vendor pricing, Shopify app permissions, integrations, and prior project findings reviewed and documented.
+- [x] Provide a plain-English recommendation, lowest-risk pilot scope, success metrics, and stop/go criteria before any OuterSignal data is shared — recommend a 30-day purchaser-only free-trial/Starter pilot, not Pro or a Content Hub API build at the outset.
+
 ## Interconnected Internal Split Conclusion
 
 - [x] Audit Thank You A/B page lineage, traffic allocation, checkout starts, and paid-sale evidence to determine the internal test winner — Version B was selected operationally at owner direction; 72 A exposures/7 checkout starts versus 47 B exposures/5 checkout starts, with no recorded purchases.

@@ -715,6 +715,12 @@
 - [x] Retire internal Thank You A/B routing so Kajabi has one stable control route for the Klaviyo-versus-Kajabi test.
 - [ ] Validate the stable Kajabi control and Klaviyo treatment URLs, their tracking labels, and no unintended route changes.
 
+## August $67 Purchase Timing Analysis
+
+- [x] Pull all confirmed August $67 Interconnected purchases from the applicable source of truth and normalize timestamps to Central Time — direct Kajabi API is the active $67 source until the new Shopify route receives traffic; 45 successful August sales retrieved.
+- [x] Analyze hourly and evening-versus-non-evening purchase concentration with day-of-week and sample-size checks — evening cluster is real today but represents 24.4% of month-to-date sales; morning represents 46.7%.
+- [x] Compare purchase timing to available campaign-delivery and traffic data, then propose a conservative dayparting test only if supported — current evidence does not support moving core acquisition spend; recommends an evening retargeting/reminder test after approval.
+
 ## Interconnected Day 0 Gmail Deliverability Diagnosis
 
 - [x] Retrieve and compare the supplied original and enhanced Day 0 HTML for structural, link, image, and promotional-signal differences — the visible content, links, images, and promotional text are materially identical; the Content Hub file only minifies markup.

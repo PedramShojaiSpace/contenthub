@@ -59,7 +59,7 @@ import {
 } from "./db";
 import { getBufferProfiles, pushToBuffer, pushCarouselToBuffer } from "./buffer";
 import { uploadMediaFromUrl, createWpPost, buildBlogSchemas, fetchAllWpPosts, findRelevantPosts, updateWpPostYoast, getWpYoastScore, updateWpPostContent, type WpPostSummary } from "./wordpress";
-import { markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags, resolveWpCategories, fetchWpCategories } from "./wpContentUtils";
+import { ensureWpDraftLinks, injectFeaturedImageIntoWpHtml, markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags, resolveWpCategories, fetchWpCategories } from "./wpContentUtils";
 import {
   countAddressedGaps,
   getCompetitorLeaderboard,
@@ -3437,6 +3437,20 @@ Return BOTH in this exact format:
           .replace(/<div[^>]*class=["']um-cta-banner["'][\s\S]*?<\/div>\s*/gi, "")
           .trim();
         let wpHtmlBody = markdownToWpHtml(cleanedBody);
+        wpHtmlBody = injectFeaturedImageIntoWpHtml({
+          html: wpHtmlBody,
+          imageUrl: wpImageUrl,
+          altText: publishInput.focusKeyword
+            ? `${publishInput.focusKeyword} — ${publishInput.title}`
+            : `${publishInput.title} — The Urban Monk`,
+          caption: publishInput.focusKeyword
+            ? `${publishInput.focusKeyword}: educational context for this article.`
+            : undefined,
+        });
+        wpHtmlBody = ensureWpDraftLinks({
+          html: wpHtmlBody,
+          topic: publishInput.focusKeyword || publishInput.title,
+        });
 
         // Step 2b: Inject CTA banner HTML block (if provided)
         // The CTA HTML was generated during blog creation but kept separate from the
@@ -3581,6 +3595,10 @@ Return BOTH in this exact format:
         // We handle BOTH in a single atomic pass so the keyphrase injection never
         // pushes the result back over the length limit.
         let metaDesc = publishInput.yoastMetaDescription ?? publishInput.metaDescription ?? "";
+        if (!metaDesc.trim()) {
+          const topic = publishInput.focusKeyword || publishInput.title;
+          metaDesc = `${topic}: explore practical context, questions, and educational next steps to discuss with a qualified professional.`;
+        }
 
         // Helper: trim to ≤maxLen at a word boundary, no ellipsis.
         // Always finds the last space to avoid cutting mid-word.
@@ -4992,22 +5010,41 @@ STRICT RULES:
 
             // Upload hero image if available
             let featuredMediaId: number | undefined;
+            let featuredImageUrl: string | undefined;
             if (item.imageUrl) {
               try {
                 const media = await uploadMediaFromUrl(item.imageUrl, `${slug}-hero.jpg`, item.title);
                 featuredMediaId = media.id;
+                featuredImageUrl = media.url;
               } catch {
                 // Non-fatal
               }
             }
 
+            const focusKeyword = item.focusKeyword || deriveWpDraftFocusKeyword(item.title);
+            let draftHtml = markdownToWpHtml(item.textContent ?? "");
+            draftHtml = injectFeaturedImageIntoWpHtml({
+              html: draftHtml,
+              imageUrl: featuredImageUrl,
+              altText: `${focusKeyword} — ${item.title}`,
+              caption: `${focusKeyword}: educational context for this article.`,
+            });
+            draftHtml = ensureWpDraftLinks({ html: draftHtml, topic: focusKeyword });
+            const metaDescription = ensureWpDraftMetaDescription({
+              metaDescription: item.yoastMetaDescription ?? undefined,
+              topic: focusKeyword,
+            });
+
             const post = await createWpPost({
               title: item.title,
               slug,
-              content: markdownToWpHtml(item.textContent ?? ""),
+              content: draftHtml,
               status: "draft",
               featuredMediaId,
               categories: DEFAULT_WP_CATEGORIES,
+              metaDescription,
+              focusKeyword,
+              seoTitle: item.yoastSeoTitle || item.title,
             });
 
             await updateContentItem(id, { status: "scheduled", publishUrl: post.link, wpPostId: post.id });

@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { extractAndConvertHashtags, markdownToWpHtml } from "./wpContentUtils";
+import { deriveWpDraftFocusKeyword, ensureWpDraftLinks, ensureWpDraftMetaDescription, extractAndConvertHashtags, injectFeaturedImageIntoWpHtml, markdownToWpHtml } from "./wpContentUtils";
 
 // ─── extractAndConvertHashtags ────────────────────────────────────────────────
 
@@ -147,5 +147,56 @@ describe("markdownToWpHtml", () => {
     // Should not wrap the div in a <p> tag
     expect(html).toContain('<div class="um-cta-banner">');
     expect(html).not.toContain('<p><div');
+  });
+});
+
+describe("injectFeaturedImageIntoWpHtml", () => {
+  it("inserts a descriptive in-content hero image after the first paragraph", () => {
+    const html = injectFeaturedImageIntoWpHtml({
+      html: "<p>Opening context.</p><h2>Next section</h2>",
+      imageUrl: "https://cdn.example.com/hero.jpg",
+      altText: "Gut health and hormone detoxification",
+      caption: "A contextual article image",
+    });
+
+    expect(html).toContain('data-um-in-content-hero');
+    expect(html).toContain('alt="Gut health and hormone detoxification"');
+    expect(html.indexOf("</p>")).toBeLessThan(html.indexOf("data-um-in-content-hero"));
+    expect(html.indexOf("data-um-in-content-hero")).toBeLessThan(html.indexOf("<h2>"));
+  });
+
+  it("does not duplicate a generated article image", () => {
+    const source = '<p>Opening.</p><img src="https://example.com/existing.jpg" alt="Existing" />';
+    expect(injectFeaturedImageIntoWpHtml({
+      html: source,
+      imageUrl: "https://cdn.example.com/hero.jpg",
+      altText: "New image",
+    })).toBe(source);
+  });
+});
+
+describe("ensureWpDraftLinks", () => {
+  it("adds an internal resource and educational external link only when both are absent", () => {
+    const html = ensureWpDraftLinks({ html: "<p>Article body.</p>", topic: "gut health" });
+    expect(html).toContain('href="https://theurbanmonk.com/"');
+    expect(html).toContain('href="https://pubmed.ncbi.nlm.nih.gov/?term=gut%20health"');
+  });
+
+  it("preserves existing internal and external links without duplicate fallback blocks", () => {
+    const source = '<p><a href="https://theurbanmonk.com/gut-health/">Internal</a> and <a href="https://pubmed.ncbi.nlm.nih.gov/">External</a>.</p>';
+    expect(ensureWpDraftLinks({ html: source, topic: "gut health" })).toBe(source);
+  });
+});
+
+describe("WordPress draft metadata fallbacks", () => {
+  it("derives a compact fallback focus phrase when metadata generation is unavailable", () => {
+    expect(deriveWpDraftFocusKeyword("How Gut Health Shapes Better Sleep")).toBe("How Gut Health Shapes");
+  });
+
+  it("creates a non-empty bounded meta description when a publisher has none", () => {
+    const description = ensureWpDraftMetaDescription({ metaDescription: "", topic: "gut health and sleep" });
+    expect(description).toContain("gut health and sleep");
+    expect(description.length).toBeGreaterThan(0);
+    expect(description.length).toBeLessThanOrEqual(148);
   });
 });

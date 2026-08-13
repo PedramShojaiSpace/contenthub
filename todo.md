@@ -13,7 +13,9 @@
 - [x] Add regression coverage that proves protected management procedures reject unauthenticated access while public funnel paths remain available — caller tests now cover UTM, Typeform, integration health, YouTube pipeline, and YouTube analytics; public funnel behavior was not changed.
 
 ## Deferred Generated Blog Quality Remediation
-- [ ] Inspect the specified Content Hub-generated blog post for its missing embedded image and Yoast SEO deficiencies after the current foundation checkpoint, then correct the approved post and generation-path gaps.
+- [x] Apply the approved post 11154 Draft corrections: focus phrase, Yoast title and meta description, draft slug, one in-content reuse of the featured image with descriptive alt text, and one internal plus one educational external body link; then verify Yoast without publishing — authenticated WordPress readback confirmed every approved field and the post remains Draft.
+- [x] Extend reusable Content Hub blog-generation quality safeguards to every active WordPress draft path. The primary publisher, YouTube-to-Blog, Blog-to-YouTube, video-pipeline fallback, and batch publisher now insert or preserve a body image when an image source is available, retain existing links or add only missing internal/educational outbound links, and supply non-empty focus and metadata fallbacks; 29 focused tests passed.
+- [x] Apply the shared image, internal/external-link, and non-empty Yoast metadata safeguards to the remaining batch WordPress draft publisher before finalizing the system-wide fix.
 
 ## Database Schema
 - [x] Add content_items table (title, platform, status, text, image_url, scheduled_at, published_at)

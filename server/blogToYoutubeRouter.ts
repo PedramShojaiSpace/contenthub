@@ -21,7 +21,7 @@ import { getDb } from "./db";
 import { createWpPost, fetchAllWpPosts, findRelevantPosts } from "./wordpress";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
-import { markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags } from "./wpContentUtils";
+import { deriveWpDraftFocusKeyword, ensureWpDraftLinks, ensureWpDraftMetaDescription, injectFeaturedImageIntoWpHtml, markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags } from "./wpContentUtils";
 
 // ── Full Yoast-optimized blog system prompt (mirrors BLOG_CONTENT_RULES in routers.ts) ────────
 const BLOG_CONTENT_RULES = `You are a ghostwriter for Dr. Pedram Shojai (The Urban Monk) writing a publication-ready long-form blog article for theurbanmonk.com. This article must pass BOTH traditional Google SEO and AI Engine Optimization (AEO) — meaning it will be cited by ChatGPT, Perplexity, Claude, and Google AI Overviews.
@@ -831,8 +831,21 @@ Be specific enough that someone who has never done this before can follow along.
       let wpDraftUrl: string | undefined;
       if (input.publishToDraft) {
         try {
-          // Convert Markdown to proper WordPress HTML
-          const wpHtmlContent = markdownToWpHtml(articleBody);
+          // Convert Markdown to proper WordPress HTML and enforce draft-quality baselines.
+          const fallbackFocusKeyword = metaData.focusKeyword || input.focusKeyword || deriveWpDraftFocusKeyword(input.blogTitle);
+          const thumbnailUrl = input.youtubeVideoId ? `https://i.ytimg.com/vi/${input.youtubeVideoId}/hqdefault.jpg` : undefined;
+          let wpHtmlContent = markdownToWpHtml(articleBody);
+          wpHtmlContent = injectFeaturedImageIntoWpHtml({
+            html: wpHtmlContent,
+            imageUrl: thumbnailUrl,
+            altText: `${fallbackFocusKeyword} — ${metaData.title}`,
+            caption: `${fallbackFocusKeyword}: educational context for this article.`,
+          });
+          wpHtmlContent = ensureWpDraftLinks({ html: wpHtmlContent, topic: fallbackFocusKeyword });
+          const metaDescription = ensureWpDraftMetaDescription({
+            metaDescription: metaData.metaDescription,
+            topic: fallbackFocusKeyword,
+          });
 
           // Resolve WP categories and tags
           const categories = DEFAULT_WP_CATEGORIES;
@@ -857,8 +870,9 @@ Be specific enough that someone who has never done this before can follow along.
             content: wpHtmlContent,
             status: "draft",
             slug: metaData.slug,
-            metaDescription: metaData.metaDescription,
-            focusKeyword: metaData.focusKeyword,
+            metaDescription,
+            focusKeyword: fallbackFocusKeyword,
+            seoTitle: metaData.title,
             categories,
             tags: tagIds,
           });

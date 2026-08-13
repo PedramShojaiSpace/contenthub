@@ -16,6 +16,7 @@ import { invokeLLM } from "./_core/llm";
 import { google } from "googleapis";
 import { userCredentials } from "../drizzle/schema";
 import { fetchSingleWpPost, updateWpPostContent, createWpPost } from "./wordpress";
+import { deriveWpDraftFocusKeyword, ensureWpDraftLinks, ensureWpDraftMetaDescription, injectFeaturedImageIntoWpHtml } from "./wpContentUtils";
 
 const VIDEO_JOB_STATUSES = [
   "pending", "importing", "editing", "rendering",
@@ -885,9 +886,18 @@ async function runBlogVideoLoop(params: {
   } else {
     const videoTitle = (job.youtubeTitle as string | null) ?? "Urban Monk Video";
     const videoDescription = (job.youtubeDescription as string | null) ?? "";
-    const draftContent = youtubeEmbedBlock + "\n\n" +
+    const fallbackFocusKeyword = tags[0] || deriveWpDraftFocusKeyword(videoTitle);
+    const thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+    let draftContent = youtubeEmbedBlock + "\n\n" +
       `<p>${videoDescription.split("\n")[0]}</p>\n\n` +
       `<p>Watch the full video above, and <a href="${youtubeUrl}" target="_blank" rel="noopener">subscribe on YouTube</a> for weekly insights from Dr. Pedram Shojai.</p>`;
+    draftContent = injectFeaturedImageIntoWpHtml({
+      html: draftContent,
+      imageUrl: thumbnailUrl,
+      altText: `${fallbackFocusKeyword} — ${videoTitle}`,
+      caption: `${fallbackFocusKeyword}: educational context for this article.`,
+    });
+    draftContent = ensureWpDraftLinks({ html: draftContent, topic: fallbackFocusKeyword });
     const slug = videoTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 80);
     const tags = (job.youtubeTags as string | null) ? (JSON.parse(job.youtubeTags as string) as string[]) : [];
     const wpResult = await createWpPost({
@@ -895,8 +905,12 @@ async function runBlogVideoLoop(params: {
       slug,
       content: draftContent,
       status: "draft",
-      metaDescription: videoDescription.substring(0, 155),
-      focusKeyword: tags[0],
+      metaDescription: ensureWpDraftMetaDescription({
+        metaDescription: videoDescription.substring(0, 155),
+        topic: fallbackFocusKeyword,
+      }),
+      focusKeyword: fallbackFocusKeyword,
+      seoTitle: videoTitle,
     });
     wpPostId = wpResult.id;
     blogUrl = wpResult.link;

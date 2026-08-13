@@ -22,7 +22,7 @@ import { createWpPost, fetchAllWpPosts, findRelevantPosts, uploadMediaFromUrl } 
 import { Supadata } from "@supadata/js";
 import { resolveOutboundLinkPlaceholders } from "./linkResolver";
 import { scrubHallucinatedUrls, resolvePlaceholderLinks } from "./urlScrubber";
-import { markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags } from "./wpContentUtils";
+import { ensureWpDraftLinks, injectFeaturedImageIntoWpHtml, markdownToWpHtml, DEFAULT_WP_CATEGORIES, resolveOrCreateWpTags } from "./wpContentUtils";
 import { getYouTubeAuthUrl, isYouTubeAuthorized, getYouTubeClient } from "./youtubeOAuth";
 import { getKeywordOverview } from "./dataForSeo";
 import { vidiqKeywordResearch } from "./vidiq";
@@ -769,6 +769,7 @@ IMPORTANT: Start the article with a brief 2-sentence intro that naturally refere
 
       // ── Step 1: Upload YouTube thumbnail as featured image ────────────────────
       let featuredMediaId: number | undefined;
+      let featuredImageUrl: string | undefined;
       if (input.thumbnailUrl) {
         try {
           const altText = input.focusKeyword
@@ -780,6 +781,7 @@ IMPORTANT: Start the article with a brief 2-sentence intro that naturally refere
             altText
           );
           featuredMediaId = media.id;
+          featuredImageUrl = media.url;
         } catch (err) {
           console.error("[VideoToBlog] Featured image upload failed (non-fatal):", err);
         }
@@ -790,6 +792,20 @@ IMPORTANT: Start the article with a brief 2-sentence intro that naturally refere
 
       // Prepend the YouTube embed block
       let wpHtmlBody = input.embedHtml + "\n\n" + articleHtml;
+      wpHtmlBody = injectFeaturedImageIntoWpHtml({
+        html: wpHtmlBody,
+        imageUrl: featuredImageUrl,
+        altText: input.focusKeyword
+          ? `${input.focusKeyword} — ${input.title}`
+          : `${input.title} — The Urban Monk`,
+        caption: input.focusKeyword
+          ? `${input.focusKeyword}: educational context for this article.`
+          : undefined,
+      });
+      wpHtmlBody = ensureWpDraftLinks({
+        html: wpHtmlBody,
+        topic: input.focusKeyword || input.title,
+      });
 
       // ── Step 3: H2/H3 keyphrase auto-fix (Yoast subheading check) ─────────────
       // Yoast requires the focus keyphrase to appear as an EXACT PHRASE in at least

@@ -246,6 +246,83 @@ export function markdownToWpHtml(markdown: string): string {
   return finalHtml;
 }
 
+/**
+ * Ensures a generated WordPress article has one contextual in-content image when
+ * a featured image was successfully uploaded. WordPress's featured-media field
+ * alone does not satisfy Yoast's content-image assessment.
+ */
+export function injectFeaturedImageIntoWpHtml(input: {
+  html: string;
+  imageUrl?: string;
+  altText: string;
+  caption?: string;
+}): string {
+  if (!input.imageUrl || /<img\b/i.test(input.html)) return input.html;
+
+  const escapeAttribute = (value: string) => value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  const figure = `<figure class="wp-block-image size-full um-in-content-hero" data-um-in-content-hero><img src="${escapeAttribute(input.imageUrl)}" alt="${escapeAttribute(input.altText)}"/>${input.caption ? `<figcaption>${escapeAttribute(input.caption)}</figcaption>` : ""}</figure>`;
+  const firstParagraphEnd = input.html.search(/<\/p>/i);
+  if (firstParagraphEnd < 0) return `${figure}\n${input.html}`;
+
+  const insertionPoint = firstParagraphEnd + 4;
+  return `${input.html.slice(0, insertionPoint)}\n${figure}\n${input.html.slice(insertionPoint)}`;
+}
+
+/**
+ * Gives a draft at least one contextual Urban Monk resource link and one
+ * educational outbound link when generation omitted them. Existing links are
+ * preserved; the fallback blocks are added only when a link class is absent.
+ */
+export function ensureWpDraftLinks(input: {
+  html: string;
+  topic: string;
+}): string {
+  let html = input.html;
+  const hasInternal = /https?:\/\/(?:www\.)?(?:theurbanmonk\.com|well\.org)\b/i.test(html);
+  const hasExternal = /https?:\/\/(?!www\.)?(?!(?:theurbanmonk\.com|well\.org)\b)[a-z0-9.-]+/i.test(html);
+  const topic = input.topic.replace(/<[^>]+>/g, "").trim() || "health education";
+  const blocks: string[] = [];
+
+  if (!hasInternal) {
+    blocks.push(`<p>Explore more practical health education from <a href="https://theurbanmonk.com/">The Urban Monk</a>.</p>`);
+  }
+  if (!hasExternal) {
+    const encodedTopic = encodeURIComponent(topic);
+    blocks.push(`<p>For additional peer-reviewed context, see <a href="https://pubmed.ncbi.nlm.nih.gov/?term=${encodedTopic}" target="_blank" rel="noopener noreferrer">research on ${topic}</a> from the National Library of Medicine.</p>`);
+  }
+
+  return blocks.length ? `${html}\n${blocks.join("\n")}` : html;
+}
+
+/** Creates a bounded non-empty snippet when a draft publisher has no LLM metadata. */
+export function ensureWpDraftMetaDescription(input: {
+  metaDescription?: string;
+  topic: string;
+}): string {
+  const normalizedTopic = input.topic.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim() || "health education";
+  const source = input.metaDescription?.trim() || `Explore ${normalizedTopic}, practical context, and educational next steps to discuss with a qualified professional.`;
+  if (source.length <= 148) return source;
+  const truncated = source.slice(0, 148);
+  const boundary = truncated.lastIndexOf(" ");
+  return (boundary > 80 ? truncated.slice(0, boundary) : truncated).trimEnd().replace(/[,;:\-–—]$/, "");
+}
+
+/** Supplies a non-empty, human-readable fallback focus phrase for draft metadata. */
+export function deriveWpDraftFocusKeyword(topic: string): string {
+  const words = topic
+    .replace(/<[^>]+>/g, "")
+    .replace(/[^a-zA-Z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((word) => word.length > 2)
+    .slice(0, 4);
+  return words.join(" ") || "health education";
+}
+
 // ─── SEO Keywords → WordPress Tags ───────────────────────────────────────────
 
 /**

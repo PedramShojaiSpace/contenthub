@@ -4780,6 +4780,7 @@ Pricing model (corrected):
 - [x] Built the fifth Tantra content-first page and companion recording script: regular lovemaking as a relationship-resilience practice that builds tolerance, warmth, and a shared love reserve before life’s rough patches. Route: `/tantra/love-bank`; Wistia placeholder awaits recorded media ID.
 - [x] Resolved the production Vite build termination by splitting public funnels from four smaller internal Hub bundles; full `pnpm build` now passes, with public and Hub static routes smoke-tested at HTTP 200.
 - [ ] Diagnose why the public deployment still serves the prior bundle and returns 404 for `/tantra/love-bank` after the successful split-build checkpoint.
+- [ ] Resolve the platform deployment failure that stops immediately after Metal-builder scheduling, despite the local split production build completing successfully.
 - [ ] Fix reconciliation dashboard "Today" preset — clicking Today leaves both date pickers on the previous day instead of updating them to the current date.
 - [ ] Fix $199 OCUS Kajabi revenue storage — webhook stores amount_cents=0; verify inference logic fired and correct the stored amount so the dashboard revenue total is accurate.
 - [x] Fixed reconciliation dashboard "Today" preset — PRESETS now uses getRange() functions called at click time; no more stale module-load date.

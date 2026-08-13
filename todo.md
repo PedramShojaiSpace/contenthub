@@ -4775,6 +4775,11 @@ Pricing model (corrected):
 - [x] Credit downstream Kajabi and Klaviyo/SMS purchases to original lead cohorts while separately reporting the closing email or SMS touch
 - [x] Harden the Email Optimizer against avoidable marketing-template signals: remove social navigation, flatten button-style links, flag promotional language, preserve unsubscribe warnings, and explicitly state that Gmail Primary placement cannot be guaranteed.
 - [x] Audit the Klaviyo draft review flow against the current optimizer and provide the VA's proofread, seed-test, and traffic-readiness checklist before activation — findings and launch gates saved in `docs/interconnected-klaviyo-traffic-readiness-2026-08-13.md`; no traffic or message-status changes were made.
+- [ ] Reconcile today's Interconnected Shopify/Kajabi revenue, confirm the reported $199 OCUS purchase is included in funnel attribution, and compare true Agora-only ROAS against the dashboard.
+- [ ] Fix reconciliation dashboard "Today" preset — clicking Today leaves both date pickers on the previous day instead of updating them to the current date.
+- [ ] Fix $199 OCUS Kajabi revenue storage — webhook stores amount_cents=0; verify inference logic fired and correct the stored amount so the dashboard revenue total is accurate.
+- [x] Fixed reconciliation dashboard "Today" preset — PRESETS now uses getRange() functions called at click time; no more stale module-load date.
+- [x] Fixed Kajabi purchase webhook amountCents computation — now resolved after inference block so funnel_source correctly maps to "interconnected" for generic zero-amount webhooks; backfilled today's 13 records to $67 each (prior-purchase lookup found no $199 OCUS buyer among today's webhooks).
 - [x] Repair the specific WordPress draft whose persisted H2/H3 headings still fail Yoast’s keyphrase-subheading check
 - [ ] Analyze Interconnected launch-to-yesterday funnel conversion and propose $67/$199 CRO tests without changing the live funnel
 - [x] Reconcile the Content Hub Interconnected dashboard against exact Agora Meta spend and verified Kajabi/Shopify revenue before further CRO analysis

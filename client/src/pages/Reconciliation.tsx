@@ -48,12 +48,14 @@ function todayStr() { return new Date().toISOString().split("T")[0]; }
 function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split("T")[0]; }
 function monthStart() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`; }
 
-const PRESETS = [
-  { label: "Today",      start: todayStr(),  end: todayStr() },
-  { label: "Yesterday",  start: daysAgo(1),  end: daysAgo(1) },
-  { label: "Last 7d",    start: daysAgo(6),  end: todayStr() },
-  { label: "Last 14d",   start: daysAgo(13), end: todayStr() },
-  { label: "This Month", start: monthStart(), end: todayStr() },
+// Preset definitions are functions so dates are always computed fresh at click time,
+// not frozen to the module-load timestamp.
+const PRESETS: { label: string; getRange: () => { start: string; end: string } }[] = [
+  { label: "Today",      getRange: () => ({ start: todayStr(),   end: todayStr() }) },
+  { label: "Yesterday",  getRange: () => ({ start: daysAgo(1),   end: daysAgo(1) }) },
+  { label: "Last 7d",    getRange: () => ({ start: daysAgo(6),   end: todayStr() }) },
+  { label: "Last 14d",   getRange: () => ({ start: daysAgo(13),  end: todayStr() }) },
+  { label: "This Month", getRange: () => ({ start: monthStart(), end: todayStr() }) },
 ];
 
 export default function Reconciliation() {
@@ -251,7 +253,7 @@ export default function Reconciliation() {
                   key={p.label}
                   variant="outline"
                   size="sm"
-                  onClick={() => { setPreset(p.label); setStartDate(p.start); setEndDate(p.end); }}
+                  onClick={() => { const r = p.getRange(); setPreset(p.label); setStartDate(r.start); setEndDate(r.end); }}
                   className={preset === p.label ? "bg-primary text-primary-foreground border-primary" : ""}
                 >
                   {p.label}

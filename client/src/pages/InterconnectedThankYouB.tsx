@@ -1,6 +1,6 @@
 /**
  * InterconnectedThankYouB.tsx — VERSION B (A/B Split Test)
- * Identical to Version A except for the Wistia video embed (10cdtpm3il).
+ * Identical to Version A except for the Wistia video embed (89xb1oskij).
  * The splitter at /interconnected/thank-you assigns visitors 50/50 to A or B.
  * Deep blue color scheme (#020d18 / #0a1520 / #161E2A).
  */
@@ -420,7 +420,7 @@ export default function InterconnectedThankYouB() {
                 style={{ height: "100%", left: 0, position: "absolute", top: 0, width: "100%" }}
               >
                 <iframe
-                  src="https://fast.wistia.net/embed/iframe/10cdtpm3il?seo=true&videoFoam=true"
+                  src="https://fast.wistia.net/embed/iframe/89xb1oskij?seo=true&videoFoam=true"
                   title="Interconnected Thank You Video — Version B"
                   allow="autoplay; fullscreen"
                   allowTransparency

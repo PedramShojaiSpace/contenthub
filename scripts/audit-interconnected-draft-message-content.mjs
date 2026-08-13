@@ -50,9 +50,18 @@ for (const action of emails) {
     templateId,
     editorType: template.data?.attributes?.editor_type ?? null,
     status: action.data?.status ?? null,
+    senderFields: {
+      fromLabel: action.data?.message?.from_label ?? null,
+      fromEmail: action.data?.message?.from_email ?? null,
+      replyToEmail: action.data?.message?.reply_to_email ?? null,
+      senderName: action.data?.message?.sender_name ?? null,
+      messageKeys: Object.keys(action.data?.message ?? {}).sort(),
+    },
     linkCount: countLinks(html),
     hasLegacyCoralBackground: /#e97268|background(?:-color)?:\s*rgb\(233,\s*114,\s*104\)/i.test(html),
     hasCleanDay0Frame: html.includes("background:#f3f0e9") && html.includes("The Urban Monk"),
+    hasApprovedSignatureLine: html.includes("Host of the Interconnected Series"),
+    hasBodyAddressText: /\b(?:[A-Z][a-z]+\s+){1,4}(?:Street|St\.?|Avenue|Ave\.?|Road|Rd\.?|Boulevard|Blvd\.?|Suite|Ste\.?|P\.?O\.?\s*Box)\b/i.test(html),
     uniqueHrefs: extractHrefs(html),
     textPreview: text.replace(/\s+/g, " ").trim().slice(0, 500),
   });

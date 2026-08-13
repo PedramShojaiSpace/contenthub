@@ -8,14 +8,17 @@
 - [x] Conduct a read-only deep audit of the current Content Hub, including active product areas, integrations, measurement, code health, and operational gaps; deliver recommendations only with no implementation — report saved as `docs/content-hub-deep-audit-2026-08-13.md`.
 - [x] Protect the first high-risk internal management procedures while preserving intentionally public funnels and verified webhook entry points — UTM history, Typeform intelligence, YouTube pipeline, and YouTube analytics now require an authenticated operator.
 - [ ] Complete the remaining access-control matrix for legacy public procedures, explicitly isolating verified webhook and intentional public-funnel paths before any further conversion.
+- [ ] Review and protect the next internally managed router tranche, documenting any public procedures that remain intentionally reachable only through verified webhooks or public funnel actions.
 - [x] Replace System Health placeholders with real credential, integration, and inbound-webhook freshness checks for critical revenue services — live checks now cover WordPress, Meta, Shopify Storefront, Shopify paid-order webhook freshness, Kajabi OAuth, and Klaviyo.
-- [ ] Extend System Health to remaining non-core services: Gmail, YouTube, Apollo, and Buffer.
+- [x] Extend System Health to remaining non-core services: Gmail, YouTube, Apollo, and Buffer — Gmail OAuth, YouTube Data API/runtime upload token, and Buffer channels now perform live read-only checks; Apollo explicitly reports its configured but quota-unsafe validation limitation.
+- [x] Add protected live health checks for the next safely verifiable non-core integration services, with explicit unavailable states when a provider lacks a non-mutating validation endpoint — all checks remain behind the protected integration-health procedure.
 - [x] Add regression coverage that proves protected management procedures reject unauthenticated access while public funnel paths remain available — caller tests now cover UTM, Typeform, integration health, YouTube pipeline, and YouTube analytics; public funnel behavior was not changed.
 
 ## Deferred Generated Blog Quality Remediation
 - [x] Apply the approved post 11154 Draft corrections: focus phrase, Yoast title and meta description, draft slug, one in-content reuse of the featured image with descriptive alt text, and one internal plus one educational external body link; then verify Yoast without publishing — authenticated WordPress readback confirmed every approved field and the post remains Draft.
 - [x] Extend reusable Content Hub blog-generation quality safeguards to every active WordPress draft path. The primary publisher, YouTube-to-Blog, Blog-to-YouTube, video-pipeline fallback, and batch publisher now insert or preserve a body image when an image source is available, retain existing links or add only missing internal/educational outbound links, and supply non-empty focus and metadata fallbacks; 29 focused tests passed.
 - [x] Apply the shared image, internal/external-link, and non-empty Yoast metadata safeguards to the remaining batch WordPress draft publisher before finalizing the system-wide fix.
+- [ ] Extract, verify, and append the study references from the supplied HRT original-work PDF to WordPress post 11154, then republish the corrected post after final review.
 
 ## Database Schema
 - [x] Add content_items table (title, platform, status, text, image_url, scheduled_at, published_at)

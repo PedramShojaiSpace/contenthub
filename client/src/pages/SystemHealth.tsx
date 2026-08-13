@@ -134,6 +134,10 @@ export default function SystemHealth() {
   const webhookHealth = service("shopifyWebhook");
   const kajabiHealth = service("kajabi");
   const klaviyoHealth = service("klaviyo");
+  const gmailHealth = service("gmail");
+  const youtubeHealth = service("youtube");
+  const apolloHealth = service("apollo");
+  const bufferHealth = service("buffer");
 
   const checks: HealthCheck[] = [
     {
@@ -211,8 +215,8 @@ export default function SystemHealth() {
       label: "Gmail OAuth",
       description: "OAuth token for sending backlink outreach emails",
       icon: <Mail className="w-4 h-4" />,
-      status: "unknown",
-      detail: "Check Gmail OAuth status in the Backlink Outreach page",
+      status: healthStatus("gmail"),
+      detail: gmailHealth?.detail,
       fixUrl: "/backlink-outreach",
       fixLabel: "Open Backlink Outreach",
     },
@@ -221,8 +225,8 @@ export default function SystemHealth() {
       label: "YouTube OAuth",
       description: "OAuth token for uploading videos and reading channel analytics",
       icon: <Youtube className="w-4 h-4" />,
-      status: "unknown",
-      detail: "Check YouTube OAuth status in the YouTube Pipeline page",
+      status: healthStatus("youtube"),
+      detail: youtubeHealth?.detail,
       fixUrl: "/youtube-pipeline",
       fixLabel: "Open YouTube Pipeline",
     },
@@ -231,8 +235,8 @@ export default function SystemHealth() {
       label: "Apollo API",
       description: "API key for daily lead draws and email enrichment",
       icon: <Users className="w-4 h-4" />,
-      status: "unknown",
-      detail: "Check Apollo status in the Lead Scrubber page",
+      status: healthStatus("apollo"),
+      detail: apolloHealth?.detail,
       fixUrl: "/lead-scrubber",
       fixLabel: "Open Lead Scrubber",
     },
@@ -241,8 +245,8 @@ export default function SystemHealth() {
       label: "Buffer Sync",
       description: "Access token for pushing social posts and syncing publish status",
       icon: <Zap className="w-4 h-4" />,
-      status: "unknown",
-      detail: "Check Buffer status in the Content Pipeline page",
+      status: healthStatus("buffer"),
+      detail: bufferHealth?.detail,
       fixUrl: "/content-pipeline",
       fixLabel: "Open Content Pipeline",
     },

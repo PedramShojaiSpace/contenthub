@@ -25,4 +25,14 @@ describe("Interconnected Thank You control routing", () => {
     expect(pageSource).toContain("access link to that day's episode");
     expect(pageSource).not.toContain("You'll receive login credentials immediately after purchase");
   });
+
+  it("uses the owner-supplied Wistia video on the Version B thank-you page", () => {
+    const pageSource = readFileSync(
+      new URL("../client/src/pages/InterconnectedThankYouB.tsx", import.meta.url),
+      "utf8"
+    );
+
+    expect(pageSource).toContain("89xb1oskij");
+    expect(pageSource).not.toContain("10cdtpm3il");
+  });
 });

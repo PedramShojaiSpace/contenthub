@@ -204,6 +204,63 @@ I'm Dr. Pedram Shojai. I've helped a lot of men with exactly this. And I'm telli
 
 ## Blog Post Template (for all four scripts)
 
+---
+
+## Script 5 — "The Love Bank: Why Regular Lovemaking Gives a Relationship a Longer Fuse"
+**Target ad sets:** General couples, relationship-resilience, and retargeting
+**Recommended length:** 3–4 minutes
+**Blog post title:** "The Love Bank: Why Regular Lovemaking Gives a Relationship a Longer Fuse"
+
+---
+
+*[Open — calm, practical, not sensational]*
+
+Every long relationship eventually meets rough weather. Work gets demanding. A parent gets sick. Money gets tight. A child is struggling. Sleep disappears. None of this means the relationship is broken. It means life is happening.
+
+The question is whether the two of you have built enough of a reserve to meet that pressure without turning on each other.
+
+*[The core idea — 60 seconds]*
+
+I call that reserve the love bank. It is made of small things: warmth, eye contact, affection, shared laughter, and the sense that you are on the same team. And one of the most powerful ways a couple deposits into that bank is regular, mutually wanted lovemaking.
+
+I do not mean sex as another task on the list. I do not mean a performance, a negotiation, or a scorecard. I mean a regular practice of coming back to one another — physically, emotionally, and energetically — before the crisis comes.
+
+*[Why it matters — 75 seconds]*
+
+Lovemaking is not a reward you earn after the house is quiet and every problem has been solved. It is one of the ways you remember that you belong to each other while life is still messy.
+
+It builds tolerance. It softens the sharp edges of a hard week. It gives a relationship a longer fuse.
+
+When a couple has not been connected for a long time, the smallest irritation can become evidence that the whole thing is failing. A missed text becomes rejection. A tired tone becomes contempt. A disagreement becomes a referendum on the relationship.
+
+But when there is a living current of affection, touch, and intimacy, those same rough spots are easier to hold in proportion. You still have hard conversations. You still disagree. You simply have more goodwill to draw on while you work through them.
+
+*[The Taoist frame — 60 seconds]*
+
+In Taoist medicine, we understand the intimate life of a couple as part of the health of the entire household. It is a source of warmth and vitality. When it is tended, it helps the King and the Queen stay connected at the center of the home. And that connection affects everything around it.
+
+The point is not to be perfect. The point is to tend the bond on purpose, while things are good enough, so the relationship has somewhere to stand when life gets hard.
+
+*[The bridge — 45 seconds]*
+
+And if desire, connection, or confidence has gone quiet, it does not mean you have failed. It means the roots need attention. Stress, sleep, physical health, emotional distance, and nervous-system overload can all get in the way of the connection you want to have.
+
+The first step is understanding which part of the connection has been disrupted for you.
+
+*[The ask — 30 seconds]*
+
+I built a short, two-minute quiz to help couples identify where to begin. It is not a diagnosis. It is simply a practical starting point for rebuilding the love bank — together.
+
+Take the quiz below. Give your relationship a little more reserve before life asks for it.
+
+*[Closing — 15 seconds]*
+
+I'm Dr. Pedram Shojai. I believe a strong relationship is one of the most practical life strategies we have. Take the quiz.
+
+---
+
+## Blog Post Template (for all five scripts)
+
 Each blog post follows this structure:
 
 **1. Title** — use the blog post title listed above each script

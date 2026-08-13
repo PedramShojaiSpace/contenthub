@@ -216,7 +216,7 @@ const FAQS = [
   },
   {
     q: "How is the content delivered?",
-    a: "Everything is delivered through the Urban Monk Academy platform (powered by Kajabi). You'll receive login credentials immediately after purchase. The platform is fully mobile-friendly — watch on your phone, tablet, laptop, or smart TV.",
+    a: "Day 1 begins tomorrow and arrives in a dedicated email from The Urban Monk. Each following day, look for an email and an SMS from The Urban Monk — those messages contain your access link to that day's episode. Each free episode is available for 24 hours.",
   },
   {
     q: "Is this medical advice?",

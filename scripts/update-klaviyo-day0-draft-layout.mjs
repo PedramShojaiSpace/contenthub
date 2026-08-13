@@ -4,7 +4,8 @@ if (!apiKey) throw new Error("KLAVIYO_PRIVATE_KEY is not available");
 const TEMPLATE_ID = "Smbiqi";
 const TEMPLATE_NAME = "[DRAFT] Interconnected Day 0 — Plain Confirmation Deliverability Test";
 const SUBJECT = "You’re in — Interconnected starts tomorrow";
-const PREVIEW = "Your episode schedule and a note from Dr. Pedram.";
+const PREVIEW = "Your episode schedule and one optional way to watch the complete series today.";
+const CHECKOUT_URL = "https://content.theurbanmonk.com/r/checkout?destination=https%3A%2F%2Fshop.theurbanmonk.com%2Fcart%2F48959577653402%3A1&utm_source=klaviyo&utm_medium=email&utm_campaign=interconnected_14day&utm_content=day0_one_time_67_offer";
 
 if (!TEMPLATE_NAME.startsWith("[DRAFT]")) {
   throw new Error("Safety guard: only a clearly labelled draft template may be updated.");
@@ -55,6 +56,8 @@ const emailHtml = `<!doctype html>
             <p style="margin:0 0 18px;font-size:17px;line-height:1.7;color:#26323a;">Hi {{ person.first_name|default:'there' }},</p>
             <p style="margin:0 0 18px;font-size:17px;line-height:1.7;color:#26323a;">I’m glad you joined us. Over the next nine days, I’ll send you one episode at a time from <em>Interconnected</em> — a series about the connections among our environment, our health, and the choices we make every day.</p>
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;background:#f7f3ea;border-left:3px solid #b88a32;"><tr><td style="padding:16px 18px;font-size:15px;line-height:1.6;color:#4b514e;"><strong style="color:#26323a;">What happens next</strong><br>Your first episode arrives tomorrow. Then you’ll receive one episode each day for nine days.</td></tr></table>
+            <p style="margin:0 0 16px;font-size:17px;line-height:1.7;color:#26323a;">Before the series begins, I wanted to make one optional choice available. If you would like permanent access to the complete nine-part series today, you can redeem the one-time $67 offer below. This is the only time this price is available.</p>
+            <p style="margin:0 0 24px;"><a href="${CHECKOUT_URL}" style="display:inline-block;background:#203239;border:1px solid #203239;border-radius:4px;color:#ffffff;font-size:16px;font-weight:700;line-height:1.2;padding:14px 20px;text-decoration:none;">Redeem your one-time $67 offer</a></p>
             <p style="margin:0 0 22px;font-size:17px;line-height:1.7;color:#26323a;">If you have questions along the way, simply reply to any email and my team will help.</p>
             <p style="margin:0;font-size:17px;line-height:1.65;color:#26323a;">Warmly,<br><strong>Dr. Pedram Shojai</strong></p>
           </td></tr>
@@ -70,6 +73,10 @@ const emailText = `Hi {{ person.first_name|default:'there' }},
 I’m glad you joined us. Over the next nine days, I’ll send you one episode at a time from Interconnected — a series about the connections among our environment, our health, and the choices we make every day.
 
 What happens next: your first episode arrives tomorrow. Then you’ll receive one episode each day for nine days.
+
+Before the series begins, I wanted to make one optional choice available. If you would like permanent access to the complete nine-part series today, you can redeem the one-time $67 offer here. This is the only time this price is available:
+
+${CHECKOUT_URL}
 
 If you have questions along the way, simply reply to any email and my team will help.
 

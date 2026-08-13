@@ -744,6 +744,7 @@
 - [x] Verify the new Day 0 draft has no promotional checkout CTA, urgency, social strip, or unapproved live action — verified from the template source and creation payload; dedicated regression test passed.
 - [x] Prepare the exact SPF consolidation, DMARC monitoring, and Gmail seed-test instructions for the domain administrator.
 - [ ] Obtain explicit approval before replacing the current live Day 0 email or activating any new email action.
+- [x] Revise the non-sending Day 0 draft to include one concise $67 redemption link and one-time-offer language, without repeated CTAs or P.S. sections — template `Smbiqi` now uses one first-party tracked checkout link with `utm_content=day0_one_time_67_offer`; Klaviyo API readback verified the copy and link.
 
 ## Day 0 Email Layout and Reusable Template Quality
 

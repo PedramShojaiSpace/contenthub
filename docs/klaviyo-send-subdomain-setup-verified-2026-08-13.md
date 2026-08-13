@@ -65,6 +65,20 @@ dmarc=pass
 
 The visible From address should remain `support@theurbanmonk.com`; the branded `send` subdomain is used in delivery headers for alignment, not in the visible reply address. [1] [2]
 
+## Final Live Header Verification
+
+An owner-supplied Gmail **Show original** record for a fresh Klaviyo test received on 2026-08-13 confirms the configuration is operating end to end:
+
+| Header check | Verified result |
+|---|---|
+| Klaviyo sending-domain status | `active` for `send.theurbanmonk.com` / Marketing / Dynamic |
+| SPF | `pass` for a return-path under `k3.send.theurbanmonk.com` |
+| DKIM | `pass` for `send.theurbanmonk.com` using selector `mtd1` |
+| DMARC | `pass` for `header.from=theurbanmonk.com` |
+| Visible sender | `Interconnected Series by The Urban Monk <Support@theurbanmonk.com>` |
+
+The header still includes a second successful Klaviyo shared-domain DKIM signature, which is normal. The important aligned result is the successful `send.theurbanmonk.com` DKIM signature together with `dmarc=pass` for the root From domain.
+
 ## References
 
 [1] [Klaviyo: How to set up a branded sending domain](https://help.klaviyo.com/hc/en-us/articles/115000357752), updated March 27, 2026.

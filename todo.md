@@ -4789,6 +4789,7 @@ Pricing model (corrected):
 - [x] Fixed the deployed `/hub/analytics/reconciliation` bundle: restored its HTML bootstrap and aligned all Hub asset bases to their bundle-specific paths; full staged build and production static-route smoke test returned HTTP 200 for the HTML and JavaScript asset.
 - [x] Confirmed the public Analytics Hub now serves checkpoint `8ae92308` with its bundle-specific JavaScript asset returning HTTP 200.
 - [x] Created and verified the teleprompter-ready DOCX containing all five approved Tantra sexual-health video scripts: `docs/tantra-sexual-health-video-scripts-teleprompter.docx`.
+- [x] Wrote and added “Why She Stopped Wanting To” and “The Female Orgasm: The Missing Ingredient in Western Sexuality” to the master Tantra teleprompter DOCX; the regenerated document now contains seven recording-ready scripts.
 - [x] Replaced the ambiguous Interconnected-era header asset with the standard Urban Monk program mark and wordmark across all five Tantra sexual-health content landing pages; focused regression test passes 4/4.
 - [x] Fix reconciliation dashboard "Today" preset — clicking Today now uses fresh Central-time dates, alongside the prior stale-module-load correction.
 - [x] Fix $199 OCUS Kajabi revenue storage — the resolved amount and funnel source are now used in the current reporting path; the 13 Aug ledger includes two recorded $199 OCUS purchases.

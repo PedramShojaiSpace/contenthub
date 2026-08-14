@@ -259,7 +259,119 @@ I'm Dr. Pedram Shojai. I believe a strong relationship is one of the most practi
 
 ---
 
-## Blog Post Template (for all five scripts)
+## Script 6 — "Why She Stopped Wanting To"
+**Target ad sets:** Women 38–65, couples navigating menopause or high-stress family life, and relationship-reconnection retargeting
+**Recommended length:** 4–5 minutes
+**Blog post title:** "Why She Stopped Wanting To: The Pressures No One Taught You to Name"
+
+---
+
+*[Open — compassionate, direct address to women]*
+
+If you are a woman watching this and something in you has gone quiet, I want to start by saying this clearly: you are not broken. And you are not alone.
+
+For a lot of women, desire does not disappear in one dramatic moment. It gets crowded out. By the work of being a mother. By the invisible work of running a household. By caring for everybody else. By poor sleep, stress, shifting hormones, and a body that no longer feels entirely familiar.
+
+And after enough years of that, the question stops being, “Why don’t I want sex?” The question becomes, “Why don’t I feel like myself?”
+
+*[The biological and life-pressure layer — 75 seconds]*
+
+Menopause and hormonal fluctuation can change the terrain. Sleep disruption can change the terrain. Gut inflammation, stress, and the relentless pressure of modern life can all leave a woman feeling depleted, distracted, or disconnected from her own body.
+
+But biology is only part of the story.
+
+The other part is that a lot of women have spent years having intimacy organized around everyone else’s needs. They have been expected to switch from mother, manager, professional, and caregiver into a sensual, open, receptive partner on command — without anyone slowing down long enough to ask what they need to feel safe, seen, and genuinely wanted.
+
+That is not sustainable. Eventually, the system protects itself. It shuts down.
+
+*[The relationship truth — 75 seconds]*
+
+And this is where I want to speak to the men, too. If she has gone quiet, this is not an invitation to pressure her or treat her desire like a problem you need to solve for yourself.
+
+It is an invitation to come back into relationship.
+
+In the tantric tradition, intimacy is not a race toward an outcome. It begins with attention. Sensuality. Presence. Learning how to create enough safety and enough space for her body to come online in its own time.
+
+For too many women, the female orgasm has been treated as optional — a nice extra if there is time. But a woman’s pleasure is not an accessory to a relationship. It is part of the health of the relationship. When her needs are ignored for years, she may not know how to name what is missing. And he may not know that anything is missing at all.
+
+*[The solution — 75 seconds]*
+
+The good news is that the solution may be closer than you think. The person who can help rebuild the bridge is often sleeping next to you.
+
+That does not mean the responsibility belongs to one person. It means both people can learn. Both people can slow down. Both people can learn a few tantric principles: breathe together, create time without a scorecard, lead with touch and attention rather than expectation, and make her comfort and pleasure central to the experience.
+
+And when the body needs support — when hormones, sleep, stress, or inflammation are part of the picture — address that too. A thoughtful clinician can help you evaluate what has changed, while the two of you do the relational work of coming back to one another.
+
+*[The ask — 30 seconds]*
+
+I built a short, two-minute quiz to help you identify where the disconnection may be starting: physical, emotional, relational, or some combination of all three. It is not a diagnosis. It is a practical first step.
+
+Take the quiz below. You do not have to figure this out alone.
+
+*[Closing — 15 seconds]*
+
+I’m Dr. Pedram Shojai. Desire can come back when the body and the relationship are both given a chance to heal. Take the quiz.
+
+---
+
+## Script 7 — "The Female Orgasm: The Missing Ingredient in Western Sexuality"
+**Target ad sets:** Couples education, women’s sensuality, relationship-reconnection retargeting, and warm educational audiences
+**Recommended length:** 4–5 minutes
+**Blog post title:** "The Female Orgasm: The Missing Ingredient in Western Sexuality"
+
+---
+
+*[Open — direct, educational, unembarrassed]*
+
+I want to talk about one of the most overlooked parts of Western sexuality: the female orgasm.
+
+Not as a performance metric. Not as a trophy. And not as a favor anyone does for anyone else.
+
+I want to talk about it as a foundational principle of connection.
+
+Because when a woman’s pleasure is treated as secondary for long enough, something predictable happens. Her sensuality goes to sleep. Her sexuality goes quiet. And eventually, the relationship begins to dull around the edges.
+
+*[What Western sexuality gets wrong — 75 seconds]*
+
+Western culture has taught a lot of people that intimacy is a narrow sequence with a predictable finish line. It has taught men to focus on performance and women to focus on accommodation. It has left many men unsure of how to ask, listen, and slow down. And it has left many women unsure of how to articulate what they need without feeling demanding, embarrassed, or responsible for protecting someone else’s ego.
+
+That is a terrible setup for a long relationship.
+
+When her experience is rushed, minimized, or treated as optional, the body learns that intimacy is not a place where it gets to be fully present. And when the body stops expecting pleasure, it often stops offering desire.
+
+*[The tantric principle — 90 seconds]*
+
+Tantra starts from a very different place. It says that sensuality is not a detour on the way to sex. It is the path.
+
+In its symbolic language, you will often see the image of two serpents rising along the spine. They represent the complementary currents of creation — the dance of masculine and feminine, attention and receptivity, breath and energy. The point is not to turn that image into something abstract or mystical. The point is to remember that intimacy is alive when both people are present, both people are awakened, and both people are being met.
+
+That is why “she comes first” is not a slogan. It is a relational principle. Her comfort, consent, pleasure, and the time she needs are not an afterthought. They set the pace. They teach both partners how to be in connection instead of simply trying to get somewhere.
+
+*[What to do differently — 75 seconds]*
+
+For men, this begins with curiosity instead of assumption. Slow down. Ask. Listen without defensiveness. Learn what touch, timing, safety, and attention mean to the woman you love.
+
+For women, it begins with permission. Permission to have needs. Permission to use clear language. Permission to say what feels good, what does not, and what would help you feel more present in your own body.
+
+For couples, it means creating time for sensuality without a scorecard. No pressure to perform. No demand that every moment land in the same place. Just the practice of coming back to each other with more honesty, more skill, and more attention.
+
+*[The bridge — 45 seconds]*
+
+If desire has gone quiet, do not assume the relationship is over. It may mean that the relationship needs a new language. The biology may need support. The stress may need attention. And the two of you may need to learn a more generous, more connected way of being intimate.
+
+That work is available. And it can begin closer to home than you think.
+
+*[The ask — 30 seconds]*
+
+Take the two-minute quiz below. It will help you identify where the disruption may be happening and give you a practical starting point for coming back to connection together.
+
+*[Closing — 15 seconds]*
+
+I’m Dr. Pedram Shojai. Intimacy can be learned. And when both people are truly met, the whole relationship comes back to life. Take the quiz.
+
+---
+
+## Blog Post Template (for all seven scripts)
 
 Each blog post follows this structure:
 

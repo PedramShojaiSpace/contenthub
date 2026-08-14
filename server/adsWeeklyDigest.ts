@@ -9,10 +9,9 @@
 
 import { getDb } from "./db";
 import { adsWeeklyDigests, adsOptimizationLogs } from "../drizzle/schema";
-import { getMetaAdsConfig, getCampaigns, getCampaignInsights, getAccountInsights } from "./metaAdsClient";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
-import { desc } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 
 export interface WeeklyDigestResult {
   success: boolean;
@@ -35,55 +34,38 @@ export async function generateWeeklyDigest(): Promise<WeeklyDigestResult> {
   weekStartDate.setDate(weekStartDate.getDate() - 7);
   const weekStart = weekStartDate.toISOString().split("T")[0];
 
-  const config = getMetaAdsConfig();
-
-  // Gather data
-  let accountSummary: any = null;
+  // Gather saved daily snapshots only. The weekly digest must never call Meta
+  // directly because the morning batch is the single reporting data source.
   let campaignData: any[] = [];
   let optimizationActions: any[] = [];
 
   try {
-    // Account-level insights for the week
-    const accountInsights = await getAccountInsights(config, "last_7d");
-    accountSummary = accountInsights[0] ?? null;
+    const [rows] = await db.execute(sql`
+      SELECT campaign_name AS name,
+             MAX(status) AS status,
+             SUM(spend_cents) / 100 AS spend,
+             SUM(impressions) AS impressions,
+             SUM(clicks) AS clicks,
+             AVG(ctr) AS ctr,
+             AVG(frequency) AS frequency
+      FROM campaign_snapshots
+      WHERE snapshot_date >= ${weekStart} AND snapshot_date < ${weekEnd}
+      GROUP BY campaign_id, campaign_name
+      ORDER BY spend DESC
+    `) as any[];
+    campaignData = (rows ?? []).map((row: any) => ({
+      name: row.name,
+      status: row.status,
+      spend: Number(row.spend ?? 0),
+      leads: 0,
+      cpl: 0,
+      ctr: Number(row.ctr ?? 0),
+      frequency: Number(row.frequency ?? 0),
+      impressions: Number(row.impressions ?? 0),
+      clicks: Number(row.clicks ?? 0),
+    }));
   } catch (e: any) {
-    console.error("[Digest] Failed to fetch account insights:", e.message);
-  }
-
-  try {
-    const campaigns = await getCampaigns(config);
-    campaignData = await Promise.all(
-      campaigns.map(async (c) => {
-        try {
-          const insights = await getCampaignInsights(config, c.id, "last_7d");
-          const ins = insights[0];
-          const spend = parseFloat(ins?.spend ?? "0");
-          const leads = parseInt(
-            ins?.actions?.find((a: any) => a.action_type === "lead")?.value ?? "0"
-          );
-          const clicks = parseInt(ins?.clicks ?? "0");
-          const impressions = parseInt(ins?.impressions ?? "0");
-          const cpl = leads > 0 ? spend / leads : 0;
-          const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-          const frequency = parseFloat(ins?.frequency ?? "0");
-          return {
-            name: c.name,
-            status: c.status,
-            spend,
-            leads,
-            cpl,
-            ctr,
-            frequency,
-            impressions,
-            clicks,
-          };
-        } catch {
-          return { name: c.name, status: c.status, spend: 0, leads: 0, cpl: 0, ctr: 0, frequency: 0, impressions: 0, clicks: 0 };
-        }
-      })
-    );
-  } catch (e: any) {
-    console.error("[Digest] Failed to fetch campaign data:", e.message);
+    console.error("[Digest] Failed to read saved campaign data:", e.message);
   }
 
   try {

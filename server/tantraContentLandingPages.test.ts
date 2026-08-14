@@ -22,7 +22,6 @@ describe("Tantra content landing pages", () => {
     expect(appSource).toContain('path={"/tantra/sex-is-the-flower"} component={TantraContentFlower}');
     expect(appSource).toContain('path={"/tantra/why-he-stopped"} component={TantraContentHim}');
     expect(appSource).toContain('path={"/tantra/love-bank"} component={TantraContentLoveBank}');
-    expect(appSource).toContain('path={"/tantra/hormone-health"} component={TantraHormoneHealthPathway}');
   });
 
   it("keeps every content-first route in the compact public production bundle", () => {
@@ -33,19 +32,6 @@ describe("Tantra content landing pages", () => {
     expect(publicAppSource).toContain('path="/tantra/love-bank" component={TantraContentLoveBank}');
     expect(publicAppSource).toContain('path="/tantra/why-she-stopped" component={TantraContentWhySheStopped}');
     expect(publicAppSource).toContain('path="/tantra/female-orgasm" component={TantraContentFemaleOrgasm}');
-    expect(publicAppSource).toContain('path="/tantra/hormone-health" component={TantraHormoneHealthPathway}');
-  });
-
-  it("keeps the hormone-health prototype non-diagnostic and clinician-guided", () => {
-    const hormoneSource = readFileSync(
-      resolve(projectRoot, "client/src/pages/TantraHormoneHealthPathway.tsx"),
-      "utf8",
-    );
-
-    expect(hormoneSource).toContain("This pathway is designed to help you organize the right next conversation with a licensed clinician");
-    expect(hormoneSource).toContain("cannot diagnose a hormone condition");
-    expect(hormoneSource).toContain("Fit22 is an optional food-sensitivity and gut-permeability resource");
-    expect(hormoneSource).toContain('const QUIZ_URL = "/quiz/tantra"');
   });
 
   it("keeps the Love Bank page video-ready and quiz-first", () => {

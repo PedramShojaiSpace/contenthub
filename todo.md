@@ -4811,3 +4811,5 @@ Pricing model (corrected):
 - [x] Define and implement a privacy-conscious Tantra quiz segmentation map for oral health, gut health, sleep, hormone health, and intimacy pathways; document every missing recommendation vehicle for deliberate buildout.
 - [x] Provide a verified walkthrough URL for the redesigned Tantra quiz and map every current outcome pathway for review.
 - [x] Build a reviewable, non-diagnostic hormone-health pathway prototype so the user can assess the future referral experience before committing to a clinical scheduling vehicle.
+- [x] Replace the standalone hormone-path funnel language with a single Fit22 → team meeting → clinician-determined hormone-testing pathway, retaining the gut path as the primary branch.
+- [x] Strengthen the Tantra quiz’s gut, sleep, and oral-health flagged-result narratives with non-diagnostic systems context and clear test-next-step calls to action, while preserving direct Tantra results for visitors without flags.

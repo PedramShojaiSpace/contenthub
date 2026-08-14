@@ -4814,5 +4814,5 @@ Pricing model (corrected):
 - [x] Replace the standalone hormone-path funnel language with a single Fit22 → team meeting → clinician-determined hormone-testing pathway, retaining the gut path as the primary branch.
 - [x] Strengthen the Tantra quiz’s gut, sleep, and oral-health flagged-result narratives with non-diagnostic systems context and clear test-next-step calls to action, while preserving direct Tantra results for visitors without flags.
 - [x] Rebuild the Tantra Klaviyo nurture as a review-only nine-day sequence that shares all seven edited relationship-education videos and escalates quiz and offer calls to action without activating messages automatically.
-- [ ] Replace repeated Meta dashboard refresh calls with a conservative scheduled batch collection and notify the owner after each completed batch refresh.
-- [ ] Consolidate Meta reporting and optimization reads into one saved previous-day batch each morning, with dashboards reading the saved snapshot and a completion notice sent after the batch finishes.
+- [x] Replace repeated Meta dashboard refresh calls with a conservative scheduled batch collection and notify the owner after each completed batch refresh.
+- [x] Consolidate Meta reporting and optimization reads into one saved previous-day batch each morning, with dashboards reading the saved snapshot and a completion notice sent after the batch finishes.

@@ -1,0 +1,2112 @@
+{
+  "generatedAt": "2026-08-14T19:59:25.243Z",
+  "summary": {
+    "flowId": "YyFZPu",
+    "flowName": "[DRAFT — VA REVIEW] Interconnected Free Screening - KO — Single-Link $67",
+    "flowStatus": "live",
+    "emailCount": 27,
+    "statusCounts": {
+      "live": [
+        {
+          "actionId": "114441634",
+          "messageId": "SypiFq",
+          "messageName": "Day 0 opt in EG sp26",
+          "status": "live",
+          "subject": "Your spot is confirmed. Here's what happens next.",
+          "previewText": "",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": false,
+          "addTrackingParams": true,
+          "templateId": "V6Fdna",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": false,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": true,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": false,
+            "flags": [
+              "timeSensitiveUrgency"
+            ]
+          },
+          "concerns": [
+            "Missing organization address in HTML"
+          ],
+          "textExcerpt": "Hi {{ person.first_name|default:'there' }}, I’m glad you joined us. Over the next nine days, I’ll send you one episode at a time from Interconnected — a series about the connections among our environment, our health, and the choices we make every day. What happens next: your first episode arrives tomorrow. Then you’ll receive one episode each day for nine days. Before the series begins, I wanted to make one optional "
+        }
+      ],
+      "draft": [
+        {
+          "actionId": "114441638",
+          "messageId": "THN9zg",
+          "messageName": "IC Free Screening - Episode 1",
+          "status": "draft",
+          "subject": "Your free access to groundbreaking INTERCONNECTED health discoveries starts now",
+          "previewText": "",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "S5Rktt",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": true,
+            "regulatedClaimReview": true,
+            "flags": [
+              "episodeCountLanguage",
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "Welcome. I'm glad you're here. What you're about to discover in the next 10 days has the potential to change how you understand your health — not through fear, but through genuine insight. Your free 10-day access to INTERCONNECTED: The Power to Heal From Within starts right now. Episode 1 is called \"The Invisible Organ: The Missing Piece in Health and Longevity.\" In it, you'll begin to understand why so many people a"
+        },
+        {
+          "actionId": "114441640",
+          "messageId": "UTcYt8",
+          "messageName": "IC FS Day 1 2/2",
+          "status": "draft",
+          "subject": "I was dying in the hospital at 14... until I discovered this",
+          "previewText": "",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "QNpv84",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "If you had a chance to watch Episode 1 last night, I'd love to know what landed for you. The concept of the gut as a \"second brain\" — and what happens when it's compromised — tends to stop people in their tracks. If you haven't started yet, no worries. Episode 1 is right here → One thing I want you to sit with as you watch: most of the symptoms people spend years trying to manage — fatigue, brain fog, inflammation, m"
+        },
+        {
+          "actionId": "114441643",
+          "messageId": "W4BPkY",
+          "messageName": "IC FS Ep 2",
+          "status": "draft",
+          "subject": "The Human Microbiome: The Raging Battle Within - [Interconnected Episode 2]",
+          "previewText": "",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "WJ4VUJ",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": true,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "legacyDiscountLanguage",
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "Episode 2 is ready for you. \"The Raging Battle Within \" This one tends to shift things for people. This is likely the reason you have inflammation that's setting off a cascade of issues downstream. Once you understand why this is happening, you understand how you can fix it. Most people are treating the symptoms. This episode helps you understand the system. PS- The full Upstream Bundle — including the gut microbiome"
+        },
+        {
+          "actionId": "114441646",
+          "messageId": "T29QBf",
+          "messageName": "IC FS Ep 3 1/2",
+          "status": "draft",
+          "subject": "The Truth About Probiotics [Interconnected Episode 3]",
+          "previewText": "",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "Rga33T",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": true,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": true,
+            "regulatedClaimReview": true,
+            "flags": [
+              "timeSensitiveUrgency",
+              "episodeCountLanguage",
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "A quick question before you watch Episode 3 today: When you think about your health — the things that aren't quite right, the symptoms you've been managing — do you know where they're actually coming from? Most people don't. Not because they haven't tried. But because the conventional model doesn't look upstream far enough. Episode 3 — \"The antibiotic crisis and probiotic hype. \" — is where this starts to get very sp"
+        },
+        {
+          "actionId": "114441649",
+          "messageId": "XLqsw5",
+          "messageName": "IC FS Ep 3 2/2",
+          "status": "draft",
+          "subject": "Throwing the baby out with the bath water: antibiotics aren't all bad and why probiotics might be a problem",
+          "previewText": "Let's look at the facts.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "UiKvDx",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": true,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "legacyDiscountLanguage",
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "One of the major problems we've been having is we've over-prescribed antibiotics, and now everyone has gut issues and microbial imbalances. We don't want to throw the baby out with the bathwater, but we need a much more sophisticated way of looking at antibiotics and probiotics. That's what episode three explores. The Upstream Bundle includes everything you need to actually address what Episode 3 reveals — starting w"
+        },
+        {
+          "actionId": "114441651",
+          "messageId": "R96GKn",
+          "messageName": "IC FS Ep 4 1/2",
+          "status": "draft",
+          "subject": "Episode 4: Staying alive in a toxic world",
+          "previewText": "Poisons are everywhere. How do we deal with it?",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "RNxPj8",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "This new episode is important to every one of us. We’re talking about the impact of everyday toxins on our lives. Watch episode 4 using this link. Because make no mistake, each and every day we are practically smothered in invisible toxins. Toxins in the food we eat, the water we drink, even the air we breathe. There’s no avoiding them. Because of our microbiomes, the trillions of bacteria residing in our digestive s"
+        },
+        {
+          "actionId": "114441654",
+          "messageId": "VTmiEc",
+          "messageName": "Upstream Replay",
+          "status": "draft",
+          "subject": "The gut health industry is lying to you.",
+          "previewText": "I’m tired of the noise and here's what I'm doing to help you",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "RNFjb3",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "I need to talk to you about something that has been bothering me for a long time. If you spend more than five minutes on the internet looking for answers about your gut health, your brain fog, or your fatigue, you will be hit with a tidal wave of noise. Eat this. Don't eat that. Take this probiotic. Do this elimination diet. Fast for 16 hours. Don't fast at all. And worse, for most people, it doesn't actually work. I"
+        },
+        {
+          "actionId": "114441656",
+          "messageId": "R4tspY",
+          "messageName": "IC FS Ep 5 1/2",
+          "status": "draft",
+          "subject": "Episode 5: The microbiome — your kid's inner ecosystem",
+          "previewText": "38 trillion organisms. They're running the show.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "UFSMdY",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": false,
+            "flags": []
+          },
+          "concerns": [],
+          "textExcerpt": "Next Episode: The Kids Aren’t All Right: Leaky Gut - Leaky Brain - Leaky Kids As a father myself, this episode is particularly fascinating. We’re talking about how what we feed our children can impact their behavior, their social skills, their progress through life. You’ll hear from Tara and how her daughter had problems with her motor skills. They went to the doctor, they tried occupational therapy, but never got to"
+        },
+        {
+          "actionId": "114441660",
+          "messageId": "VNJ4iN",
+          "messageName": "Push to KBMO webinar",
+          "status": "draft",
+          "subject": "Signs of a leaky gut",
+          "previewText": "There is more happening than you may know.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "U9mv6Q",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": true,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "legacyDiscountLanguage",
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "In my years of clinical experience, I've encountered thousands of patients, and most of them are shocked to realize that the symptoms they came in with are actually traced back to a leaky gut. In functional medicine, we always look upstream to see why there is inflammation in the system. A torn gut lining leads to a host of problems, including: Here's a very important interview I just conducted that helps you underst"
+        },
+        {
+          "actionId": "114441662",
+          "messageId": "WY8TcE",
+          "messageName": "IC FS Ep 6 1/2",
+          "status": "draft",
+          "subject": "Episode 6: Thyroid, obesity, and diabetes",
+          "previewText": "How they're all connected to the microbiome",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "U4JeKs",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": true,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "timeSensitiveUrgency",
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "Now, tonight’s episode is very special. As you know, we’ve started getting really specific on health challenges and how each one can be targeted by working with your microbiome. In this episode we’re going to cover the thyroid (your metabolic regulator)... obesity issues and diabetes. Did you know all of these can be controlled, prevented and even reversed by tapping into the healing power of the microbiome? In Episo"
+        },
+        {
+          "actionId": "114441665",
+          "messageId": "XwwFtT",
+          "messageName": "Push to Naomi Webinar",
+          "status": "draft",
+          "subject": "How can we know what's wrong with certainty?",
+          "previewText": "Here are the three tests I like to see to triangulate gut issues",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "TY6Yq4",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": false,
+            "flags": []
+          },
+          "concerns": [],
+          "textExcerpt": "I'd like to share an interview I just did with Naomi Hyman, one of the physician's assistants that works with our medical team. Naomi sees a lot of gut health cases coming in month over month and has unique insight about what works and how we need to look at the gut comprehensively in order to help people better and faster. This is an important interview that I think you should check out. I think it's important to un"
+        },
+        {
+          "actionId": "114441670",
+          "messageId": "WguAeD",
+          "messageName": "IC FS Ep 7 1/2",
+          "status": "draft",
+          "subject": "Episode 7: Cancer, Immunity and Heart Disease",
+          "previewText": "Your body detoxes every day. The question is whether it's keeping up.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "RuahMt",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": true,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "timeSensitiveUrgency",
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "Tonight we’re diving into the second part of The Microbiome Solution and focusing on immunity, heart disease and the Big C... Cancer. Episode #7: The Microbiome Solution (Part II): Cancer, Immunity and Heart Disease Can our microbiome really help us predict and prevent cancer? The experts in this episode say “YES!”. I know you’re going to love this episode. This is revolutionary stuff, rocking the foundations of medi"
+        },
+        {
+          "actionId": "114441673",
+          "messageId": "VDtxC2",
+          "messageName": "Push to DSS",
+          "status": "draft",
+          "subject": "How a bad microbiome disrupts your sleep",
+          "previewText": "It's tied in more than you may know!",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "VFTBz9",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "The connection between gut dysbiosis, the microbiome, and insomnia is something that has just blown open debate the field of sleep medicine. It turns out having a leaky gut and endotoxemia creates anxiety, depression, and yes, insomnia. That 2 to 3 a.m. wake-up that you may be suffering from may be coming from your gut, and the solution is never more pills. It's to heal the gut. Here's a webinar that I just did on th"
+        },
+        {
+          "actionId": "114441676",
+          "messageId": "SAZySh",
+          "messageName": "IC FS Ep 8 1/2",
+          "status": "draft",
+          "subject": "Episode 8:  Ancient Wisdom Meets Modern Tech",
+          "previewText": "70% of your immune system is right here.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "XpGeJe",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": true,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "timeSensitiveUrgency",
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "Next Up- Episode #8: Ancient Wisdom and Modern Technology: The Keys To Personalized, Individualized, Made-For-You Medicine This is where we’re going to take a quantum leap and look at the medicine of the future. Plus we’re going to deal with POOP. Right now, a rather unconventional treatment called fecal transplants is saving lives and restoring microbial balance in horribly sick patients. Yes, the stool of a happy p"
+        },
+        {
+          "actionId": "114441679",
+          "messageId": "WJf8au",
+          "messageName": "Lights On Webinar",
+          "status": "draft",
+          "subject": "Your gut is talking. Are you listening?",
+          "previewText": "And most people are not doing it.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "TJddmS",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": false,
+            "flags": []
+          },
+          "concerns": [],
+          "textExcerpt": "There is a two-way communication between your gut and your brain that's happening all the time. Most of us have severed the ties and are unaware of this communication, and that becomes the beginning of the problem. It is 100% trainable to get this felt sense back and tie back into your deep gut wisdom. As a former monk and a functional medicine doctor, I've seen a lot of things come and go, and I can tell you that th"
+        },
+        {
+          "actionId": "114441681",
+          "messageId": "RgkdhD",
+          "messageName": "IC FS Ep 9 1/2",
+          "status": "draft",
+          "subject": "Episode 9: A Personalized Approach to Medicine",
+          "previewText": "Your gut is running your hormones. Not the other way around.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "Sub88C",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "The last episode: Episode #9: Healing Yourself: A Brighter Future Here’s a taste of what you’ll discover... How to tend to your ‘inner garden’ for health and vitality... The truth behind ‘an apple a day keeps the doctor away’ and WHY it really works... The one jar you should always have in your kitchen cupboard... Why you should never exercise TOO hard... The #1 thing you must eat to maintain a diverse microbiome... "
+        },
+        {
+          "actionId": "114441684",
+          "messageId": "SrK4bv",
+          "messageName": "IC FS Ep 9 2/2",
+          "status": "draft",
+          "subject": "\"My labs are fine\" — are they, though?",
+          "previewText": "Standard labs miss a lot. Here's what they don't test.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "RegwKh",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": true,
+            "legacyDiscountLanguage": true,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "timeSensitiveUrgency",
+              "legacyDiscountLanguage",
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "Over the past 9 episodes of INTERCONNECTED, you've discovered something remarkable: the most powerful medicine in the world isn't in a pill or procedure - it's already inside you. What we've learned is staggering: Your microbiome controls your immune system, brain function, and metabolism Chronic diseases often start with gut inflammation years before symptoms appear Traditional medicine treats symptoms while missing"
+        },
+        {
+          "actionId": "114441686",
+          "messageId": "RNHZyS",
+          "messageName": "IC Day 10 Offer Extended  1/2",
+          "status": "draft",
+          "subject": "Your free access ends tomorrow — here's what comes next",
+          "previewText": "You've come a long way. Let's talk about where to go from here.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "VTTSiH",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": true,
+            "legacyDiscountLanguage": true,
+            "episodeCountLanguage": true,
+            "regulatedClaimReview": true,
+            "flags": [
+              "timeSensitiveUrgency",
+              "legacyDiscountLanguage",
+              "episodeCountLanguage",
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "First, thank you for being part of this transformative 10-day journey through INTERCONNECTED. The response has been overwhelming, and your engagement shows just how ready people are for real solutions. But watching isn't enough - you need support to implement these life-changing protocols. That's why we're keeping the 50% discount active until midnight tonight for: The Interconnected Upstream Package: OFFERING: Gut P"
+        },
+        {
+          "actionId": "114441689",
+          "messageId": "SY8QsJ",
+          "messageName": "IC Day 10 Offer Extended  2/2",
+          "status": "draft",
+          "subject": "One more thing before your access closes",
+          "previewText": "The question I want you to ask yourself tonight.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "T2yUpR",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": true,
+            "legacyDiscountLanguage": true,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "timeSensitiveUrgency",
+              "legacyDiscountLanguage",
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "This is it - your final chance to join us at 50% off ends at midnight tonight. In the past 10 days, you've learned why gut health is the key to: Reversing chronic disease Now it's time to take action. The Upstream Package includes: Lifetime access to INTERCONNECTED The Gut Healing Protocols Testing of your Gut Permeability and Food Allergies (Optional) A Personalized Consultation with a Health Coach (with the testing"
+        },
+        {
+          "actionId": "114441691",
+          "messageId": "VVXyR5",
+          "messageName": "IC Day 11 - Down Day",
+          "status": "draft",
+          "subject": "Your free access has ended — but the work doesn't have to",
+          "previewText": "What happens now is up to you.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "X9NtG4",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "The free screening event has ended, and I wanted to personally thank you for joining us on this journey of discovery. The science of the microbiome is revolutionizing how we think about health, and your participation helps spread this vital message. Whether you're just beginning your health journey or continuing to deepen your understanding, remember the core message of INTERCONNECTED: true healing starts from within"
+        },
+        {
+          "actionId": "114441695",
+          "messageId": "R75GAR",
+          "messageName": "Vibe Webinar",
+          "status": "draft",
+          "subject": "A device that calms the vagus nerve and helps with inflammation",
+          "previewText": "The webinar that connects all the dots.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "X5bdkE",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "Recently I was given a device to check out and I fell in love with it. I let my wife borrow it and she wouldn't give it back. Everyone I have recommended it to loves it and uses it often. It's a portable PEMF unit designed by a rocket scientist who wanted an inexpensive and reliable tool to help more people. It has multiple frequency sets programmed into it from \"Relax\" to \"Neck Pain\" to \"Acne\" and \"PTSD\"...the list "
+        },
+        {
+          "actionId": "114441698",
+          "messageId": "SguxuH",
+          "messageName": "Day 11- VIBE",
+          "status": "draft",
+          "subject": "Did you catch the webinar? (Replay is still up)",
+          "previewText": "The part about testing tends to be the moment things click.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "WmwUnD",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "We've had hundreds of viewers email us asking which Vagus Nerve Stimulator we like for gut health. As you may recall, the Vagus Nerve travels down from the brain and carries signals up and down between the brain and the organs and many of our doctors spoke about how the state of this nerve will determine whether your gut can heal or stay in stress mode. This impacts our microbiome in too many ways to count. Here's th"
+        },
+        {
+          "actionId": "114441700",
+          "messageId": "RDtuS6",
+          "messageName": "IC FS Ep 10 1/2",
+          "status": "draft",
+          "subject": "Episode 10 is here — the final piece of the puzzle...a BONUS",
+          "previewText": "Everything we've covered comes together in this one.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "WgTE3f",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": true,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": true,
+            "regulatedClaimReview": true,
+            "flags": [
+              "timeSensitiveUrgency",
+              "episodeCountLanguage",
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "I have one more episode for you! We filmed a final episode that covered THE SOIL and all of the wonderful bacterial goodness that begins in the earth and must transfer to you through the microbiome. This is truly the missing ingredient and you'll learn how the use of pesticides is disrupting Mother Earth's microbial balance. It translated into our food and our own microbiome constitution. This episode is the glue and"
+        },
+        {
+          "actionId": "114441702",
+          "messageId": "SNSjKW",
+          "messageName": "IC FS Ep 10 2/2",
+          "status": "draft",
+          "subject": "Wrapping Episode 10 — what I'd recommend for you",
+          "previewText": "You've done the work. Here's the next step.",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "XYGhck",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": true,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": true,
+            "regulatedClaimReview": true,
+            "flags": [
+              "timeSensitiveUrgency",
+              "episodeCountLanguage",
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "IN CASE YOU MISSED IT- SURPRISE! We've reopened access to Bonus Episode 10 and the 50% discount until midnight tonight. Why? Because the response to \"The Future of Gut Health\" has been overwhelming, and we wanted to give you one final chance to see what's coming: Breakthrough testing methods Revolutionary treatment protocols The future of personalized medicine Plus, we've reopened the Package discounts for these fina"
+        },
+        {
+          "actionId": "114441704",
+          "messageId": "Xz8VEL",
+          "messageName": "IS Gut Testing Only",
+          "status": "draft",
+          "subject": "What if the problem started in your mouth?",
+          "previewText": "Oral health meets gut health",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "TGcddm",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "I've treated thousands of patients in my functional medicine clinics and have done a ton of gut health cases. Every once in a while, some mysterious bug that we had eradicated would magically reappear. This wasn't supposed to happen, so like a good scientist, I began to dig and swim upstream to figure out where this could have come from. Lo and behold, the answer was not very far from where we began. Connecting the s"
+        },
+        {
+          "actionId": "114441708",
+          "messageId": "Wj6Qrw",
+          "messageName": "Oral Health Intro- Lora and Elmira",
+          "status": "draft",
+          "subject": "What if the problem started in your mouth?",
+          "previewText": "Oral health meets gut health",
+          "fromName": "Interconnected Series by The Urban Monk",
+          "fromEmail": "Support@theurbanmonk.com",
+          "replyTo": "Support@theurbanmonk.com",
+          "smartSending": true,
+          "addTrackingParams": true,
+          "templateId": "WcpTxL",
+          "editorType": "CODE",
+          "footer": {
+            "hasUnsubscribe": true,
+            "hasAddress": true,
+            "addressBeforeFooter": false
+          },
+          "links": {
+            "total": 1,
+            "malformed": [],
+            "noUtm": [],
+            "automaticallyTracked": true,
+            "brokenPlaceholders": []
+          },
+          "content": {
+            "timeSensitiveUrgency": false,
+            "legacyDiscountLanguage": false,
+            "episodeCountLanguage": false,
+            "regulatedClaimReview": true,
+            "flags": [
+              "regulatedClaimReview"
+            ]
+          },
+          "concerns": [],
+          "textExcerpt": "It's really easy to tell you're allergic to something when you keel over, vomit and turn red. Or maybe when you have to excuse yourself abrupty for the restroom...or if you break out into hives. But what about if those overt signs are missing? That's what I experienced. For years I ate gluten because I showed no signs of GI distress so I thought I as lucky. All the while, I was beginning to \"feel old\" as my joints we"
+        }
+      ]
+    },
+    "withConcerns": 1,
+    "missingFooterCompliance": 1,
+    "malformedLinkMessages": 0,
+    "untrackedExternalLinkMessages": 0,
+    "timeSensitiveUrgencyMessages": 10,
+    "legacyDiscountLanguageMessages": 6,
+    "episodeCountReviewMessages": 5,
+    "regulatedClaimReviewMessages": 23,
+    "blankPreviewTextMessages": 5,
+    "smartSendingDisabledMessages": 1,
+    "senderConfigurationVariants": 1
+  },
+  "emails": [
+    {
+      "actionId": "114441634",
+      "messageId": "SypiFq",
+      "messageName": "Day 0 opt in EG sp26",
+      "status": "live",
+      "subject": "Your spot is confirmed. Here's what happens next.",
+      "previewText": "",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": false,
+      "addTrackingParams": true,
+      "templateId": "V6Fdna",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": false,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": true,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": false,
+        "flags": [
+          "timeSensitiveUrgency"
+        ]
+      },
+      "concerns": [
+        "Missing organization address in HTML"
+      ],
+      "textExcerpt": "Hi {{ person.first_name|default:'there' }}, I’m glad you joined us. Over the next nine days, I’ll send you one episode at a time from Interconnected — a series about the connections among our environment, our health, and the choices we make every day. What happens next: your first episode arrives tomorrow. Then you’ll receive one episode each day for nine days. Before the series begins, I wanted to make one optional "
+    },
+    {
+      "actionId": "114441638",
+      "messageId": "THN9zg",
+      "messageName": "IC Free Screening - Episode 1",
+      "status": "draft",
+      "subject": "Your free access to groundbreaking INTERCONNECTED health discoveries starts now",
+      "previewText": "",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "S5Rktt",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": true,
+        "regulatedClaimReview": true,
+        "flags": [
+          "episodeCountLanguage",
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "Welcome. I'm glad you're here. What you're about to discover in the next 10 days has the potential to change how you understand your health — not through fear, but through genuine insight. Your free 10-day access to INTERCONNECTED: The Power to Heal From Within starts right now. Episode 1 is called \"The Invisible Organ: The Missing Piece in Health and Longevity.\" In it, you'll begin to understand why so many people a"
+    },
+    {
+      "actionId": "114441640",
+      "messageId": "UTcYt8",
+      "messageName": "IC FS Day 1 2/2",
+      "status": "draft",
+      "subject": "I was dying in the hospital at 14... until I discovered this",
+      "previewText": "",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "QNpv84",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "If you had a chance to watch Episode 1 last night, I'd love to know what landed for you. The concept of the gut as a \"second brain\" — and what happens when it's compromised — tends to stop people in their tracks. If you haven't started yet, no worries. Episode 1 is right here → One thing I want you to sit with as you watch: most of the symptoms people spend years trying to manage — fatigue, brain fog, inflammation, m"
+    },
+    {
+      "actionId": "114441643",
+      "messageId": "W4BPkY",
+      "messageName": "IC FS Ep 2",
+      "status": "draft",
+      "subject": "The Human Microbiome: The Raging Battle Within - [Interconnected Episode 2]",
+      "previewText": "",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "WJ4VUJ",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": true,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "legacyDiscountLanguage",
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "Episode 2 is ready for you. \"The Raging Battle Within \" This one tends to shift things for people. This is likely the reason you have inflammation that's setting off a cascade of issues downstream. Once you understand why this is happening, you understand how you can fix it. Most people are treating the symptoms. This episode helps you understand the system. PS- The full Upstream Bundle — including the gut microbiome"
+    },
+    {
+      "actionId": "114441646",
+      "messageId": "T29QBf",
+      "messageName": "IC FS Ep 3 1/2",
+      "status": "draft",
+      "subject": "The Truth About Probiotics [Interconnected Episode 3]",
+      "previewText": "",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "Rga33T",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": true,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": true,
+        "regulatedClaimReview": true,
+        "flags": [
+          "timeSensitiveUrgency",
+          "episodeCountLanguage",
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "A quick question before you watch Episode 3 today: When you think about your health — the things that aren't quite right, the symptoms you've been managing — do you know where they're actually coming from? Most people don't. Not because they haven't tried. But because the conventional model doesn't look upstream far enough. Episode 3 — \"The antibiotic crisis and probiotic hype. \" — is where this starts to get very sp"
+    },
+    {
+      "actionId": "114441649",
+      "messageId": "XLqsw5",
+      "messageName": "IC FS Ep 3 2/2",
+      "status": "draft",
+      "subject": "Throwing the baby out with the bath water: antibiotics aren't all bad and why probiotics might be a problem",
+      "previewText": "Let's look at the facts.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "UiKvDx",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": true,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "legacyDiscountLanguage",
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "One of the major problems we've been having is we've over-prescribed antibiotics, and now everyone has gut issues and microbial imbalances. We don't want to throw the baby out with the bathwater, but we need a much more sophisticated way of looking at antibiotics and probiotics. That's what episode three explores. The Upstream Bundle includes everything you need to actually address what Episode 3 reveals — starting w"
+    },
+    {
+      "actionId": "114441651",
+      "messageId": "R96GKn",
+      "messageName": "IC FS Ep 4 1/2",
+      "status": "draft",
+      "subject": "Episode 4: Staying alive in a toxic world",
+      "previewText": "Poisons are everywhere. How do we deal with it?",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "RNxPj8",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "This new episode is important to every one of us. We’re talking about the impact of everyday toxins on our lives. Watch episode 4 using this link. Because make no mistake, each and every day we are practically smothered in invisible toxins. Toxins in the food we eat, the water we drink, even the air we breathe. There’s no avoiding them. Because of our microbiomes, the trillions of bacteria residing in our digestive s"
+    },
+    {
+      "actionId": "114441654",
+      "messageId": "VTmiEc",
+      "messageName": "Upstream Replay",
+      "status": "draft",
+      "subject": "The gut health industry is lying to you.",
+      "previewText": "I’m tired of the noise and here's what I'm doing to help you",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "RNFjb3",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "I need to talk to you about something that has been bothering me for a long time. If you spend more than five minutes on the internet looking for answers about your gut health, your brain fog, or your fatigue, you will be hit with a tidal wave of noise. Eat this. Don't eat that. Take this probiotic. Do this elimination diet. Fast for 16 hours. Don't fast at all. And worse, for most people, it doesn't actually work. I"
+    },
+    {
+      "actionId": "114441656",
+      "messageId": "R4tspY",
+      "messageName": "IC FS Ep 5 1/2",
+      "status": "draft",
+      "subject": "Episode 5: The microbiome — your kid's inner ecosystem",
+      "previewText": "38 trillion organisms. They're running the show.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "UFSMdY",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": false,
+        "flags": []
+      },
+      "concerns": [],
+      "textExcerpt": "Next Episode: The Kids Aren’t All Right: Leaky Gut - Leaky Brain - Leaky Kids As a father myself, this episode is particularly fascinating. We’re talking about how what we feed our children can impact their behavior, their social skills, their progress through life. You’ll hear from Tara and how her daughter had problems with her motor skills. They went to the doctor, they tried occupational therapy, but never got to"
+    },
+    {
+      "actionId": "114441660",
+      "messageId": "VNJ4iN",
+      "messageName": "Push to KBMO webinar",
+      "status": "draft",
+      "subject": "Signs of a leaky gut",
+      "previewText": "There is more happening than you may know.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "U9mv6Q",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": true,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "legacyDiscountLanguage",
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "In my years of clinical experience, I've encountered thousands of patients, and most of them are shocked to realize that the symptoms they came in with are actually traced back to a leaky gut. In functional medicine, we always look upstream to see why there is inflammation in the system. A torn gut lining leads to a host of problems, including: Here's a very important interview I just conducted that helps you underst"
+    },
+    {
+      "actionId": "114441662",
+      "messageId": "WY8TcE",
+      "messageName": "IC FS Ep 6 1/2",
+      "status": "draft",
+      "subject": "Episode 6: Thyroid, obesity, and diabetes",
+      "previewText": "How they're all connected to the microbiome",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "U4JeKs",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": true,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "timeSensitiveUrgency",
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "Now, tonight’s episode is very special. As you know, we’ve started getting really specific on health challenges and how each one can be targeted by working with your microbiome. In this episode we’re going to cover the thyroid (your metabolic regulator)... obesity issues and diabetes. Did you know all of these can be controlled, prevented and even reversed by tapping into the healing power of the microbiome? In Episo"
+    },
+    {
+      "actionId": "114441665",
+      "messageId": "XwwFtT",
+      "messageName": "Push to Naomi Webinar",
+      "status": "draft",
+      "subject": "How can we know what's wrong with certainty?",
+      "previewText": "Here are the three tests I like to see to triangulate gut issues",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "TY6Yq4",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": false,
+        "flags": []
+      },
+      "concerns": [],
+      "textExcerpt": "I'd like to share an interview I just did with Naomi Hyman, one of the physician's assistants that works with our medical team. Naomi sees a lot of gut health cases coming in month over month and has unique insight about what works and how we need to look at the gut comprehensively in order to help people better and faster. This is an important interview that I think you should check out. I think it's important to un"
+    },
+    {
+      "actionId": "114441670",
+      "messageId": "WguAeD",
+      "messageName": "IC FS Ep 7 1/2",
+      "status": "draft",
+      "subject": "Episode 7: Cancer, Immunity and Heart Disease",
+      "previewText": "Your body detoxes every day. The question is whether it's keeping up.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "RuahMt",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": true,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "timeSensitiveUrgency",
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "Tonight we’re diving into the second part of The Microbiome Solution and focusing on immunity, heart disease and the Big C... Cancer. Episode #7: The Microbiome Solution (Part II): Cancer, Immunity and Heart Disease Can our microbiome really help us predict and prevent cancer? The experts in this episode say “YES!”. I know you’re going to love this episode. This is revolutionary stuff, rocking the foundations of medi"
+    },
+    {
+      "actionId": "114441673",
+      "messageId": "VDtxC2",
+      "messageName": "Push to DSS",
+      "status": "draft",
+      "subject": "How a bad microbiome disrupts your sleep",
+      "previewText": "It's tied in more than you may know!",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "VFTBz9",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "The connection between gut dysbiosis, the microbiome, and insomnia is something that has just blown open debate the field of sleep medicine. It turns out having a leaky gut and endotoxemia creates anxiety, depression, and yes, insomnia. That 2 to 3 a.m. wake-up that you may be suffering from may be coming from your gut, and the solution is never more pills. It's to heal the gut. Here's a webinar that I just did on th"
+    },
+    {
+      "actionId": "114441676",
+      "messageId": "SAZySh",
+      "messageName": "IC FS Ep 8 1/2",
+      "status": "draft",
+      "subject": "Episode 8:  Ancient Wisdom Meets Modern Tech",
+      "previewText": "70% of your immune system is right here.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "XpGeJe",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": true,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "timeSensitiveUrgency",
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "Next Up- Episode #8: Ancient Wisdom and Modern Technology: The Keys To Personalized, Individualized, Made-For-You Medicine This is where we’re going to take a quantum leap and look at the medicine of the future. Plus we’re going to deal with POOP. Right now, a rather unconventional treatment called fecal transplants is saving lives and restoring microbial balance in horribly sick patients. Yes, the stool of a happy p"
+    },
+    {
+      "actionId": "114441679",
+      "messageId": "WJf8au",
+      "messageName": "Lights On Webinar",
+      "status": "draft",
+      "subject": "Your gut is talking. Are you listening?",
+      "previewText": "And most people are not doing it.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "TJddmS",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": false,
+        "flags": []
+      },
+      "concerns": [],
+      "textExcerpt": "There is a two-way communication between your gut and your brain that's happening all the time. Most of us have severed the ties and are unaware of this communication, and that becomes the beginning of the problem. It is 100% trainable to get this felt sense back and tie back into your deep gut wisdom. As a former monk and a functional medicine doctor, I've seen a lot of things come and go, and I can tell you that th"
+    },
+    {
+      "actionId": "114441681",
+      "messageId": "RgkdhD",
+      "messageName": "IC FS Ep 9 1/2",
+      "status": "draft",
+      "subject": "Episode 9: A Personalized Approach to Medicine",
+      "previewText": "Your gut is running your hormones. Not the other way around.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "Sub88C",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "The last episode: Episode #9: Healing Yourself: A Brighter Future Here’s a taste of what you’ll discover... How to tend to your ‘inner garden’ for health and vitality... The truth behind ‘an apple a day keeps the doctor away’ and WHY it really works... The one jar you should always have in your kitchen cupboard... Why you should never exercise TOO hard... The #1 thing you must eat to maintain a diverse microbiome... "
+    },
+    {
+      "actionId": "114441684",
+      "messageId": "SrK4bv",
+      "messageName": "IC FS Ep 9 2/2",
+      "status": "draft",
+      "subject": "\"My labs are fine\" — are they, though?",
+      "previewText": "Standard labs miss a lot. Here's what they don't test.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "RegwKh",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": true,
+        "legacyDiscountLanguage": true,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "timeSensitiveUrgency",
+          "legacyDiscountLanguage",
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "Over the past 9 episodes of INTERCONNECTED, you've discovered something remarkable: the most powerful medicine in the world isn't in a pill or procedure - it's already inside you. What we've learned is staggering: Your microbiome controls your immune system, brain function, and metabolism Chronic diseases often start with gut inflammation years before symptoms appear Traditional medicine treats symptoms while missing"
+    },
+    {
+      "actionId": "114441686",
+      "messageId": "RNHZyS",
+      "messageName": "IC Day 10 Offer Extended  1/2",
+      "status": "draft",
+      "subject": "Your free access ends tomorrow — here's what comes next",
+      "previewText": "You've come a long way. Let's talk about where to go from here.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "VTTSiH",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": true,
+        "legacyDiscountLanguage": true,
+        "episodeCountLanguage": true,
+        "regulatedClaimReview": true,
+        "flags": [
+          "timeSensitiveUrgency",
+          "legacyDiscountLanguage",
+          "episodeCountLanguage",
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "First, thank you for being part of this transformative 10-day journey through INTERCONNECTED. The response has been overwhelming, and your engagement shows just how ready people are for real solutions. But watching isn't enough - you need support to implement these life-changing protocols. That's why we're keeping the 50% discount active until midnight tonight for: The Interconnected Upstream Package: OFFERING: Gut P"
+    },
+    {
+      "actionId": "114441689",
+      "messageId": "SY8QsJ",
+      "messageName": "IC Day 10 Offer Extended  2/2",
+      "status": "draft",
+      "subject": "One more thing before your access closes",
+      "previewText": "The question I want you to ask yourself tonight.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "T2yUpR",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": true,
+        "legacyDiscountLanguage": true,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "timeSensitiveUrgency",
+          "legacyDiscountLanguage",
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "This is it - your final chance to join us at 50% off ends at midnight tonight. In the past 10 days, you've learned why gut health is the key to: Reversing chronic disease Now it's time to take action. The Upstream Package includes: Lifetime access to INTERCONNECTED The Gut Healing Protocols Testing of your Gut Permeability and Food Allergies (Optional) A Personalized Consultation with a Health Coach (with the testing"
+    },
+    {
+      "actionId": "114441691",
+      "messageId": "VVXyR5",
+      "messageName": "IC Day 11 - Down Day",
+      "status": "draft",
+      "subject": "Your free access has ended — but the work doesn't have to",
+      "previewText": "What happens now is up to you.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "X9NtG4",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "The free screening event has ended, and I wanted to personally thank you for joining us on this journey of discovery. The science of the microbiome is revolutionizing how we think about health, and your participation helps spread this vital message. Whether you're just beginning your health journey or continuing to deepen your understanding, remember the core message of INTERCONNECTED: true healing starts from within"
+    },
+    {
+      "actionId": "114441695",
+      "messageId": "R75GAR",
+      "messageName": "Vibe Webinar",
+      "status": "draft",
+      "subject": "A device that calms the vagus nerve and helps with inflammation",
+      "previewText": "The webinar that connects all the dots.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "X5bdkE",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "Recently I was given a device to check out and I fell in love with it. I let my wife borrow it and she wouldn't give it back. Everyone I have recommended it to loves it and uses it often. It's a portable PEMF unit designed by a rocket scientist who wanted an inexpensive and reliable tool to help more people. It has multiple frequency sets programmed into it from \"Relax\" to \"Neck Pain\" to \"Acne\" and \"PTSD\"...the list "
+    },
+    {
+      "actionId": "114441698",
+      "messageId": "SguxuH",
+      "messageName": "Day 11- VIBE",
+      "status": "draft",
+      "subject": "Did you catch the webinar? (Replay is still up)",
+      "previewText": "The part about testing tends to be the moment things click.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "WmwUnD",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "We've had hundreds of viewers email us asking which Vagus Nerve Stimulator we like for gut health. As you may recall, the Vagus Nerve travels down from the brain and carries signals up and down between the brain and the organs and many of our doctors spoke about how the state of this nerve will determine whether your gut can heal or stay in stress mode. This impacts our microbiome in too many ways to count. Here's th"
+    },
+    {
+      "actionId": "114441700",
+      "messageId": "RDtuS6",
+      "messageName": "IC FS Ep 10 1/2",
+      "status": "draft",
+      "subject": "Episode 10 is here — the final piece of the puzzle...a BONUS",
+      "previewText": "Everything we've covered comes together in this one.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "WgTE3f",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": true,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": true,
+        "regulatedClaimReview": true,
+        "flags": [
+          "timeSensitiveUrgency",
+          "episodeCountLanguage",
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "I have one more episode for you! We filmed a final episode that covered THE SOIL and all of the wonderful bacterial goodness that begins in the earth and must transfer to you through the microbiome. This is truly the missing ingredient and you'll learn how the use of pesticides is disrupting Mother Earth's microbial balance. It translated into our food and our own microbiome constitution. This episode is the glue and"
+    },
+    {
+      "actionId": "114441702",
+      "messageId": "SNSjKW",
+      "messageName": "IC FS Ep 10 2/2",
+      "status": "draft",
+      "subject": "Wrapping Episode 10 — what I'd recommend for you",
+      "previewText": "You've done the work. Here's the next step.",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "XYGhck",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": true,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": true,
+        "regulatedClaimReview": true,
+        "flags": [
+          "timeSensitiveUrgency",
+          "episodeCountLanguage",
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "IN CASE YOU MISSED IT- SURPRISE! We've reopened access to Bonus Episode 10 and the 50% discount until midnight tonight. Why? Because the response to \"The Future of Gut Health\" has been overwhelming, and we wanted to give you one final chance to see what's coming: Breakthrough testing methods Revolutionary treatment protocols The future of personalized medicine Plus, we've reopened the Package discounts for these fina"
+    },
+    {
+      "actionId": "114441704",
+      "messageId": "Xz8VEL",
+      "messageName": "IS Gut Testing Only",
+      "status": "draft",
+      "subject": "What if the problem started in your mouth?",
+      "previewText": "Oral health meets gut health",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "TGcddm",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "I've treated thousands of patients in my functional medicine clinics and have done a ton of gut health cases. Every once in a while, some mysterious bug that we had eradicated would magically reappear. This wasn't supposed to happen, so like a good scientist, I began to dig and swim upstream to figure out where this could have come from. Lo and behold, the answer was not very far from where we began. Connecting the s"
+    },
+    {
+      "actionId": "114441708",
+      "messageId": "Wj6Qrw",
+      "messageName": "Oral Health Intro- Lora and Elmira",
+      "status": "draft",
+      "subject": "What if the problem started in your mouth?",
+      "previewText": "Oral health meets gut health",
+      "fromName": "Interconnected Series by The Urban Monk",
+      "fromEmail": "Support@theurbanmonk.com",
+      "replyTo": "Support@theurbanmonk.com",
+      "smartSending": true,
+      "addTrackingParams": true,
+      "templateId": "WcpTxL",
+      "editorType": "CODE",
+      "footer": {
+        "hasUnsubscribe": true,
+        "hasAddress": true,
+        "addressBeforeFooter": false
+      },
+      "links": {
+        "total": 1,
+        "malformed": [],
+        "noUtm": [],
+        "automaticallyTracked": true,
+        "brokenPlaceholders": []
+      },
+      "content": {
+        "timeSensitiveUrgency": false,
+        "legacyDiscountLanguage": false,
+        "episodeCountLanguage": false,
+        "regulatedClaimReview": true,
+        "flags": [
+          "regulatedClaimReview"
+        ]
+      },
+      "concerns": [],
+      "textExcerpt": "It's really easy to tell you're allergic to something when you keel over, vomit and turn red. Or maybe when you have to excuse yourself abrupty for the restroom...or if you break out into hives. But what about if those overt signs are missing? That's what I experienced. For years I ate gluten because I showed no signs of GI distress so I thought I as lucky. All the while, I was beginning to \"feel old\" as my joints we"
+    }
+  ]
+}

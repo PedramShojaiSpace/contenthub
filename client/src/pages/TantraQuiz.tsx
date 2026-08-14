@@ -1138,50 +1138,53 @@ function ClinicalTriageSection({
         <div className="space-y-4">
           {triage.hormoneFlag && (
             <div className="border-t border-white/10 pt-4">
-              <h3 className="text-white font-semibold mb-1">Hormone-related factors may be worth discussing</h3>
+              <h3 className="text-white font-semibold mb-1">Start with the gut-health path and a conversation with our team</h3>
               <p className="text-white/75 text-sm leading-relaxed">
-                The changes you selected can have many explanations. A licensed clinician can review your history and decide whether a hormone-focused assessment, including a broader panel, is appropriate. This quiz cannot diagnose a hormone condition or menopausal status.
+                The changes you selected can have many explanations. The practical first step is Fit22 and a conversation with our team, who can look at the bigger picture with you. This quiz cannot diagnose a hormone condition or menopausal status.
               </p>
               <p className="text-white/65 text-sm leading-relaxed mt-3">
-                Some people choose the Fit22 food-sensitivity and gut-permeability test as an optional baseline for a broader, clinician-guided health conversation. It is not a hormone assay and does not diagnose a hormone condition.
+                From there, a licensed clinician can decide whether hormone testing or another assessment is appropriate. Fit22 is a gut-health baseline, not a hormone assay, and it does not diagnose a hormone condition.
               </p>
-              <div className="mt-3">{resourceLink(clinicalResources.fit22, "Explore the optional Fit22 starting point")}</div>
+              <div className="mt-3">{resourceLink(clinicalResources.fit22, "Start with Fit22 → meet our team")}</div>
             </div>
           )}
 
           {triage.gutFlag && (
             <div className="border-t border-white/10 pt-4">
-              <h3 className="text-white font-semibold mb-1">Digestive factors may be worth discussing</h3>
+              <h3 className="text-white font-semibold mb-1">Your gut may hold clues that are worth exploring</h3>
               <p className="text-white/75 text-sm leading-relaxed">
-                Digestive symptoms can have many causes. Persistent or concerning symptoms warrant clinical evaluation, and this quiz cannot diagnose a digestive condition.
+                Your digestive system does far more than process food. Food reactivity, gut-barrier changes, microbiome patterns, and immune signaling can all be part of a broader health picture. They can influence how settled, energized, and resilient you feel—but this quiz cannot determine which factor, if any, explains your symptoms.
               </p>
               <p className="text-white/65 text-sm leading-relaxed mt-3">
-                If you and your clinician decide a baseline test would be useful, Fit22 is an optional resource to bring into that broader conversation; it is not a diagnosis.
+                Fit22 gives our team a practical baseline around food sensitivity and gut permeability, so we can look for useful clues together instead of guessing. Start with the test, meet with our team, and let a clinician determine whether any additional assessment makes sense. Persistent or concerning digestive symptoms still warrant clinical evaluation.
               </p>
-              <div className="mt-3">{resourceLink(clinicalResources.fit22, "Explore the optional Fit22 resource")}</div>
+              <div className="mt-3">{resourceLink(clinicalResources.fit22, "Start with Fit22 → meet our team")}</div>
             </div>
           )}
 
           {triage.sleepFlag && (
             <div className="border-t border-white/10 pt-4">
-              <h3 className="text-white font-semibold mb-1">Sleep quality may be worth discussing</h3>
+              <h3 className="text-white font-semibold mb-1">Sleep is often where the whole system tells the truth</h3>
               <p className="text-white/75 text-sm leading-relaxed">
-                Persistent sleep disruption can have many causes and warrants clinical evaluation. This quiz cannot diagnose a sleep disorder.
+                Broken or unrefreshing sleep can sit at the intersection of circadian rhythm, stress signaling, cortisol rhythm, inflammation, breathing, and metabolic health. When sleep is consistently off, desire and connection often have less room to return. None of that identifies a sleep disorder or tells us what is causing your sleep changes.
               </p>
               <p className="text-white/65 text-sm leading-relaxed mt-3">
-                If you and your clinician decide that additional sleep information would be useful, the optional sleep resource is available to review.
+                A sleep test can give our team more concrete information to bring into the conversation rather than treating this as a willpower problem. Start with the test, then let a qualified clinician help decide what the findings mean and whether further evaluation is appropriate.
               </p>
-              <div className="mt-3">{resourceLink(clinicalResources.sleep, "Review the optional sleep resource")}</div>
+              <div className="mt-3">{resourceLink(clinicalResources.sleep, "Explore the sleep test →")}</div>
             </div>
           )}
 
           {triage.oralFlag && (
             <div className="border-t border-white/10 pt-4">
-              <h3 className="text-white font-semibold mb-1">Oral-health symptoms may also deserve attention</h3>
+              <h3 className="text-white font-semibold mb-1">The mouth may offer early clues about the wider system</h3>
               <p className="text-white/75 text-sm leading-relaxed">
-                Consider discussing persistent mouth or gum symptoms with an appropriate dental or medical clinician. This quiz cannot diagnose an oral-health condition.
+                Your tongue and oral ecosystem are not separate from the rest of you. Nitrate-reducing bacteria, including groups such as Rothia and Neisseria, participate in the nitrate–nitrite–nitric-oxide pathway; oral inflammation and microbial patterns can also be useful clues to discuss in a broader health assessment. This quiz cannot diagnose an oral-health condition or determine what is behind a symptom.
               </p>
-              <div className="mt-3">{resourceLink(clinicalResources.oral, "Review the optional oral-health resource")}</div>
+              <p className="text-white/65 text-sm leading-relaxed mt-3">
+                An oral-health test gives our team a more specific map of the oral ecosystem, so you can move from vague concern to a better conversation about which signals deserve attention. Persistent mouth, gum, breathing, or function concerns should be discussed with an appropriate dental or medical clinician.
+              </p>
+              <div className="mt-3">{resourceLink(clinicalResources.oral, "Explore the oral-health test →")}</div>
             </div>
           )}
         </div>

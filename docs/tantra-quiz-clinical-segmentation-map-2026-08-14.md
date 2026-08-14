@@ -2,17 +2,16 @@
 
 ## Purpose
 
-The Tantra quiz is now designed as a relationship-and-intimacy entry point that can also identify whether a visitor may benefit from a licensed-clinician or health-coach conversation in an **oral health, gut health, sleep health, or hormone health** pathway. It is not a diagnostic tool. The routing signals are used to organize follow-up and should never be represented as a diagnosis, a confirmed condition, or a substitute for clinical assessment.
+The Tantra quiz is a relationship-and-intimacy entry point that can also identify whether a visitor may benefit from a licensed-clinician or health-coach conversation around **gut health, sleep health, oral health, or hormone context**. It is not a diagnostic tool. Hormone-context answers do not create a separate consumer funnel; they start on the established **Fit22 gut path**, followed by a conversation with the team and, only if appropriate, clinician-directed hormone testing.
 
 ## Routing contract
 
 | Derived pathway | Triggered when the quiz records | Primary next step in results | Current commercial / clinical vehicle | Required tags and profile fields | Status |
 |---|---|---|---|---|---|
 | **Intimacy** | Every completed quiz | Optional Tantra intake and relationship-reconnection education | Tantra Him, Tantra Her, or couple pathway | Kajabi: `tantra-path-intimacy`; Klaviyo: `tantra_primary_care_path`, `tantra_care_paths` | **Active** |
-| **Gut health** | `q_symptoms` includes `gut_issues` | Persistent digestive symptoms warrant clinical evaluation; optional Fit22 discussion | Fit22 food-sensitivity and gut-permeability test resource | Kajabi: `tantra-path-gut-health`, `tantra-clinician-follow-up`; Klaviyo: `tantra_gut_flag=true` | **Active resource; follow-up workflow still needs operational ownership** |
+| **Gut / Fit22 path** | `q_symptoms` includes `gut_issues`, **or** a hormone-context response is selected | Start with Fit22, then meet with the team; a clinician can decide whether further testing, including hormone testing, is appropriate | Fit22 food-sensitivity and gut-permeability test resource | Kajabi: `tantra-path-gut-health`, `tantra-context-hormone` when applicable, `tantra-clinician-follow-up`; Klaviyo: `tantra_gut_flag`, `tantra_hormone_flag`, `tantra_primary_care_path=gut_health` | **Active resource; team-meeting workflow still needs operational ownership** |
 | **Sleep health** | `q_symptoms` includes `poor_sleep` | Persistent sleep disruption warrants clinical evaluation; optional sleep resource | Sleep test-kit resource | Kajabi: `tantra-path-sleep-health`, `tantra-clinician-follow-up`; Klaviyo: `tantra_sleep_flag=true` | **Active resource; follow-up workflow still needs operational ownership** |
 | **Oral health** | `q_symptoms` includes `oral_issues` | Persistent mouth or gum symptoms should be discussed with an appropriate clinician | Oral-health test resource / Orobiome pathway | Kajabi: `tantra-path-oral-health`, `tantra-clinician-follow-up`; Klaviyo: `tantra_oral_flag=true` | **Active resource; follow-up workflow still needs operational ownership** |
-| **Hormone health** | A response other than `none` to either hormone-context question | Clinician-guided discussion; a broader panel only if the clinician decides it is appropriate; Fit22 remains an optional non-hormone baseline conversation | **No dedicated hormone referral or scheduling vehicle configured in this project** | Kajabi: `tantra-path-hormone-health`, `tantra-clinician-follow-up`; Klaviyo: `tantra_hormone_flag=true` | **Gap — build a defined clinician/health-coach handoff** |
 | **Multifactor review** | More than one clinical pathway is flagged | Prioritize clinician or health-coach review rather than serial product offers | **No dedicated multifactor concierge/review vehicle configured** | Kajabi: `tantra-path-multifactor`, `tantra-clinician-follow-up`; Klaviyo: `tantra_primary_care_path=multifactor` | **Gap — build a review-and-assignment process** |
 
 ## CRM segmentation fields
@@ -28,7 +27,7 @@ The quiz now writes the existing result and symptom flags plus the following str
 
 ## Recommended operational next step
 
-The platform now distinguishes the five pathways and preserves the appropriate segmentation. The operational requirement is to name an owner and a first human or automated action for each of the four clinical flags. The highest-priority build is the **hormone-health referral vehicle**, followed by the **multifactor review workflow**. Until a dedicated scheduling or clinician-review step is defined, these paths should be routed to an internal review queue, not an unsupported automated clinical promise.
+The platform now preserves the clinical-context signals without creating a dedicated hormone funnel. The operational requirement is to name an owner and first action for the **Fit22 → team meeting → clinician decision** flow, then define the multifactor review workflow. Until the team-meeting process is defined, no automatic clinical promise should be made.
 
 ## Copy and safety boundary
 

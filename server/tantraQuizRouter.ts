@@ -267,7 +267,7 @@ export const LIGHTS_ON_COURSE = {
 
 // ─── Routing Logic ────────────────────────────────────────────────────────────
 
-export type TantraCarePath = "intimacy" | "gut_health" | "sleep_health" | "oral_health" | "hormone_health" | "multifactor";
+export type TantraCarePath = "intimacy" | "gut_health" | "sleep_health" | "oral_health" | "multifactor";
 
 export interface TantraSegmentation {
   primaryPath: TantraCarePath;
@@ -283,16 +283,22 @@ export function buildTantraSegmentation(flags: {
   hormoneFlag: boolean;
 }): TantraSegmentation {
   const clinicalPaths: TantraCarePath[] = [];
-  if (flags.hormoneFlag) clinicalPaths.push("hormone_health");
+  // Hormone-context answers are retained as an internal signal, but they do not
+  // create a separate consumer funnel. They start with the established Fit22
+  // gut path and a team conversation, after which a clinician may decide whether
+  // hormone testing is appropriate.
+  if (flags.hormoneFlag) clinicalPaths.push("gut_health");
   if (flags.gutFlag) clinicalPaths.push("gut_health");
   if (flags.sleepFlag) clinicalPaths.push("sleep_health");
   if (flags.oralFlag) clinicalPaths.push("oral_health");
 
-  const primaryPath = clinicalPaths.length > 1
+  const uniqueClinicalPaths = [...new Set(clinicalPaths)];
+
+  const primaryPath = uniqueClinicalPaths.length > 1
     ? "multifactor"
-    : clinicalPaths[0] ?? "intimacy";
-  const carePaths = ["intimacy", ...clinicalPaths] as TantraCarePath[];
-  const pathTags = clinicalPaths.map((path) => `tantra-path-${path.replace("_", "-")}`);
+    : uniqueClinicalPaths[0] ?? "intimacy";
+  const carePaths = ["intimacy", ...uniqueClinicalPaths] as TantraCarePath[];
+  const pathTags = uniqueClinicalPaths.map((path) => `tantra-path-${path.replace("_", "-")}`);
 
   return {
     primaryPath,
@@ -301,8 +307,9 @@ export function buildTantraSegmentation(flags: {
     kajabiTags: [
       "tantra-path-intimacy",
       ...pathTags,
-      ...(clinicalPaths.length > 1 ? ["tantra-path-multifactor"] : []),
-      ...(clinicalPaths.length > 0 ? ["tantra-clinician-follow-up"] : []),
+      ...(flags.hormoneFlag ? ["tantra-context-hormone"] : []),
+      ...(uniqueClinicalPaths.length > 1 ? ["tantra-path-multifactor"] : []),
+      ...(uniqueClinicalPaths.length > 0 ? ["tantra-clinician-follow-up"] : []),
     ],
   };
 }
@@ -541,10 +548,10 @@ export const tantraQuizRouter = router({
               ? [
                   `WHAT TO CONSIDER FIRST:`,
                   `Your responses suggest that some factors may be worth discussing with a licensed clinician. This quiz cannot diagnose a condition or identify the cause of a symptom.`,
-                  sessionSnapshot.hormoneFlag ? `* Hormone-related factors may be worth discussing. A clinician can decide whether a hormone-focused assessment is appropriate; this quiz cannot diagnose a hormone condition or menopausal status.` : ``,
-                  sessionSnapshot.gutFlag ? `* Persistent digestive symptoms warrant clinical evaluation; this quiz cannot diagnose a digestive condition.` : ``,
-                  sessionSnapshot.sleepFlag ? `* Persistent sleep disruption warrants clinical evaluation; this quiz cannot diagnose a sleep disorder.` : ``,
-                  sessionSnapshot.oralFlag ? `* Persistent mouth or gum symptoms may warrant discussion with an appropriate dental or medical clinician.` : ``,
+                  sessionSnapshot.hormoneFlag ? `* The changes you selected may be worth discussing with a licensed clinician. Start with Fit22, then meet with our team to look at the bigger picture. From there, a clinician can decide whether hormone testing or another assessment is appropriate. Fit22 is a gut-health baseline, not a hormone assay, and this quiz cannot diagnose a hormone condition or menopausal status.` : ``,
+                  sessionSnapshot.gutFlag ? `* Your gut may hold useful clues. Food reactivity, gut-barrier changes, microbiome patterns, and immune signaling can be part of a broader picture. Fit22 gives our team a starting baseline around food sensitivity and gut permeability; start with the test, meet with our team, and let a clinician decide whether any additional assessment makes sense. This quiz cannot diagnose a digestive condition.` : ``,
+                  sessionSnapshot.sleepFlag ? `* Sleep is often where the whole system tells the truth. Circadian rhythm, stress signaling, cortisol rhythm, inflammation, breathing, and metabolic health can all be part of the picture. A sleep test gives the team more concrete information to discuss with a clinician; this quiz cannot diagnose a sleep disorder.` : ``,
+                  sessionSnapshot.oralFlag ? `* The mouth may offer early clues about the wider system. Nitrate-reducing oral bacteria participate in the nitrate–nitrite–nitric-oxide pathway, and oral inflammation or microbial patterns can be useful discussion points. An oral-health test can provide a more specific map, but it cannot diagnose an oral-health condition.` : ``,
                   ``,
                   `OPTIONAL CONNECTION PATH: ${productSnapshot.name}`,
                   `If you would like a jump start on reconnecting with your partner while you address these factors, you may explore the physician-guided intake below.`,

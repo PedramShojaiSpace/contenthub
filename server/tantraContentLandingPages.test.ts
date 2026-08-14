@@ -55,4 +55,23 @@ describe("Tantra content landing pages", () => {
       expect(source).not.toContain('const LOGO = "/manus-storage/urban-monk-logo-white_bea7991f.png"');
     }
   });
+
+  it("embeds the finalized Wistia media on every content route and retains the soft quiz path", () => {
+    const expectedMedia = {
+      "TantraContentDivorce.tsx": "sq3dol4frw",
+      "TantraContentKingQueen.tsx": "onvqm5rc7p",
+      "TantraContentFlower.tsx": "093er5q16m",
+      "TantraContentHim.tsx": "kcvtkpe34a",
+      "TantraContentLoveBank.tsx": "w2aws6tqfv",
+      "TantraContentWhySheStopped.tsx": "zpqgfbnjp1",
+      "TantraContentFemaleOrgasm.tsx": "1foy9s4idy",
+    };
+
+    for (const [pageFile, mediaId] of Object.entries(expectedMedia)) {
+      const source = readFileSync(resolve(projectRoot, "client/src/pages", pageFile), "utf8");
+      expect(source).toContain(`const WISTIA_ID = "${mediaId}"`);
+      expect(source).toContain('const QUIZ_URL = "/quiz/tantra"');
+      expect(source).toContain("Take the 2-Minute Quiz");
+    }
+  });
 });

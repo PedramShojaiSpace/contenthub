@@ -6,7 +6,7 @@
  */
 
 const URBAN_MONK_MARK = "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/The_Urban_Monk-Icon-Yin_90acff39.png";
-const WISTIA_ID = ""; // ← paste Wistia media ID here after recording
+const WISTIA_ID = "kcvtkpe34a";
 const QUIZ_URL = "/quiz/tantra";
 
 const BG = "#0d0d0d";
@@ -43,7 +43,7 @@ export default function TantraContentHim() {
           {WISTIA_ID ? (
             <iframe
               src={`https://fast.wistia.net/embed/iframe/${WISTIA_ID}?seo=true&videoFoam=true`}
-              title="Why He Stopped Wanting To"
+              title="For Men"
               allow="autoplay; fullscreen"
               allowTransparency
               className="w-full h-full border-0"

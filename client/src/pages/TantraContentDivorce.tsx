@@ -6,7 +6,7 @@
  */
 
 const URBAN_MONK_MARK = "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/The_Urban_Monk-Icon-Yin_90acff39.png";
-const WISTIA_ID = ""; // ← paste Wistia media ID here after recording
+const WISTIA_ID = "sq3dol4frw";
 const QUIZ_URL = "/quiz/tantra";
 
 const BG = "#0d0d0d";

@@ -5,7 +5,7 @@
  */
 
 const URBAN_MONK_MARK = "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/The_Urban_Monk-Icon-Yin_90acff39.png";
-const WISTIA_ID = "";
+const WISTIA_ID = "zpqgfbnjp1";
 const QUIZ_URL = "/quiz/tantra";
 
 const BG = "#0d0d0d";
@@ -36,7 +36,7 @@ export default function TantraContentWhySheStopped() {
 
         <div className="rounded-xl overflow-hidden border border-white/10 mb-8 bg-black" style={{ aspectRatio: "16/9" }}>
           {WISTIA_ID ? (
-            <iframe src={`https://fast.wistia.net/embed/iframe/${WISTIA_ID}?seo=true&videoFoam=true`} title="Why She Stopped Wanting To" allow="autoplay; fullscreen" allowTransparency className="w-full h-full border-0" />
+            <iframe src={`https://fast.wistia.net/embed/iframe/${WISTIA_ID}?seo=true&videoFoam=true`} title="Why She Stopped Showing Up" allow="autoplay; fullscreen" allowTransparency className="w-full h-full border-0" />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-white/5">
               <div className="w-14 h-14 rounded-full border-2 flex items-center justify-center" style={{ borderColor: GOLD }}>

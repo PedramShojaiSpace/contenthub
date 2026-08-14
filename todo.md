@@ -4816,3 +4816,8 @@ Pricing model (corrected):
 - [x] Rebuild the Tantra Klaviyo nurture as a review-only nine-day sequence that shares all seven edited relationship-education videos and escalates quiz and offer calls to action without activating messages automatically.
 - [x] Replace repeated Meta dashboard refresh calls with a conservative scheduled batch collection and notify the owner after each completed batch refresh.
 - [x] Consolidate Meta reporting and optimization reads into one saved previous-day batch each morning, with dashboards reading the saved snapshot and a completion notice sent after the batch finishes.
+- [x] Audit the supplied Klaviyo email source, remove the hard-coded postal address from the message body, and preserve the required unsubscribe handling.
+- [x] Update Episode 1 only: moved the postal address into the compliance footer beside the unsubscribe link, kept the approved beige design after user review, and held the remaining sequence for approval.
+- [x] Preserve the approved beige Episode 1 design after the footer correction; prioritize authentication, copy structure, list engagement, and link discipline rather than color changes for deliverability.
+- [x] Apply the approved footer-only address relocation across the remaining Interconnected flow messages while preserving each message’s beige design, current sender, timing, links, and draft/live status.
+- [x] Resolve the Klaviyo UI-created-template write behavior under the confirmed full-access key, then complete the approved remaining footer-only email updates.

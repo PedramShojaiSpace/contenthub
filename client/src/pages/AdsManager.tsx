@@ -113,6 +113,17 @@ function SummaryCard({
   );
 }
 
+function ContentTrafficFallback({ message, tone = "neutral" }: { message: string; tone?: "neutral" | "warning" }) {
+  return (
+    <div className="p-6 max-w-7xl space-y-6">
+      <div className={`rounded-lg border p-4 text-sm ${tone === "warning" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-border bg-muted/30 text-muted-foreground"}`}>
+        {message}
+      </div>
+      <TantraContentAdWorkspace />
+    </div>
+  );
+}
+
 export default function AdsManager() {
   const [datePreset, setDatePreset] = useState<DatePreset>("last_30d");
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
@@ -137,30 +148,15 @@ export default function AdsManager() {
 
   // ── Connection error state ──────────────────────────────────────────────────
   if (connection.isLoading) {
-    return (
-      <div className="p-8 flex items-center gap-3 text-muted-foreground">
-        <RefreshCw className="w-4 h-4 animate-spin" />
-        Connecting to Meta Ads...
-      </div>
-    );
+    return <ContentTrafficFallback message="Meta account status is still loading. The Content Traffic review workspace remains available now; its pause-only draft action will validate Meta when you choose to create drafts." />;
   }
 
   if (connection.isError || connection.data?.valid === false) {
     return (
-      <div className="p-8 max-w-lg">
-        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <XCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="font-semibold text-red-800">Meta Ads connection failed</p>
-            <p className="text-sm text-red-700 mt-1">
-              {connection.data?.error ?? connection.error?.message ?? "Could not validate the Meta access token."}
-            </p>
-            <p className="text-sm text-red-600 mt-2">
-              Check that META_AD_ACCESS_TOKEN, META_AD_ACCOUNT_ID, META_APP_ID, and META_APP_SECRET are all set correctly in project secrets.
-            </p>
-          </div>
-        </div>
-      </div>
+      <ContentTrafficFallback
+        tone="warning"
+        message={`Meta account status is unavailable: ${connection.data?.error ?? connection.error?.message ?? "Could not validate the Meta access token."} The Content Traffic review workspace remains usable; paused-draft creation will stay blocked until the connection is restored.`}
+      />
     );
   }
 

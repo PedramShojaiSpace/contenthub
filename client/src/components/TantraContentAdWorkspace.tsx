@@ -91,9 +91,9 @@ export function TantraContentAdWorkspace() {
       <Card className="border-amber-200 bg-amber-50/40">
         <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-amber-700" />Measurement and retargeting guardrail</CardTitle></CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p><strong className="text-foreground">Event ladder:</strong> PageView → CompleteRegistration (quiz finished) → Lead (email captured) → Purchase. Quiz answers and sensitive wellness details are not sent in Meta event parameters.</p>
+          <p><strong className="text-foreground">Event ladder:</strong> PageView → CompleteRegistration (quiz finished) → Lead (email captured) → Purchase. Browser and server events share deduplication IDs after email capture; quiz answers and sensitive wellness details are not sent in Meta event parameters.</p>
           <p><strong className="text-foreground">Retargeting:</strong> start with a single broad Urban Monk education-engagement audience, not a page-specific audience tied to a private health or sexual-wellness concern. Confirm current Meta audience eligibility before creating any URL-based audience.</p>
-          <p><strong className="text-foreground">Read the test in order:</strong> content visit → quiz completion → identified lead → paid order. Link-click cost alone is not a winner metric.</p>
+          <p><strong className="text-foreground">Optimization:</strong> drafts begin on landing-page views, not raw clicks. After enough email-capture volume, duplicate the winning package into a Lead-optimized website-conversion test. Read results in order: content visit → quiz completion → identified lead → paid order.</p>
         </CardContent>
       </Card>
     </div>

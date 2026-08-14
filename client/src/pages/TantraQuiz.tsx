@@ -131,11 +131,15 @@ const SCREEN_ORDER: QuizScreen[] = [
   "results",
 ];
 
-type FacebookPixel = (command: "track", eventName: string, parameters?: Record<string, unknown>) => void;
+type FacebookPixel = (command: "track", eventName: string, parameters?: Record<string, unknown>, options?: { eventID: string }) => void;
 
-function trackTantraPixel(eventName: string, parameters?: Record<string, unknown>) {
+function trackTantraPixel(eventName: string, parameters?: Record<string, unknown>, eventId?: string) {
   const fbq = (window as Window & { fbq?: FacebookPixel }).fbq;
-  if (typeof fbq === "function") fbq("track", eventName, parameters);
+  if (typeof fbq === "function") fbq("track", eventName, parameters, eventId ? { eventID: eventId } : undefined);
+}
+
+function getCookie(name: string) {
+  return document.cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -155,6 +159,7 @@ export default function TantraQuiz() {
     emailSubmitted: false,
     progress: 0,
   });
+  const completionEventIdRef = useRef<string | null>(null);
 
   // Couple products — set when q_who === "couple"
   const [coupleProducts, setCoupleProducts] = useState<CoupleProducts | null>(null);
@@ -245,10 +250,12 @@ export default function TantraQuiz() {
         }
         if (!completionEventFired.current) {
           completionEventFired.current = true;
+          const eventId = crypto.randomUUID();
+          completionEventIdRef.current = eventId;
           trackTantraPixel("CompleteRegistration", {
             content_name: "Tantra Quiz Completed",
             content_category: "tantra_quiz",
-          });
+          }, eventId);
         }
         goToScreen("email_capture");
     } catch (err: unknown) {
@@ -287,10 +294,12 @@ export default function TantraQuiz() {
       }));
       if (!completionEventFired.current) {
         completionEventFired.current = true;
+        const eventId = crypto.randomUUID();
+        completionEventIdRef.current = eventId;
         trackTantraPixel("CompleteRegistration", {
           content_name: "Tantra Quiz Completed",
           content_category: "tantra_quiz",
-        });
+        }, eventId);
       }
       goToScreen("email_capture");
     }
@@ -302,10 +311,18 @@ export default function TantraQuiz() {
     e.preventDefault();
     if (!state.email || !state.sessionId) return;
     try {
+      const leadEventId = crypto.randomUUID();
       const res = await captureEmail.mutateAsync({
         sessionId: state.sessionId,
         email: state.email,
         name: state.name || undefined,
+        meta: {
+          leadEventId,
+          completionEventId: completionEventIdRef.current ?? undefined,
+          eventSourceUrl: window.location.href,
+          fbp: getCookie("_fbp"),
+          fbc: getCookie("_fbc"),
+        },
       });
       setState(s => ({
         ...s,
@@ -318,7 +335,7 @@ export default function TantraQuiz() {
         trackTantraPixel("Lead", {
           content_name: "Tantra Quiz Results",
           content_category: "tantra_quiz",
-        });
+        }, leadEventId);
       }
       goToScreen("results");
     } catch {

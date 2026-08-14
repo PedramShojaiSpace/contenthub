@@ -45,7 +45,7 @@ export const tantraContentAdPushRouter = router({
   createPausedVariantDrafts: protectedProcedure
     .input(z.object({
       slug: z.string(),
-      optimizationGoal: z.enum(["LINK_CLICKS", "LANDING_PAGE_VIEWS"]).default("LINK_CLICKS"),
+      optimizationGoal: z.enum(["LINK_CLICKS", "LANDING_PAGE_VIEWS"]).default("LANDING_PAGE_VIEWS"),
       dailyBudgetCents: z.number().int().min(100).max(10000).default(200),
     }))
     .mutation(async ({ input }): Promise<MetaPushResult> => {

@@ -4805,3 +4805,5 @@ Pricing model (corrected):
 - [x] Diagnosed the YouTube-to-Blog load behavior, verified its content-bundle module assets, and added a visible lazy-load state so the slow route no longer appears silently stuck.
 - [x] Built a Content Hub-first content-ad workspace with seven page-specific review packages, three policy-safe variants each, $2/day pause-only draft creation, and measurement/retargeting guardrails.
 - [x] Exposed the Content Traffic workspace even when the background Meta connection check is pending or unavailable, so review remains usable without an editor handoff.
+- [x] Verify content-page Pixel coverage and optimize the seven Content Traffic packages around qualified quiz completion, email capture, and downstream purchase—not link clicks alone. Completed with landing-page-view defaults and neutral browser/CAPI event pairing.
+- [x] Verified content-page PageView coverage and upgraded the seven Content Traffic packages to landing-page-view optimization with browser/CAPI-deduplicated CompleteRegistration and Lead confirmation, plus downstream checkout and purchase measurement.

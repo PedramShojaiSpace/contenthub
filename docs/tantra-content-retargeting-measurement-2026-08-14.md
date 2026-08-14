@@ -4,7 +4,7 @@
 
 | Phase | Meta optimization | Source signal | Decision rule |
 |---|---|---|---|
-| 1. Content discovery | Link clicks initially; test landing-page views only after delivery quality is stable | Standard PageView on each content destination | Measure cost per content visit, outbound click quality, and quiz-start rate. |
+| 1. Content discovery | Landing-page views | Standard PageView on each content destination | Measure cost per content visit, quiz-start rate, and registrar quality rather than raw click volume. |
 | 2. Quiz behavior | CompleteRegistration | Fires when the visitor finishes the quiz questions | Compare registrants per content destination once each page has enough traffic for a directional read. |
 | 3. Identified lead | Lead | Fires after email capture, with neutral content metadata only | Use as the downstream operating metric once sufficient lead volume exists. |
 | 4. Revenue | Purchase | Confirmed paid order path | Evaluate content cohorts on qualified lead and paid revenue, not click-through rate alone. |
@@ -32,9 +32,8 @@ The safer first retargeting test is a **single broad Urban Monk education-engage
 
 ## Operating sequence
 
-1. Create one **PAUSED** $2/day broad-US content campaign per approved page from the Content Traffic workspace.
+1. Create one **PAUSED** $2/day broad-US content campaign per approved page from the Content Traffic workspace. Its first ad set optimizes for landing-page views, not raw link clicks.
 2. Launch only after reviewing the three creatives and destination page.
-3. Keep the initial optimization on link clicks; do not infer a conversion winner from a handful of events.
+3. Keep initial optimization on landing-page views. Once a package has sufficient email-capture volume, duplicate the winner into a separate website-conversion test optimized for `Lead`; do not infer a conversion winner from a handful of events.
 4. Compare each destination on content visits → CompleteRegistration → Lead → Purchase.
 5. When an approved broad engagement audience reaches usable size, run a separate **PAUSED** quiz-retargeting campaign and review it before activation.
-

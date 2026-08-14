@@ -5,6 +5,13 @@ import { describe, expect, it } from "vitest";
 const projectRoot = resolve(import.meta.dirname, "..");
 const appSource = readFileSync(resolve(projectRoot, "client/src/App.tsx"), "utf8");
 const publicAppSource = readFileSync(resolve(projectRoot, "client/src/PublicApp.tsx"), "utf8");
+const contentPageFiles = [
+  "TantraContentDivorce.tsx",
+  "TantraContentKingQueen.tsx",
+  "TantraContentFlower.tsx",
+  "TantraContentHim.tsx",
+  "TantraContentLoveBank.tsx",
+];
 
 describe("Tantra content landing pages", () => {
   it("registers every content-first route with its intended page component", () => {
@@ -34,5 +41,14 @@ describe("Tantra content landing pages", () => {
     expect(loveBankSource).toContain('const QUIZ_URL = "/quiz/tantra"');
     expect(loveBankSource).toContain("Take the 2-Minute Quiz");
     expect(loveBankSource).toContain("regular, mutually wanted lovemaking");
+  });
+
+  it("uses the generic Urban Monk program mark rather than the Interconnected-era header asset", () => {
+    for (const pageFile of contentPageFiles) {
+      const source = readFileSync(resolve(projectRoot, "client/src/pages", pageFile), "utf8");
+      expect(source).toContain("The_Urban_Monk-Icon-Yin_90acff39.png");
+      expect(source).toContain("THE URBAN MONK");
+      expect(source).not.toContain('const LOGO = "/manus-storage/urban-monk-logo-white_bea7991f.png"');
+    }
   });
 });

@@ -36,6 +36,8 @@ import { sendGmailOutreach, isGmailAuthorized } from "./gmail";
 import crypto from "crypto";
 import { notifyOwner } from "./_core/notification";
 import { count, sql } from "drizzle-orm";
+import { sendCapiEvent } from "./capiHelper";
+import { buildTantraQuizCapiEvents } from "./tantraQuizMeta";
 
 // ─── Quiz Questions ───────────────────────────────────────────────────────────
 
@@ -342,6 +344,13 @@ export const tantraQuizRouter = router({
       sessionId: z.string(),
       email: z.string().email(),
       name: z.string().optional(),
+      meta: z.object({
+        leadEventId: z.string().min(1).max(120).optional(),
+        completionEventId: z.string().min(1).max(120).optional(),
+        eventSourceUrl: z.string().url().max(2_000).optional(),
+        fbp: z.string().max(500).optional(),
+        fbc: z.string().max(500).optional(),
+      }).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -382,6 +391,21 @@ export const tantraQuizRouter = router({
       const upsellsSnapshot = [...upsells];
       setImmediate(async () => {
         let kajabiTagged = false;
+        // 0. Browser + CAPI event pairs improve Meta matching. Send only neutral
+        // standard events; no answers, flags, result, or product recommendation.
+        if (input.meta?.eventSourceUrl) {
+          const events = buildTantraQuizCapiEvents({
+            email: input.email,
+            eventSourceUrl: input.meta.eventSourceUrl,
+            leadEventId: input.meta.leadEventId,
+            completionEventId: input.meta.completionEventId,
+            fbp: input.meta.fbp,
+            fbc: input.meta.fbc,
+            utmCampaign: sessionSnapshot.utmCampaign,
+            utmSource: sessionSnapshot.utmSource,
+          });
+          await Promise.all(events.map((event) => sendCapiEvent(event)));
+        }
         // 1. Kajabi tagging
         if (sessionSnapshot.result && sessionSnapshot.result !== "pending") {
           try {

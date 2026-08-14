@@ -4787,6 +4787,9 @@ Pricing model (corrected):
 - [x] Reconciled and repaired the Interconnected dashboard methodology: Central-time boundaries, explicit Recorded Revenue ROAS, lead-matched lower bound, and a verified 13 Aug source audit are documented in `docs/interconnected-reporting-methodology-2026-08-14.md`.
 - [x] Restored the My Browser connector and completed final source-system validation of the Interconnected reporting repair.
 - [x] Fixed the deployed `/hub/analytics/reconciliation` bundle: restored its HTML bootstrap and aligned all Hub asset bases to their bundle-specific paths; full staged build and production static-route smoke test returned HTTP 200 for the HTML and JavaScript asset.
+- [x] Confirmed the public Analytics Hub now serves checkpoint `8ae92308` with its bundle-specific JavaScript asset returning HTTP 200.
+- [x] Created and verified the teleprompter-ready DOCX containing all five approved Tantra sexual-health video scripts: `docs/tantra-sexual-health-video-scripts-teleprompter.docx`.
+- [x] Replaced the ambiguous Interconnected-era header asset with the standard Urban Monk program mark and wordmark across all five Tantra sexual-health content landing pages; focused regression test passes 4/4.
 - [x] Fix reconciliation dashboard "Today" preset — clicking Today now uses fresh Central-time dates, alongside the prior stale-module-load correction.
 - [x] Fix $199 OCUS Kajabi revenue storage — the resolved amount and funnel source are now used in the current reporting path; the 13 Aug ledger includes two recorded $199 OCUS purchases.
 - [x] Fixed reconciliation dashboard "Today" preset — PRESETS now uses getRange() functions called at click time; no more stale module-load date.

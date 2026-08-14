@@ -5,7 +5,7 @@
  * Video placeholder — swap WISTIA_ID when recording is ready.
  */
 
-const LOGO = "/manus-storage/urban-monk-logo-white_bea7991f.png";
+const URBAN_MONK_MARK = "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/The_Urban_Monk-Icon-Yin_90acff39.png";
 const WISTIA_ID = ""; // ← paste Wistia media ID here after recording
 const QUIZ_URL = "/quiz/tantra";
 
@@ -18,7 +18,10 @@ export default function TantraContentFlower() {
     <div className="min-h-screen text-white font-sans" style={{ background: BG }}>
 
       <header className="py-4 px-6 flex justify-center border-b border-white/5">
-        <img src={LOGO} alt="The Urban Monk" className="h-8 opacity-80" />
+        <div className="flex items-center gap-3" aria-label="The Urban Monk">
+          <img src={URBAN_MONK_MARK} alt="" className="h-7 w-7 object-contain" />
+          <span className="text-xs font-semibold tracking-[0.28em] text-white/90">THE URBAN MONK</span>
+        </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-5 py-12">
@@ -100,7 +103,7 @@ export default function TantraContentFlower() {
       </main>
 
       <footer className="py-8 px-6 border-t border-white/5 text-center">
-        <img src={LOGO} alt="The Urban Monk" className="h-6 mx-auto mb-3 opacity-30" />
+        <img src={URBAN_MONK_MARK} alt="" className="h-5 w-5 object-contain mx-auto mb-3 opacity-40" />
         <p className="text-gray-600 text-xs max-w-lg mx-auto">
           Dr. Pedram Shojai, OMD, is a licensed doctor of Oriental medicine, Taoist abbot, and bestselling author. This content is for educational purposes only and does not constitute medical advice.
         </p>

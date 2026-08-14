@@ -21,3 +21,9 @@ Do not send paid traffic to the new Tantra content-page URLs until a fresh publi
 ## 14 August reporting-route result
 
 Following the platform’s deployment-success notice, the public reconciliation URL redirected to the split internal route at `/hub/analytics/reconciliation`. The shell loaded but the Analytics Hub content did not render in the browser session, so the newly published dashboard labels could not yet be visually confirmed on the custom domain. The authenticated local reconciliation endpoint remains the verified source for the corrected $1,269.00 / 1.93x result described in `interconnected-reporting-methodology-2026-08-14.md`.
+
+After the corrected Analytics Hub checkpoint `8ae92308` and an additional 90-second publication window, the public HTML still referenced the prior shared asset path `/hub/assets/index-zlhusVLU.js` instead of the corrected `/hub/analytics/assets/*` bundle path emitted by the locally validated build. This is repeatable evidence that the public custom domain remains on the prior deployment artifact; the local bundle and static-server smoke test are successful.
+
+## Final live confirmation
+
+Version History subsequently confirmed checkpoint `8ae92308` as **Live**. A public HTTP check of `/hub/analytics/reconciliation` returned HTTP 200 and referenced the corrected bundle-specific path `/hub/analytics/assets/index-DJwOI4Rm.js`; the JavaScript asset itself also returned HTTP 200. The published Analytics Hub now receives the corrected deployed artifact.

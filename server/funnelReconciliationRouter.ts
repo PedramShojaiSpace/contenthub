@@ -27,6 +27,50 @@ import {
 } from "./interconnectedCohorts";
 import { getShopifyAdminAccessToken, getShopifyAdminStoreDomain } from "./shopifyAdminAuth";
 
+const REPORTING_TIME_ZONE = "America/Chicago";
+const CHICAGO_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: REPORTING_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const CHICAGO_OFFSET_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: REPORTING_TIME_ZONE,
+  timeZoneName: "shortOffset",
+});
+
+export function toChicagoDateKey(timestampMs: number) {
+  const values = Object.fromEntries(
+    CHICAGO_DATE_FORMATTER
+      .formatToParts(new Date(timestampMs))
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
+  );
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function chicagoOffsetMinutes(timestampMs: number) {
+  const value = CHICAGO_OFFSET_FORMATTER
+    .formatToParts(new Date(timestampMs))
+    .find((part) => part.type === "timeZoneName")?.value ?? "GMT-6";
+  const match = /^GMT([+-])(\d{1,2})(?::(\d{2}))?$/.exec(value);
+  if (!match) return -360;
+  const minutes = Number(match[2]) * 60 + Number(match[3] ?? 0);
+  return match[1] === "+" ? minutes : -minutes;
+}
+
+function chicagoStartMs(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const noonUtcGuess = Date.UTC(year, month - 1, day, 12);
+  return Date.UTC(year, month - 1, day) - chicagoOffsetMinutes(noonUtcGuess) * 60_000;
+}
+
+export function getChicagoDayBounds(dateKey: string) {
+  const startMs = chicagoStartMs(dateKey);
+  const nextDate = toChicagoDateKey(startMs + 36 * 60 * 60 * 1000);
+  return { startMs, endExclusiveMs: chicagoStartMs(nextDate) };
+}
+
 // ── Funnel registry ───────────────────────────────────────────────────────────
 
 interface ShopifyProductDef {
@@ -220,8 +264,8 @@ async function buildKajabiPurchasesLookup(
   try {
     const db = await getDb();
     if (!db) return map;
-    const startMs = new Date(startDate + "T00:00:00Z").getTime();
-    const endMs   = new Date(endDate   + "T23:59:59Z").getTime();
+    const { startMs } = getChicagoDayBounds(startDate);
+    const { endExclusiveMs } = getChicagoDayBounds(endDate);
     const rows = await db.select({
       email: kajabiPurchases.email,
       isMetaAttributed: kajabiPurchases.isMetaAttributed,
@@ -229,7 +273,7 @@ async function buildKajabiPurchasesLookup(
     }).from(kajabiPurchases)
       .where(and(
         gte(kajabiPurchases.purchasedAt, startMs),
-        lte(kajabiPurchases.purchasedAt, endMs)
+        sql`${kajabiPurchases.purchasedAt} < ${endExclusiveMs}`
       ));
     for (const row of rows) {
       if (!row.email) continue;
@@ -297,8 +341,8 @@ async function getInterconnectedCohortAnalytics(startDate: string, endDate: stri
   const db = await getDb();
   if (!db) return empty;
 
-  const startMs = new Date(`${startDate}T00:00:00Z`).getTime();
-  const endMs = new Date(`${endDate}T23:59:59Z`).getTime();
+  const { startMs } = getChicagoDayBounds(startDate);
+  const { endExclusiveMs } = getChicagoDayBounds(endDate);
   const leadRows = await db.select({
     email: interconnectedLeads.email,
     createdAt: interconnectedLeads.createdAt,
@@ -308,7 +352,7 @@ async function getInterconnectedCohortAnalytics(startDate: string, endDate: stri
     fbclid: interconnectedLeads.fbclid,
   }).from(interconnectedLeads).where(and(
     gte(interconnectedLeads.createdAt, startMs),
-    lte(interconnectedLeads.createdAt, endMs)
+    sql`${interconnectedLeads.createdAt} < ${endExclusiveMs}`
   ));
 
   const uniqueLeads = new Map<string, {
@@ -370,7 +414,7 @@ async function getInterconnectedCohortAnalytics(startDate: string, endDate: stri
   }).from(kajabiPurchases).where(and(
     inArray(kajabiPurchases.email, emails),
     gte(kajabiPurchases.purchasedAt, startMs),
-    lte(kajabiPurchases.purchasedAt, endMs + 14 * 86_400_000)
+    sql`${kajabiPurchases.purchasedAt} < ${endExclusiveMs + 14 * 86_400_000}`
   ));
 
   const processed = new Set<string>();
@@ -409,7 +453,7 @@ async function getInterconnectedCohortAnalytics(startDate: string, endDate: stri
     eq(leadPurchaseAttributions.funnelId, "interconnected_agora"),
     eq(leadPurchaseAttributions.isWithin14Days, true),
     gte(leadPurchaseAttributions.leadOptedInAt, startMs),
-    lte(leadPurchaseAttributions.leadOptedInAt, endMs)
+    sql`${leadPurchaseAttributions.leadOptedInAt} < ${endExclusiveMs}`
   ));
 
   const acquisitionCreditMap = new Map<string, { path: string; purchases: number; revenueCents: number }>();
@@ -498,7 +542,7 @@ async function fetchKajabiForFunnel(
 
     for (const row of rows) {
       const createdAt = row.attributes?.created_at || "";
-      const dateStr = createdAt.substring(0, 10);
+      const dateStr = toChicagoDateKey(new Date(createdAt).getTime());
       if (dateStr < startDate) { hitOldData = true; break; }
       if (dateStr > endDate) continue;
 
@@ -889,8 +933,8 @@ export const funnelReconciliationRouter = router({
       try {
         const db = await getDb();
         if (db) {
-          const startMs = new Date(input.startDate + "T00:00:00Z").getTime();
-          const endMs   = new Date(input.endDate   + "T23:59:59Z").getTime();
+          const { startMs } = getChicagoDayBounds(input.startDate);
+          const { endExclusiveMs } = getChicagoDayBounds(input.endDate);
           const rows = await db.select({
             email: kajabiPurchases.email,
             amountCents: kajabiPurchases.amountCents,
@@ -899,7 +943,7 @@ export const funnelReconciliationRouter = router({
           }).from(kajabiPurchases)
             .where(and(
               gte(kajabiPurchases.purchasedAt, startMs),
-              lte(kajabiPurchases.purchasedAt, endMs)
+              sql`${kajabiPurchases.purchasedAt} < ${endExclusiveMs}`
             ));
           for (const row of rows) {
             if (row.purchasedAt) {
@@ -948,10 +992,14 @@ export const funnelReconciliationRouter = router({
       const filteredKajabiSales = filterSales(annotatedKajabiSales);
       const filteredKajabiRevenueCents = filteredKajabiSales.reduce((s, t) => s + t.amountCents, 0);
       const filteredKajabiPurchases = filteredKajabiSales.length;
+      const leadMatchedKajabiSales = annotatedKajabiSales.filter((sale) => sale.customerType === "meta_lead");
+      const leadMatchedRevenueCents = leadMatchedKajabiSales.reduce((sum, sale) => sum + sale.amountCents, 0);
+      const leadMatchedPurchases = leadMatchedKajabiSales.length;
 
       const totalRevenueCents = filteredKajabiRevenueCents + shopify.totalRevenueCents;
       const totalRevenue = totalRevenueCents / 100;
       const roas = meta.spend > 0 ? Math.round((totalRevenue / meta.spend) * 100) / 100 : null;
+      const leadMatchedRoas = meta.spend > 0 ? Math.round(((leadMatchedRevenueCents / 100) / meta.spend) * 100) / 100 : null;
       const cpl  = meta.spend > 0 && meta.leads > 0 ? Math.round((meta.spend / meta.leads) * 100) / 100 : null;
       const totalPurchases = filteredKajabiPurchases + shopify.totalOrders;
       const convRate = meta.leads > 0 && totalPurchases > 0
@@ -1008,6 +1056,9 @@ export const funnelReconciliationRouter = router({
           kajabiRevenue: filteredKajabiRevenueCents / 100,
           shopifyRevenue: shopify.totalRevenueCents / 100,
           roas,
+          leadMatchedRevenueCents,
+          leadMatchedPurchases,
+          leadMatchedRoas,
           cpl,
           convRate,
           totalPurchases,
@@ -1015,6 +1066,12 @@ export const funnelReconciliationRouter = router({
           filterApplied: input.newCustomersOnly || input.attributionFilter !== "all",
           newCustomersOnly: input.newCustomersOnly,
           attributionFilter: input.attributionFilter,
+          reportingBasis: {
+            revenue: "Recorded Kajabi transactions and mapped Shopify paid orders in the selected Central-time date range.",
+            dateTimeZone: REPORTING_TIME_ZONE,
+            meta: "Agora-filtered Meta spend and delivery actions for the selected Meta reporting date.",
+            generatedAt: Date.now(),
+          },
         },
         individualSales: allSales.slice(0, 200), // cap at 200 rows
       };

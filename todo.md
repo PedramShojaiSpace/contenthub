@@ -4824,5 +4824,5 @@ Pricing model (corrected):
 - [ ] Perform a complete pre-launch audit of the Interconnected Klaviyo sequence, covering message content, links and UTMs, footer compliance, sender settings, delivery-critical configuration, and draft/live status without activating any message.
 - [ ] Add the approved organization-address footer to the live Interconnected Day 0 email without changing its copy, sender, timing, offer, tracking, or send status.
 - [x] Replace the seven Tantra content-page video placeholders with the matching finalized Descript embeds and verify each page retains its soft quiz CTA.
-- [ ] Generate and deliver seven distinct 16:9 Wistia-ready thumbnail images, each visually matched to its finalized Tantra video narrative.
+- [x] Generate and deliver seven distinct 16:9 Wistia-ready thumbnail images, each visually matched to its finalized Tantra video narrative.
 - [x] Remediate the Interconnected audit’s structural gaps: added valid footer-address handling to the six affected draft messages and enabled consistent Klaviyo tracking parameters across the 26 draft emails without changing message copy or status; the live Day 0 email remains intentionally untouched pending explicit approval.

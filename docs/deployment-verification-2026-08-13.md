@@ -17,3 +17,7 @@ After a further 120-second wait, a cache-busting browser request to `content.the
 ## Safety note
 
 Do not send paid traffic to the new Tantra content-page URLs until a fresh public-domain verification returns the actual landing page. The production build configuration is valid locally; the remaining issue is deployment propagation or the platform deployment step, not route code.
+
+## 14 August reporting-route result
+
+Following the platform’s deployment-success notice, the public reconciliation URL redirected to the split internal route at `/hub/analytics/reconciliation`. The shell loaded but the Analytics Hub content did not render in the browser session, so the newly published dashboard labels could not yet be visually confirmed on the custom domain. The authenticated local reconciliation endpoint remains the verified source for the corrected $1,269.00 / 1.93x result described in `interconnected-reporting-methodology-2026-08-14.md`.

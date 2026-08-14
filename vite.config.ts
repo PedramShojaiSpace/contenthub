@@ -155,11 +155,12 @@ const plugins = [react(), tailwindcss(), ...(isDev ? [jsxLocPlugin()] : []), vit
 
 export default defineConfig(({ mode }) => {
   const hubEntry = mode.startsWith("hub-") ? mode : null;
+  const hubSegment = hubEntry?.replace("hub-", "");
   const clientRoot = path.resolve(import.meta.dirname, "client");
 
   return {
   plugins,
-  base: hubEntry ? "/hub/" : "/",
+  base: hubSegment ? `/hub/${hubSegment}/` : "/",
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),

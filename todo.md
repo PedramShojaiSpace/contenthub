@@ -4809,3 +4809,5 @@ Pricing model (corrected):
 - [x] Verified content-page PageView coverage and upgraded the seven Content Traffic packages to landing-page-view optimization with browser/CAPI-deduplicated CompleteRegistration and Lead confirmation, plus downstream checkout and purchase measurement.
 - [x] Redesign the Tantra quiz to elevate potential gut, sleep, and hormone concerns into patient-centered next-step guidance before the optional intimacy-product recommendation.
 - [x] Define and implement a privacy-conscious Tantra quiz segmentation map for oral health, gut health, sleep, hormone health, and intimacy pathways; document every missing recommendation vehicle for deliberate buildout.
+- [x] Provide a verified walkthrough URL for the redesigned Tantra quiz and map every current outcome pathway for review.
+- [x] Build a reviewable, non-diagnostic hormone-health pathway prototype so the user can assess the future referral experience before committing to a clinical scheduling vehicle.

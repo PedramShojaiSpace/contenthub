@@ -1874,6 +1874,24 @@ async function startServer() {
   // Cron task UID: Pq6UqXmJ5pfED4TAiUYM8Y
   app.post("/api/scheduled/daily-ads-sync", async (req, res) => {
     try {
+      const user = await sdk.authenticateRequest(req);
+      if (!user.isCron || !user.taskUid) {
+        return res.status(403).json({ error: "cron-only" });
+      }
+      const db = await getDb();
+      if (!db) {
+        return res.status(500).json({ error: "database-unavailable" });
+      }
+      const [settingsRows] = await db.execute(
+        "SELECT schedule_cron_task_uid, is_enabled FROM meta_batch_settings WHERE id = 1 LIMIT 1"
+      ) as any[];
+      const settings = (settingsRows as any[])?.[0];
+      if (!settings || settings.schedule_cron_task_uid !== user.taskUid) {
+        return res.json({ ok: true, skipped: "orphan-or-unrecognized-meta-batch" });
+      }
+      if (!settings.is_enabled) {
+        return res.json({ ok: true, skipped: "meta-batch-disabled" });
+      }
       const { runDailyAdsSync } = await import("../adsMonitorRouter");
       const result = await runDailyAdsSync("yesterday");
       res.json({ ok: true, ...result });

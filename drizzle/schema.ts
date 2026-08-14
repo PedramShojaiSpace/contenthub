@@ -2287,6 +2287,18 @@ export const adsGuardrails = mysqlTable("ads_guardrails", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ─── Meta Reporting Batch Settings ───────────────────────────────────────────
+// One durable row binds the scheduled previous-day Meta batch to its Heartbeat
+// task UID. The callback uses this identity instead of request-body data.
+export const metaBatchSettings = mysqlTable("meta_batch_settings", {
+  id: int("id").primaryKey(),
+  scheduleCronTaskUid: varchar("schedule_cron_task_uid", { length: 65 }),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  lastCompletedAt: timestamp("last_completed_at"),
+  lastSnapshotDate: date("last_snapshot_date"),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
 // ─── Per-SKU CPA Targets ─────────────────────────────────────────────────────
 // One row per product SKU; editable in-app from the Optimizer tab
 export const skuCpaTargets = mysqlTable("sku_cpa_targets", {

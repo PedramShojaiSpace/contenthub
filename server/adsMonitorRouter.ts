@@ -70,7 +70,7 @@ const dailyBriefings = mysqlTable("daily_briefings", {
 });
 
 // ── Media Buyer Decision Engine ────────────────────────────────────────────
-interface AdSetMetrics {
+export interface AdSetMetrics {
   campaignId: string;
   campaignName: string;
   adsetId: string;
@@ -165,7 +165,7 @@ function applyDecisionRules(m: AdSetMetrics): { recommendation: Recommendation; 
 }
 
 // ── Meta Ads API Fetcher ───────────────────────────────────────────────────
-async function fetchMetaInsights(datePreset: string = "yesterday"): Promise<AdSetMetrics[]> {
+export async function fetchMetaInsights(datePreset: string = "yesterday"): Promise<AdSetMetrics[]> {
   const accessToken = process.env.META_AD_ACCESS_TOKEN;
   const adAccountId = process.env.META_AD_ACCOUNT_ID;
 
@@ -191,21 +191,6 @@ async function fetchMetaInsights(datePreset: string = "yesterday"): Promise<AdSe
   const json = await resp.json() as any;
   const data: any[] = json.data || [];
 
-  // Also fetch campaign status and budget
-  const campaignIds = Array.from(new Set(data.map((d: any) => d.campaign_id as string)));
-  const campaignMeta: Record<string, { status: string; objective: string; daily_budget?: string }> = {};
-
-  if (campaignIds.length > 0) {
-    const batchUrl = `https://graph.facebook.com/v19.0/?ids=${campaignIds.join(",")}&fields=id,status,objective,daily_budget&access_token=${accessToken}`;
-    const batchResp = await fetch(batchUrl);
-    if (batchResp.ok) {
-      const batchData = await batchResp.json() as any;
-      for (const [id, val] of Object.entries(batchData)) {
-        campaignMeta[id] = val as any;
-      }
-    }
-  }
-
   return data.map((row: any) => {
     const actions: any[] = row.actions || [];
     const purchases = parseInt(
@@ -225,16 +210,16 @@ async function fetchMetaInsights(datePreset: string = "yesterday"): Promise<AdSe
     const roas = spendCents > 0 && purchases > 0 ? (purchases * 39900) / spendCents : 0;
     const cpaCents = purchases > 0 ? Math.round(spendCents / purchases) : 0;
 
-    const campaignInfo = campaignMeta[row.campaign_id] || {};
-    const dailyBudgetCents = campaignInfo.daily_budget ? parseInt(campaignInfo.daily_budget) : 0;
-
     return {
       campaignId: row.campaign_id,
       campaignName: row.campaign_name,
       adsetId: row.adset_id,
       adsetName: row.adset_name,
-      status: campaignInfo.status || "UNKNOWN",
-      objective: campaignInfo.objective || "",
+      // The daily batch intentionally makes one account-level insights call only.
+      // Status, objective, and budget changes are not needed to report prior-day
+      // performance and are therefore not fetched separately from Meta.
+      status: "BATCH_SNAPSHOT",
+      objective: "",
       spendCents,
       impressions,
       clicks,
@@ -245,7 +230,7 @@ async function fetchMetaInsights(datePreset: string = "yesterday"): Promise<AdSe
       cpaCents,
       frequency,
       reach,
-      dailyBudgetCents,
+      dailyBudgetCents: 0,
       attributedRevenueCents: purchases * 39900,
     } as AdSetMetrics & { attributedRevenueCents: number };
   });
@@ -262,7 +247,12 @@ export async function runDailyAdsSync(datePreset: string = "yesterday"): Promise
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
 
-  const today = new Date().toISOString().split("T")[0];
+  const snapshotDate = (() => {
+    const now = new Date();
+    if (datePreset !== "yesterday") return now.toISOString().split("T")[0];
+    now.setUTCDate(now.getUTCDate() - 1);
+    return now.toISOString().split("T")[0];
+  })();
   const metrics = await fetchMetaInsights(datePreset);
 
   if (metrics.length === 0) {
@@ -279,7 +269,7 @@ export async function runDailyAdsSync(datePreset: string = "yesterday"): Promise
     if (recommendation === "scale") scaleCount++;
 
     snapshots.push({
-      snapshotDate: today,
+      snapshotDate,
       campaignId: m.campaignId,
       campaignName: m.campaignName,
       adsetId: m.adsetId,
@@ -341,8 +331,8 @@ export async function runDailyAdsSync(datePreset: string = "yesterday"): Promise
 
   const briefingPrompt = `You are a senior Meta Ads media buyer for The Urban Monk, a health and wellness brand selling Orobiome (gut health supplement, $399) and Urban Monk Academy membership ($297/year).
 
-Today's date: ${today}
-Total spend (yesterday): $${(totalSpend / 100).toFixed(2)}
+Reporting date: ${snapshotDate}
+Total spend for this completed day: $${(totalSpend / 100).toFixed(2)}
 Total attributed revenue: $${(totalRevenue / 100).toFixed(2)}
 Overall ROAS: ${totalRoas.toFixed(2)}x
 Active ad sets: ${activeCampaigns}
@@ -387,7 +377,7 @@ Use plain language. Be specific with numbers. No fluff.`;
       (briefing_date, total_spend_cents, total_revenue_cents, total_roas, active_campaigns,
        paused_today, scaled_today, briefing_text, recommendations, generated_at)
     VALUES 
-      (${today}, ${totalSpend}, ${totalRevenue}, ${totalRoas.toFixed(4)}, ${activeCampaigns},
+      (${snapshotDate}, ${totalSpend}, ${totalRevenue}, ${totalRoas.toFixed(4)}, ${activeCampaigns},
        ${pauseCount}, ${scaleCount}, ${briefingText}, ${JSON.stringify({ pause: pauseList.map(p => p.adsetName), scale: scaleList.map(p => p.adsetName) })}, ${Date.now()})
     ON DUPLICATE KEY UPDATE
       total_spend_cents = VALUES(total_spend_cents), total_revenue_cents = VALUES(total_revenue_cents),
@@ -395,6 +385,13 @@ Use plain language. Be specific with numbers. No fluff.`;
       paused_today = VALUES(paused_today), scaled_today = VALUES(scaled_today),
       briefing_text = VALUES(briefing_text), recommendations = VALUES(recommendations),
       generated_at = VALUES(generated_at)
+  `);
+
+  await db.execute(sql`
+    UPDATE meta_batch_settings
+    SET last_completed_at = CURRENT_TIMESTAMP,
+        last_snapshot_date = ${snapshotDate}
+    WHERE id = 1
   `);
 
   // ── LP Variant Gap Detection ────────────────────────────────────────────
@@ -427,7 +424,8 @@ Use plain language. Be specific with numbers. No fluff.`;
     }
   }
 
-  // Notify owner
+  // Notify the owner after every successful previous-day batch. This makes the
+  // batch visible without turning dashboard page loads into extra Meta calls.
   const urgentActions = pauseCount + scaleCount;
   const notifyContent = [
     `ROAS: ${totalRoas.toFixed(2)}x | Spend: $${(totalSpend/100).toFixed(0)} | Revenue: $${(totalRevenue/100).toFixed(0)}`,
@@ -437,32 +435,61 @@ Use plain language. Be specific with numbers. No fluff.`;
     "\nOpen the Campaign Monitor in the Content Hub for the full briefing.",
   ].filter(Boolean).join("\n");
 
-  if (urgentActions > 0 || lpVariantsGenerated > 0) {
-    await notifyOwner({
-      title: `📊 Daily Ads Briefing${lpVariantsGenerated > 0 ? ` + ${lpVariantsGenerated} LP variant${lpVariantsGenerated > 1 ? "s" : ""} generated` : urgentActions > 0 ? ` — ${urgentActions} action${urgentActions > 1 ? "s" : ""} needed` : ""}`,
-      content: notifyContent,
-    });
-  }
+  await notifyOwner({
+    title: `📊 Meta batch complete — ${snapshotDate}${urgentActions > 0 ? ` (${urgentActions} action${urgentActions > 1 ? "s" : ""} to review)` : ""}`,
+    content: notifyContent,
+  }).catch(() => {});
 
   return { snapshotCount: snapshots.length, pauseCount, scaleCount, briefingText, lpVariantsGenerated };
 }
 
+async function getLatestSavedAdsBatch() {
+  const db = await getDb();
+  if (!db) return { snapshotCount: 0, pauseCount: 0, scaleCount: 0, briefingText: "Saved Meta batch is unavailable because the database is offline." };
+
+  const [briefingRows] = await db.execute(sql`
+    SELECT briefing_date, paused_today, scaled_today, briefing_text
+    FROM daily_briefings
+    ORDER BY generated_at DESC
+    LIMIT 1
+  `) as any[];
+  const briefing = briefingRows?.[0];
+  if (!briefing) {
+    return { snapshotCount: 0, pauseCount: 0, scaleCount: 0, briefingText: "No saved Meta batch is available yet. The next scheduled previous-day batch will populate this view." };
+  }
+
+  const [countRows] = await db.execute(sql`
+    SELECT COUNT(*) AS snapshot_count
+    FROM campaign_snapshots
+    WHERE snapshot_date = ${briefing.briefing_date}
+  `) as any[];
+
+  return {
+    snapshotCount: Number(countRows?.[0]?.snapshot_count ?? 0),
+    pauseCount: Number(briefing.paused_today ?? 0),
+    scaleCount: Number(briefing.scaled_today ?? 0),
+    briefingText: briefing.briefing_text || "Saved Meta batch is ready.",
+  };
+}
+
 // ── tRPC Router ────────────────────────────────────────────────────────────
 export const adsMonitorRouter = router({
-  // Manual trigger: run the sync now
+  // Manual dashboard refresh intentionally returns the most recent saved batch.
+  // It never makes a live Meta API call, protecting the account call budget.
   runSync: protectedProcedure
     .input(z.object({ datePreset: z.string().default("yesterday") }))
-    .mutation(async ({ input }) => {
-      return runDailyAdsSync(input.datePreset);
+    .mutation(async () => {
+      return getLatestSavedAdsBatch();
     }),
 
-  // Get today's briefing
+  // Return the most recently completed batch. The scheduled batch records the
+  // previous day each morning, so calendar-date lookups would otherwise appear
+  // empty during the current day.
   getTodayBriefing: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) return null;
-    const today = new Date().toISOString().split("T")[0];
     const [briefing] = await db.execute(sql`
-      SELECT * FROM daily_briefings WHERE briefing_date = ${today} LIMIT 1
+      SELECT * FROM daily_briefings ORDER BY generated_at DESC LIMIT 1
     `) as any[];
     return (briefing as any[])?.[0] || null;
   }),
@@ -481,17 +508,16 @@ export const adsMonitorRouter = router({
       return (rows as any[])?.[0] || [];
     }),
 
-  // Get today's campaign snapshots
+  // Get the snapshots belonging to the most recently completed batch.
   getTodaySnapshots: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];
-    const today = new Date().toISOString().split("T")[0];
     const rows = await db.execute(sql`
       SELECT id, campaign_name, adset_name, status, spend_cents, impressions, clicks, ctr,
              cpm_cents, purchases, roas, cpa_cents, frequency, daily_budget_cents,
              recommendation, recommendation_reason, snapshot_date
       FROM campaign_snapshots
-      WHERE snapshot_date = ${today}
+      WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM campaign_snapshots)
       ORDER BY spend_cents DESC
     `) as any[];
     return (rows as any[])?.[0] || [];

@@ -4790,6 +4790,8 @@ Pricing model (corrected):
 - [x] Confirmed the public Analytics Hub now serves checkpoint `8ae92308` with its bundle-specific JavaScript asset returning HTTP 200.
 - [x] Created and verified the teleprompter-ready DOCX containing all five approved Tantra sexual-health video scripts: `docs/tantra-sexual-health-video-scripts-teleprompter.docx`.
 - [x] Wrote and added “Why She Stopped Wanting To” and “The Female Orgasm: The Missing Ingredient in Western Sexuality” to the master Tantra teleprompter DOCX; the regenerated document now contains seven recording-ready scripts.
+- [ ] Create three compliant Meta ad drafts for each of the seven Tantra content pages, with page-view and quiz-registration measurement plus retargeting-audience readiness.
+- [ ] Build matching content-first landing pages for “Why She Stopped Wanting To” and “The Female Orgasm: The Missing Ingredient in Western Sexuality” so all seven ad groups have approved destinations.
 - [x] Replaced the ambiguous Interconnected-era header asset with the standard Urban Monk program mark and wordmark across all five Tantra sexual-health content landing pages; focused regression test passes 4/4.
 - [x] Fix reconciliation dashboard "Today" preset — clicking Today now uses fresh Central-time dates, alongside the prior stale-module-load correction.
 - [x] Fix $199 OCUS Kajabi revenue storage — the resolved amount and funnel source are now used in the current reporting path; the 13 Aug ledger includes two recorded $199 OCUS purchases.
@@ -4799,3 +4801,6 @@ Pricing model (corrected):
 - [ ] Analyze Interconnected launch-to-yesterday funnel conversion and propose $67/$199 CRO tests without changing the live funnel
 - [x] Reconcile the Content Hub Interconnected dashboard against exact Agora Meta spend and verified Kajabi/Shopify revenue before further CRO analysis
 - [ ] Assess OuterSignal for Content Hub client and prospect intelligence enrichment and propose a phased integration
+- [x] Analyzed the Upstream Health audience-persona document and embedded its evidence-based language, objection, and proof framework into Content Hub avatar intelligence for social, blog, headline, CTA, and body-copy generation.
+- [x] Diagnosed the YouTube-to-Blog load behavior, verified its content-bundle module assets, and added a visible lazy-load state so the slow route no longer appears silently stuck.
+- [x] Built a Content Hub-first content-ad workspace with seven page-specific review packages, three policy-safe variants each, $2/day pause-only draft creation, and measurement/retargeting guardrails.

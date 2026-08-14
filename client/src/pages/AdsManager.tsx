@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MetaAdPushTab } from "@/components/MetaAdPushTab";
 import { MetaCustomAudienceTab } from "@/components/MetaCustomAudienceTab";
+import { TantraContentAdWorkspace } from "@/components/TantraContentAdWorkspace";
 import {
   AlertTriangle,
   TrendingUp,
@@ -221,6 +222,10 @@ export default function AdsManager() {
           <TabsTrigger value="pushtometa" className="gap-1.5">
             <Send className="w-3.5 h-3.5" />
             Push to Meta
+          </TabsTrigger>
+          <TabsTrigger value="contenttraffic" className="gap-1.5">
+            <Target className="w-3.5 h-3.5" />
+            Content Traffic
           </TabsTrigger>
           <TabsTrigger value="audiences" className="gap-1.5">
             <Users className="w-3.5 h-3.5" />
@@ -528,6 +533,9 @@ export default function AdsManager() {
         {/* ── Push to Meta Tab ────────────────────────────────────────────────────── */}
         <TabsContent value="pushtometa" className="space-y-4 mt-4">
           <MetaAdPushTab />
+        </TabsContent>
+        <TabsContent value="contenttraffic" className="space-y-4 mt-4">
+          <TantraContentAdWorkspace />
         </TabsContent>
 
         {/* ── Custom Audiences Tab ─────────────────────────────────────────────── */}

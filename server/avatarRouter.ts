@@ -18,6 +18,7 @@ import {
   AvatarObjection,
 } from "../drizzle/schema";
 import { asc } from "drizzle-orm";
+import { getUpstreamAudienceIntelligenceBlock } from "./upstreamAudienceIntelligence";
 
 export const avatarRouter = router({
   // ── Pain Points ────────────────────────────────────────────────────────────
@@ -184,6 +185,11 @@ export const avatarRouter = router({
       lines.push("- Create urgency around inaction: 'What happens if this continues for another year?'");
       lines.push("- Use transformation language: 'reclaim,' 'restore,' 'finally,' 'root cause,' not 'manage' or 'cope'");
       lines.push("- Reference real patient journeys — specificity builds credibility");
+      const upstreamAudienceContext = getUpstreamAudienceIntelligenceBlock(input.topic);
+      if (upstreamAudienceContext) {
+        lines.push("");
+        lines.push(upstreamAudienceContext);
+      }
       lines.push("=== END AVATAR INTELLIGENCE ===");
 
       return {
@@ -268,6 +274,11 @@ export async function getAvatarContextBlock(
 
     lines.push("");
     lines.push("TONE: Validate first. Use transformation language. Create urgency around inaction.");
+    const upstreamAudienceContext = getUpstreamAudienceIntelligenceBlock(topic);
+    if (upstreamAudienceContext) {
+      lines.push("");
+      lines.push(upstreamAudienceContext);
+    }
     lines.push("=== END AVATAR INTELLIGENCE ===\n");
 
     return lines.join("\n");
@@ -370,6 +381,11 @@ export async function getAvatarContextBlockForPersona(
     lines.push("- Create urgency around inaction: 'What happens if this continues for another year?'");
     lines.push("- Use transformation language: 'reclaim,' 'restore,' 'finally,' 'root cause,' not 'manage' or 'cope'");
     lines.push("- Reference real patient journeys — specificity builds credibility");
+    const upstreamAudienceContext = getUpstreamAudienceIntelligenceBlock(topic);
+    if (upstreamAudienceContext) {
+      lines.push("");
+      lines.push(upstreamAudienceContext);
+    }
     lines.push("=== END AVATAR INTELLIGENCE ===");
 
     return lines.join("\n");

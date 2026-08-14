@@ -4813,4 +4813,4 @@ Pricing model (corrected):
 - [x] Build a reviewable, non-diagnostic hormone-health pathway prototype so the user can assess the future referral experience before committing to a clinical scheduling vehicle.
 - [x] Replace the standalone hormone-path funnel language with a single Fit22 → team meeting → clinician-determined hormone-testing pathway, retaining the gut path as the primary branch.
 - [x] Strengthen the Tantra quiz’s gut, sleep, and oral-health flagged-result narratives with non-diagnostic systems context and clear test-next-step calls to action, while preserving direct Tantra results for visitors without flags.
-- [ ] Rebuild the Tantra Klaviyo nurture as a review-only nine-day sequence that shares all seven edited relationship-education videos and escalates quiz and offer calls to action without activating messages automatically.
+- [x] Rebuild the Tantra Klaviyo nurture as a review-only nine-day sequence that shares all seven edited relationship-education videos and escalates quiz and offer calls to action without activating messages automatically.

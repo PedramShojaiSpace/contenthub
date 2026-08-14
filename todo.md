@@ -4830,4 +4830,6 @@ Pricing model (corrected):
 - [ ] Repoint the approved existing Tantra ads T-A through T-F to their matching content-video landing pages with standardized Meta UTMs while preserving all other ad settings.
 - [ ] Create the approved King and Queen and For Men paused Meta draft packages alongside the existing Considering Divorce draft, with no activation or spend change.
 - [ ] Restore the Meta app’s Marketing API write capability for the Content Hub integration so approved paused draft packages can be created without altering active ads.
+- [ ] Request production/advanced access for `ads_management` and the next available Marketing API Access Tier for the Urban Monk Ads Manager app, then retest paused-draft creation.
+- [x] Prepare a Curt handoff for the deferred Meta production-access application and the final paused Tantra draft completion steps, while preserving all current drafts and no-spend settings.
 - [x] Remediate the Interconnected audit’s structural gaps: added valid footer-address handling to the six affected draft messages and enabled consistent Klaviyo tracking parameters across the 26 draft emails without changing message copy or status; the live Day 0 email remains intentionally untouched pending explicit approval.

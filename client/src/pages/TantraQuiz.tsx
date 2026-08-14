@@ -1,7 +1,7 @@
 /**
  * TantraQuiz.tsx
  *
- * Full 12-screen sexual vitality quiz funnel for the Tantra line.
+ * Full patient-centered relationship and intimacy quiz funnel for the Tantra line.
  * Modeled on the InnerBalance cold-traffic quiz architecture.
  *
  * Screen flow:
@@ -12,13 +12,13 @@
  *   4  → Sexual energy question
  *   5  → Education interstitial: "This is not your fault"
  *   6  → Symptom mapping (multi-select, flags gut/sleep/oral)
- *   7  → Connection / relationship question
- *   8  → Education interstitial: "The East-West approach"
- *   9  → Safety screen
- *   10 → Goals / aspiration
- *   11 → Social proof interstitial
+ *   7  → Conditional hormone-context question(s)
+ *   8  → Connection / relationship question
+ *   9  → Education interstitial: "The East-West approach"
+ *   10 → Safety screen
+ *   11 → Goals / aspiration
  *   12 → Email capture (lead gate)
- *   13 → Results page (product recommendation + upsells)
+ *   13 → Results page (triage-first clinical pathway + optional product recommendation)
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -39,6 +39,8 @@ type QuizScreen =
   | "sexual_energy"
   | "edu_not_your_fault"
   | "symptoms"
+  | "hormone_symptoms"
+  | "hormone_male"
   | "connection"
   | "edu_east_west"
   | "safety"
@@ -54,12 +56,28 @@ interface QuizState {
   result: "tantra_him" | "tantra_her" | "tantra_bundle" | "pending" | null;
   product: ProductInfo | null;
   upsells: UpsellInfo[];
+  triage: TriageFlags;
+  segmentation: SegmentationInfo;
+  clinicalResources: ClinicalResources;
   tantraCourse: CourseInfo | null;
   lightsOn: CourseInfo | null;
   email: string;
   name: string;
   emailSubmitted: boolean;
   progress: number; // 0-100
+}
+
+interface TriageFlags {
+  gutFlag: boolean;
+  sleepFlag: boolean;
+  oralFlag: boolean;
+  hormoneFlag: boolean;
+}
+
+interface SegmentationInfo {
+  primaryPath: string;
+  carePaths: string[];
+  clinicianFollowUp: boolean;
 }
 
 // Couple result carries both individual SKUs
@@ -87,6 +105,12 @@ interface UpsellInfo {
   flag: string;
 }
 
+interface ClinicalResources {
+  fit22: UpsellInfo | null;
+  sleep: UpsellInfo | null;
+  oral: UpsellInfo | null;
+}
+
 interface CourseInfo {
   name: string;
   tagline: string;
@@ -105,11 +129,13 @@ const SCREEN_PROGRESS: Record<QuizScreen, number> = {
   sexual_energy: 38,
   edu_not_your_fault: 44,
   symptoms: 52,
-  connection: 60,
-  edu_east_west: 66,
-  safety: 74,
-  goals: 82,
-  social_proof: 90,
+  hormone_symptoms: 58,
+  hormone_male: 58,
+  connection: 64,
+  edu_east_west: 70,
+  safety: 78,
+  goals: 86,
+  social_proof: 92,
   email_capture: 95,
   results: 100,
 };
@@ -122,6 +148,8 @@ const SCREEN_ORDER: QuizScreen[] = [
   "sexual_energy",
   "edu_not_your_fault",
   "symptoms",
+  "hormone_symptoms",
+  "hormone_male",
   "connection",
   "edu_east_west",
   "safety",
@@ -152,6 +180,9 @@ export default function TantraQuiz() {
     result: null,
     product: null,
     upsells: [],
+    triage: { gutFlag: false, sleepFlag: false, oralFlag: false, hormoneFlag: false },
+    segmentation: { primaryPath: "intimacy", carePaths: ["intimacy"], clinicianFollowUp: false },
+    clinicalResources: { fit22: null, sleep: null, oral: null },
     tantraCourse: null,
     lightsOn: null,
     email: "",
@@ -195,6 +226,19 @@ export default function TantraQuiz() {
   };
 
   const nextScreen = () => {
+    const who = state.answers["q_who"] as string | undefined;
+    if (state.screen === "symptoms") {
+      goToScreen(who === "me_male" ? "hormone_male" : "hormone_symptoms");
+      return;
+    }
+    if (state.screen === "hormone_symptoms") {
+      goToScreen(who === "couple" ? "hormone_male" : "connection");
+      return;
+    }
+    if (state.screen === "hormone_male") {
+      goToScreen("connection");
+      return;
+    }
     const idx = SCREEN_ORDER.indexOf(state.screen);
     if (idx < SCREEN_ORDER.length - 1) {
       goToScreen(SCREEN_ORDER[idx + 1]);
@@ -242,6 +286,9 @@ export default function TantraQuiz() {
           result: res.result,
           product: res.product as ProductInfo,
           upsells: res.upsells as UpsellInfo[],
+          triage: (res.flags as TriageFlags) ?? { gutFlag: false, sleepFlag: false, oralFlag: false, hormoneFlag: false },
+          segmentation: (res.segmentation as SegmentationInfo) ?? { primaryPath: "intimacy", carePaths: ["intimacy"], clinicianFollowUp: false },
+          clinicalResources: (res.clinicalResources as ClinicalResources) ?? { fit22: null, sleep: null, oral: null },
         }));
         // If couple, also store both individual SKUs
         const r = res as any;
@@ -264,6 +311,25 @@ export default function TantraQuiz() {
       // NOTE: Bundle is not offered — couple/unknown defaults to Tantra Him
       const who = (state.answers["q_who"] as string) ?? "";
       const result = who === "me_female" ? "tantra_her" : "tantra_him";
+      const symptoms = state.answers["q_symptoms"] ?? [];
+      const symptomAnswers = Array.isArray(symptoms) ? symptoms : [symptoms];
+      const hormoneFlag = ["q_hormone_symptoms", "q_hormone_male"].some((questionId) => {
+        const answer = state.answers[questionId] ?? [];
+        const selected = Array.isArray(answer) ? answer : [answer];
+        return selected.some((value) => value !== "none");
+      });
+      const triage: TriageFlags = {
+        gutFlag: symptomAnswers.includes("gut_issues"),
+        sleepFlag: symptomAnswers.includes("poor_sleep"),
+        oralFlag: symptomAnswers.includes("oral_issues"),
+        hormoneFlag,
+      };
+      const clinicalPaths = [
+        ...(hormoneFlag ? ["hormone_health"] : []),
+        ...(triage.gutFlag ? ["gut_health"] : []),
+        ...(triage.sleepFlag ? ["sleep_health"] : []),
+        ...(triage.oralFlag ? ["oral_health"] : []),
+      ];
       const PRODUCTS: Record<string, ProductInfo> = {
         tantra_him: {
           name: "Tantra Him",
@@ -291,6 +357,13 @@ export default function TantraQuiz() {
         result,
         product: PRODUCTS[result],
         upsells: [],
+        triage,
+        segmentation: {
+          primaryPath: clinicalPaths.length > 1 ? "multifactor" : clinicalPaths[0] ?? "intimacy",
+          carePaths: ["intimacy", ...clinicalPaths],
+          clinicianFollowUp: clinicalPaths.length > 0,
+        },
+        clinicalResources: { fit22: null, sleep: null, oral: null },
       }));
       if (!completionEventFired.current) {
         completionEventFired.current = true;
@@ -481,6 +554,58 @@ export default function TantraQuiz() {
         />
       )}
 
+      {/* ── SCREEN: HORMONE CONTEXT — WOMEN / COUPLES ── */}
+      {state.screen === "hormone_symptoms" && (
+        <MultiChoiceScreen
+          question="Do any of these changes sound familiar?"
+          subtext="This is not a diagnosis. It helps us suggest whether a clinician conversation may be useful."
+          options={[
+            { id: "irregular_periods", text: "Periods that have become irregular or stopped unexpectedly" },
+            { id: "hot_flashes", text: "Hot flashes or night sweats" },
+            { id: "mood_changes", text: "New or unexplained mood changes or irritability" },
+            { id: "weight_changes", text: "Significant weight changes without a clear change in routine" },
+            { id: "hair_thinning", text: "Hair thinning or loss that concerns me" },
+            { id: "none", text: "None of these" },
+          ]}
+          selected={(state.answers["q_hormone_symptoms"] as string[]) ?? []}
+          onToggle={v => {
+            if (v === "none") {
+              setAnswer("q_hormone_symptoms", ["none"]);
+              return;
+            }
+            const current = (state.answers["q_hormone_symptoms"] as string[] | undefined) ?? [];
+            const withoutNone = current.filter(x => x !== "none");
+            setAnswer("q_hormone_symptoms", withoutNone.includes(v) ? withoutNone.filter(x => x !== v) : [...withoutNone, v]);
+          }}
+          onNext={nextScreen}
+        />
+      )}
+
+      {/* ── SCREEN: HORMONE CONTEXT — MEN / COUPLES ── */}
+      {state.screen === "hormone_male" && (
+        <MultiChoiceScreen
+          question="Do any of these changes sound familiar?"
+          subtext="This is not a diagnosis. It helps us suggest whether a clinician conversation may be useful."
+          options={[
+            { id: "fatigue_despite_sleep", text: "Ongoing fatigue despite getting enough sleep" },
+            { id: "muscle_changes", text: "Loss of muscle mass or strength without a clear explanation" },
+            { id: "mood_changes", text: "New or unexplained mood changes or irritability" },
+            { id: "none", text: "None of these" },
+          ]}
+          selected={(state.answers["q_hormone_male"] as string[]) ?? []}
+          onToggle={v => {
+            if (v === "none") {
+              setAnswer("q_hormone_male", ["none"]);
+              return;
+            }
+            const current = (state.answers["q_hormone_male"] as string[] | undefined) ?? [];
+            const withoutNone = current.filter(x => x !== "none");
+            setAnswer("q_hormone_male", withoutNone.includes(v) ? withoutNone.filter(x => x !== v) : [...withoutNone, v]);
+          }}
+          onNext={nextScreen}
+        />
+      )}
+
       {/* ── SCREEN: CONNECTION ── */}
       {state.screen === "connection" && (
         <SingleChoiceScreen
@@ -590,6 +715,9 @@ export default function TantraQuiz() {
         <ResultsScreen
           product={state.product}
           upsells={state.upsells}
+          triage={state.triage}
+          segmentation={state.segmentation}
+          clinicalResources={state.clinicalResources}
           result={state.result}
           tantraCourse={state.tantraCourse}
           lightsOn={state.lightsOn}
@@ -966,9 +1094,112 @@ function EmailCaptureScreen({
   );
 }
 
+function ClinicalTriageSection({
+  triage,
+  segmentation,
+  clinicalResources,
+  onCheckoutIntent,
+}: {
+  triage: TriageFlags;
+  segmentation: SegmentationInfo;
+  clinicalResources: ClinicalResources;
+  onCheckoutIntent: (offer: TantraTrackableOffer) => void;
+}) {
+  const resourceLink = (resource: UpsellInfo | null, label: string) => {
+    if (!resource?.shopifyUrl) return null;
+    return (
+      <a
+        href={resource.shopifyUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => onCheckoutIntent(resource)}
+        className="inline-flex items-center gap-1 text-amber-300 text-sm font-semibold hover:text-amber-200"
+      >
+        {label} <ChevronRight className="w-4 h-4" />
+      </a>
+    );
+  };
+
+  return (
+    <section className="max-w-2xl mx-auto mb-8 text-left" aria-label="Clinician-guided next steps">
+      <div className="border border-amber-700/45 bg-amber-950/20 rounded-2xl px-6 py-6">
+        <div className="flex items-start gap-3 mb-5">
+          <div className="w-10 h-10 rounded-full bg-amber-900/40 border border-amber-700/50 flex items-center justify-center flex-shrink-0">
+            <Shield className="w-5 h-5 text-amber-300" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">What your answers suggest</h2>
+            <p className="text-white/75 text-sm leading-relaxed mt-1">
+              Your responses raise a few factors that may be worth discussing with a licensed clinician. This quiz cannot diagnose a condition or identify the cause of a symptom.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {triage.hormoneFlag && (
+            <div className="border-t border-white/10 pt-4">
+              <h3 className="text-white font-semibold mb-1">Hormone-related factors may be worth discussing</h3>
+              <p className="text-white/75 text-sm leading-relaxed">
+                The changes you selected can have many explanations. A licensed clinician can review your history and decide whether a hormone-focused assessment, including a broader panel, is appropriate. This quiz cannot diagnose a hormone condition or menopausal status.
+              </p>
+              <p className="text-white/65 text-sm leading-relaxed mt-3">
+                Some people choose the Fit22 food-sensitivity and gut-permeability test as an optional baseline for a broader, clinician-guided health conversation. It is not a hormone assay and does not diagnose a hormone condition.
+              </p>
+              <div className="mt-3">{resourceLink(clinicalResources.fit22, "Explore the optional Fit22 starting point")}</div>
+            </div>
+          )}
+
+          {triage.gutFlag && (
+            <div className="border-t border-white/10 pt-4">
+              <h3 className="text-white font-semibold mb-1">Digestive factors may be worth discussing</h3>
+              <p className="text-white/75 text-sm leading-relaxed">
+                Digestive symptoms can have many causes. Persistent or concerning symptoms warrant clinical evaluation, and this quiz cannot diagnose a digestive condition.
+              </p>
+              <p className="text-white/65 text-sm leading-relaxed mt-3">
+                If you and your clinician decide a baseline test would be useful, Fit22 is an optional resource to bring into that broader conversation; it is not a diagnosis.
+              </p>
+              <div className="mt-3">{resourceLink(clinicalResources.fit22, "Explore the optional Fit22 resource")}</div>
+            </div>
+          )}
+
+          {triage.sleepFlag && (
+            <div className="border-t border-white/10 pt-4">
+              <h3 className="text-white font-semibold mb-1">Sleep quality may be worth discussing</h3>
+              <p className="text-white/75 text-sm leading-relaxed">
+                Persistent sleep disruption can have many causes and warrants clinical evaluation. This quiz cannot diagnose a sleep disorder.
+              </p>
+              <p className="text-white/65 text-sm leading-relaxed mt-3">
+                If you and your clinician decide that additional sleep information would be useful, the optional sleep resource is available to review.
+              </p>
+              <div className="mt-3">{resourceLink(clinicalResources.sleep, "Review the optional sleep resource")}</div>
+            </div>
+          )}
+
+          {triage.oralFlag && (
+            <div className="border-t border-white/10 pt-4">
+              <h3 className="text-white font-semibold mb-1">Oral-health symptoms may also deserve attention</h3>
+              <p className="text-white/75 text-sm leading-relaxed">
+                Consider discussing persistent mouth or gum symptoms with an appropriate dental or medical clinician. This quiz cannot diagnose an oral-health condition.
+              </p>
+              <div className="mt-3">{resourceLink(clinicalResources.oral, "Review the optional oral-health resource")}</div>
+            </div>
+          )}
+        </div>
+
+        <p className="text-white/45 text-xs mt-5">
+          Your quiz record is assigned to the {segmentation.primaryPath.replace("_", " ")} pathway so the appropriate follow-up team can review the next step.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function ResultsScreen({
   product,
   upsells,
+  triage,
+  segmentation,
+  clinicalResources,
   result,
   tantraCourse,
   lightsOn,
@@ -977,6 +1208,9 @@ function ResultsScreen({
 }: {
   product: ProductInfo;
   upsells: UpsellInfo[];
+  triage: TriageFlags;
+  segmentation: SegmentationInfo;
+  clinicalResources: ClinicalResources;
   result: string | null;
   tantraCourse: CourseInfo | null;
   lightsOn: CourseInfo | null;
@@ -985,6 +1219,7 @@ function ResultsScreen({
 }) {
   const isCouple = !!coupleProducts;
   const accentColor = result === "tantra_her" ? "#9B59B6" : "#B8860B";
+  const hasClinicalFlags = triage.hormoneFlag || triage.gutFlag || triage.sleepFlag || triage.oralFlag;
 
   // ── Urgency timer (20 minutes) ──────────────────────────────────────────────
   const [timeLeft, setTimeLeft] = useState(20 * 60); // 20 min in seconds
@@ -1024,7 +1259,7 @@ function ResultsScreen({
     <div className="min-h-screen bg-[#0d0d0d] pb-32">
 
       {/* ── EXIT INTENT POPUP ── */}
-      {showExitPopup && (
+      {showExitPopup && !hasClinicalFlags && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.85)" }}>
           <div className="bg-[#141414] border border-amber-700/40 rounded-2xl p-8 max-w-md w-full text-center relative shadow-2xl">
             <button onClick={() => setShowExitPopup(false)} className="absolute top-4 right-4 text-white/40 hover:text-white/70 text-xl leading-none">✕</button>
@@ -1038,9 +1273,9 @@ function ResultsScreen({
             <p className="text-amber-400 text-sm font-semibold mb-5">Your protocol is still reserved for the next {timerMins}:{timerSecs}.</p>
             <a href={product.shopifyUrl} target="_blank" rel="noopener noreferrer" onClick={() => { onCheckoutIntent(product); setShowExitPopup(false); }}
               className="block w-full text-center font-bold text-base py-4 rounded-xl text-black mb-3" style={{ background: accentColor }}>
-             Start My First Month — {product.price} →
+             Try It for 30 Days — {product.price} →
             </a>
-            <p className="text-white/50 text-xs mb-2">Try it for 30 days. If it doesn't bring you closer, you never have to order again.</p>
+            <p className="text-white/50 text-xs mb-2">Try it for 30 days, then decide whether it is right for you.</p>
             <button onClick={() => setShowExitPopup(false)} className="text-white/45 text-xs hover:text-white/65">
               No thanks, I'll pass on coming back to each other
             </button>
@@ -1049,6 +1284,7 @@ function ResultsScreen({
       )}
 
       {/* ── STICKY URGENCY BAR ── */}
+      {!hasClinicalFlags && (
       <div className="fixed bottom-0 left-0 right-0 z-50 px-4 py-3 flex items-center justify-between gap-4"
         style={{ background: "#0d0d0d", borderTop: `1px solid ${accentColor}40` }}>
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -1064,6 +1300,7 @@ function ResultsScreen({
           className="flex-shrink-0 font-bold text-xs px-4 py-2 rounded-full text-black whitespace-nowrap"
           style={{ background: accentColor }}>Start Now →</a>
       </div>
+      )}
 
       {/* Hero result banner */}
       <div
@@ -1080,11 +1317,31 @@ function ResultsScreen({
             Your personalized results are ready
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
-            {product.headline}
+            {hasClinicalFlags ? "Your answers point to a more considered path forward." : product.headline}
           </h1>
           <p className="text-white/90 text-lg mb-8 max-w-xl mx-auto">
-            {product.subheadline}
+            {hasClinicalFlags
+              ? "A few responses may be worth discussing with a licensed clinician. Here is a practical, non-diagnostic next step before you consider any optional product path."
+              : product.subheadline}
           </p>
+
+          {hasClinicalFlags && (
+            <ClinicalTriageSection
+              triage={triage}
+              segmentation={segmentation}
+              clinicalResources={clinicalResources}
+              onCheckoutIntent={onCheckoutIntent}
+            />
+          )}
+
+          {hasClinicalFlags && (
+            <div className="max-w-2xl mx-auto mb-5 text-left bg-white/5 border border-white/10 rounded-xl px-5 py-4">
+              <p className="text-amber-300 text-sm font-semibold mb-1">A separate, optional next step for connection</p>
+              <p className="text-white/80 text-sm leading-relaxed">
+                In the meantime, if you would like a jump start on reconnecting with your partner while you address these underlying factors, this physician-guided intake is an optional path to explore.
+              </p>
+            </div>
+          )}
 
           {/* ── PERSONALIZED RESULTS VIDEO ── */}
           {(() => {
@@ -1122,7 +1379,7 @@ function ResultsScreen({
                       </div>
                       <div className="text-right">
                         <p className="text-xl font-bold" style={{ color: accent }}>{p.price}</p>
-                        <p className="text-white/55 text-xs">first month · no commitment</p>
+                        <p className="text-white/55 text-xs">Try it for 30 days</p>
                       </div>
                     </div>
                     <div className="space-y-1.5 mb-4">
@@ -1148,7 +1405,7 @@ function ResultsScreen({
                       className="block w-full text-center font-bold text-sm py-3.5 rounded-xl text-black"
                       style={{ background: accent }}
                     >
-                      Start My First Month — {p.price} →
+                      Try It for 30 Days — {p.price} →
                     </a>
                   </div>
                 ))}
@@ -1164,7 +1421,7 @@ function ResultsScreen({
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold" style={{ color: accentColor }}>{product.price}</p>
-                  <p className="text-white/65 text-xs">first month · cancel anytime</p>
+                  <p className="text-white/65 text-xs">Try it for 30 days</p>
                 </div>
               </div>
               <p className="text-white/90 text-sm leading-relaxed mb-5">{product.description}</p>
@@ -1196,7 +1453,7 @@ function ResultsScreen({
                 className="block w-full text-center font-bold text-base py-4 rounded-xl transition-all duration-200 text-black"
                 style={{ background: accentColor }}
               >
-                Start My First Month — {product.price} →
+                Try It for 30 Days — {product.price} →
               </a>
             </div>
           )}
@@ -1238,7 +1495,7 @@ function ResultsScreen({
         </div>
 
         {/* Conditional upsells */}
-        {upsells.length > 0 && (
+        {!hasClinicalFlags && upsells.length > 0 && (
           <div className="mb-8">
             <h3 className="text-white font-bold text-lg mb-2">Based on your symptoms, we also recommend:</h3>
             <p className="text-white/75 text-sm mb-5">Your quiz answers flagged some root-cause issues that the Tantra formula alone won't address. These tests identify exactly what's driving your symptoms.</p>

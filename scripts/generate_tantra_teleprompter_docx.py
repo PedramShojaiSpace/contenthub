@@ -52,8 +52,8 @@ def parse_scripts(markdown: str):
                 "body": match.group(6).strip(),
             }
         )
-    if len(scripts) != 5:
-        raise RuntimeError(f"Expected five scripts, found {len(scripts)}")
+    if len(scripts) != 7:
+        raise RuntimeError(f"Expected seven scripts, found {len(scripts)}")
     return scripts
 
 

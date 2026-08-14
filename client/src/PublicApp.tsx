@@ -11,6 +11,8 @@ const TantraContentKingQueen = lazy(() => import("./pages/TantraContentKingQueen
 const TantraContentFlower = lazy(() => import("./pages/TantraContentFlower"));
 const TantraContentHim = lazy(() => import("./pages/TantraContentHim"));
 const TantraContentLoveBank = lazy(() => import("./pages/TantraContentLoveBank"));
+const TantraContentWhySheStopped = lazy(() => import("./pages/TantraContentWhySheStopped"));
+const TantraContentFemaleOrgasm = lazy(() => import("./pages/TantraContentFemaleOrgasm"));
 const Interconnected = lazy(() => import("./pages/Interconnected"));
 const InterconnectedThankYou = lazy(() => import("./pages/InterconnectedThankYou"));
 const InterconnectedThankYouB = lazy(() => import("./pages/InterconnectedThankYouB"));
@@ -77,6 +79,8 @@ export default function PublicApp() {
             <Route path="/tantra/sex-is-the-flower" component={TantraContentFlower} />
             <Route path="/tantra/why-he-stopped" component={TantraContentHim} />
             <Route path="/tantra/love-bank" component={TantraContentLoveBank} />
+            <Route path="/tantra/why-she-stopped" component={TantraContentWhySheStopped} />
+            <Route path="/tantra/female-orgasm" component={TantraContentFemaleOrgasm} />
             <Route path="/interconnected" component={Interconnected} />
             <Route path="/interconnected/thank-you" component={InterconnectedThankYouB} />
             <Route path="/interconnected/thank-you-b" component={InterconnectedThankYouB} />

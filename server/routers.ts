@@ -129,6 +129,7 @@ import { emailOptimizerRouter } from "./emailOptimizerRouter";
 import { klaviyoFlowOptimizerRouter } from "./klaviyoFlowOptimizerRouter";
 import { plainTextEmailRouter } from "./plainTextEmailRouter";
 import { metaAdPushRouter } from "./metaAdPushRouter";
+import { tantraContentAdPushRouter } from "./tantraContentAdPushRouter";
 import { metaCustomAudienceRouter } from "./metaCustomAudienceRouter";
 import { kidsResearchRouter } from "./kidsResearchRouter";
 import { collectiveRouter } from "./collectiveRouter";
@@ -532,6 +533,7 @@ export const appRouter = router({
   emailOptimizer: emailOptimizerRouter,
   klaviyoFlowOptimizer: klaviyoFlowOptimizerRouter,
   metaAdPush: metaAdPushRouter,
+  tantraContentAdPush: tantraContentAdPushRouter,
   metaCustomAudience: metaCustomAudienceRouter,
   kidsResearch: kidsResearchRouter,
   plainTextEmail: plainTextEmailRouter,

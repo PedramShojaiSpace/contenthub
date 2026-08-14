@@ -4,9 +4,15 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Loader2 } from "lucide-react";
 
 function Loading() {
-  return <div className="min-h-screen flex items-center justify-center bg-background" />;
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+      <p className="text-sm">Loading Content Hub…</p>
+    </div>
+  );
 }
 
 export function HubShell({ children }: { children: ReactNode }) {

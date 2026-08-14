@@ -11,6 +11,8 @@ const contentPageFiles = [
   "TantraContentFlower.tsx",
   "TantraContentHim.tsx",
   "TantraContentLoveBank.tsx",
+  "TantraContentWhySheStopped.tsx",
+  "TantraContentFemaleOrgasm.tsx",
 ];
 
 describe("Tantra content landing pages", () => {
@@ -28,6 +30,8 @@ describe("Tantra content landing pages", () => {
     expect(publicAppSource).toContain('path="/tantra/sex-is-the-flower" component={TantraContentFlower}');
     expect(publicAppSource).toContain('path="/tantra/why-he-stopped" component={TantraContentHim}');
     expect(publicAppSource).toContain('path="/tantra/love-bank" component={TantraContentLoveBank}');
+    expect(publicAppSource).toContain('path="/tantra/why-she-stopped" component={TantraContentWhySheStopped}');
+    expect(publicAppSource).toContain('path="/tantra/female-orgasm" component={TantraContentFemaleOrgasm}');
   });
 
   it("keeps the Love Bank page video-ready and quiz-first", () => {

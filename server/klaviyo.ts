@@ -20,6 +20,7 @@ interface KlaviyoProfile {
   phone?: string;
   smsConsent?: boolean;
   source?: string;
+  properties?: Record<string, string | boolean | number | string[]>;
 }
 
 /**
@@ -37,6 +38,7 @@ async function upsertProfile(profile: KlaviyoProfile): Promise<string> {
           sms_consent: profile.smsConsent ?? false,
           sms_consent_source: profile.source ?? "interconnected-optin",
           sms_consent_timestamp: new Date().toISOString(),
+          ...(profile.properties ?? {}),
         },
       },
     },
@@ -71,17 +73,20 @@ async function upsertProfile(profile: KlaviyoProfile): Promise<string> {
 /**
  * Patch an existing profile with updated phone and consent data.
  */
-async function patchProfile(profileId: string, profile: KlaviyoProfile): Promise<void> {
+async function patchProfile(profileId: string, profile: Partial<KlaviyoProfile>): Promise<void> {
   const body = {
     data: {
       type: "profile",
       id: profileId,
       attributes: {
-        phone_number: profile.phone ? normalizePhone(profile.phone) : undefined,
+        ...(profile.phone ? { phone_number: normalizePhone(profile.phone) } : {}),
         properties: {
-          sms_consent: profile.smsConsent ?? false,
-          sms_consent_source: profile.source ?? "interconnected-optin",
-          sms_consent_timestamp: new Date().toISOString(),
+          ...(profile.smsConsent !== undefined ? {
+            sms_consent: profile.smsConsent,
+            sms_consent_source: profile.source ?? "interconnected-optin",
+            sms_consent_timestamp: new Date().toISOString(),
+          } : {}),
+          ...(profile.properties ?? {}),
         },
       },
     },
@@ -182,14 +187,34 @@ async function addProfileToList(profileId: string, listId: string): Promise<void
  * Upserts the profile with quiz result metadata and adds to the Tantra email list
  * so the autoresponder sequence fires automatically.
  */
-export async function pushTantraQuizLead(opts: {
+export interface TantraQuizLeadProfileInput {
   email: string;
   firstName?: string;
   result: "tantra_him" | "tantra_her" | "tantra_bundle" | "pending" | null;
   gutFlag?: boolean;
   sleepFlag?: boolean;
   oralFlag?: boolean;
-}): Promise<{ profileId: string }> {
+  hormoneFlag?: boolean;
+  primaryPath?: string;
+  carePaths?: string[];
+  clinicianFollowUp?: boolean;
+}
+
+export function buildTantraQuizProfileProperties(opts: TantraQuizLeadProfileInput) {
+  return {
+    tantra_quiz_result: opts.result ?? "unknown",
+    tantra_gut_flag: opts.gutFlag ?? false,
+    tantra_sleep_flag: opts.sleepFlag ?? false,
+    tantra_oral_flag: opts.oralFlag ?? false,
+    tantra_hormone_flag: opts.hormoneFlag ?? false,
+    tantra_primary_care_path: opts.primaryPath ?? "intimacy",
+    tantra_care_paths: opts.carePaths ?? ["intimacy"],
+    tantra_clinician_followup_needed: opts.clinicianFollowUp ?? false,
+    tantra_quiz_completed_at: new Date().toISOString(),
+  };
+}
+
+export async function pushTantraQuizLead(opts: TantraQuizLeadProfileInput): Promise<{ profileId: string }> {
   if (!ENV.klaviyoPrivateKey) {
     console.warn("[Klaviyo] KLAVIYO_PRIVATE_KEY not set — skipping Tantra push");
     return { profileId: "" };
@@ -203,11 +228,7 @@ export async function pushTantraQuizLead(opts: {
 
   // Patch additional quiz-specific properties onto the profile
   await patchProfile(profileId, {
-    tantra_quiz_result: opts.result ?? "unknown",
-    tantra_gut_flag: opts.gutFlag ?? false,
-    tantra_sleep_flag: opts.sleepFlag ?? false,
-    tantra_oral_flag: opts.oralFlag ?? false,
-    tantra_quiz_completed_at: new Date().toISOString(),
+    properties: buildTantraQuizProfileProperties(opts),
   });
 
   // Add to Tantra email list if configured

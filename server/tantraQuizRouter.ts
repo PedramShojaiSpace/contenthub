@@ -111,9 +111,37 @@ export const TANTRA_QUIZ_QUESTIONS = [
     ],
   },
   {
+    id: "q_hormone_symptoms",
+    type: "multi" as const,
+    screen: 8,
+    text: "Do any of these changes sound familiar?",
+    subtext: "This is not a diagnosis. It helps us suggest whether a clinician conversation may be useful.",
+    options: [
+      { id: "irregular_periods", text: "Periods that have become irregular or stopped unexpectedly" },
+      { id: "hot_flashes", text: "Hot flashes or night sweats" },
+      { id: "mood_changes", text: "New or unexplained mood changes or irritability" },
+      { id: "weight_changes", text: "Significant weight changes without a clear change in routine" },
+      { id: "hair_thinning", text: "Hair thinning or loss that concerns me" },
+      { id: "none", text: "None of these" },
+    ],
+  },
+  {
+    id: "q_hormone_male",
+    type: "multi" as const,
+    screen: 9,
+    text: "Do any of these changes sound familiar?",
+    subtext: "This is not a diagnosis. It helps us suggest whether a clinician conversation may be useful.",
+    options: [
+      { id: "fatigue_despite_sleep", text: "Ongoing fatigue despite getting enough sleep" },
+      { id: "muscle_changes", text: "Loss of muscle mass or strength without a clear explanation" },
+      { id: "mood_changes", text: "New or unexplained mood changes or irritability" },
+      { id: "none", text: "None of these" },
+    ],
+  },
+  {
     id: "q_connection",
     type: "single" as const,
-    screen: 8,
+    screen: 10,
     text: "How would you describe your connection to intimacy and your partner right now?",
     options: [
       { id: "going_through_motions", text: "Disconnected — we're going through the motions" },
@@ -125,7 +153,7 @@ export const TANTRA_QUIZ_QUESTIONS = [
   {
     id: "q_safety",
     type: "multi" as const,
-    screen: 10,
+    screen: 12,
     text: "Do any of these apply to you?",
     subtext: "This helps us make sure the Tantra formula is right for you.",
     options: [
@@ -138,7 +166,7 @@ export const TANTRA_QUIZ_QUESTIONS = [
   {
     id: "q_goals",
     type: "multi" as const,
-    screen: 11,
+    screen: 13,
     text: "What are you most hoping to restore? Select all that apply.",
     options: [
       { id: "sexual_vitality",  text: "Sexual desire and vitality" },
@@ -198,21 +226,21 @@ export const TANTRA_PRODUCTS = {
 export const TANTRA_UPSELLS = {
   sleep: {
     name: "Sleep Test Kit",
-    description: "Deep, restorative sleep is when the body rebuilds the chemistry of desire and connection. This kit identifies exactly what's disrupting your recovery.",
+    description: "An optional sleep-information resource to review with a clinician if sleep has been persistently disrupted. It is not a diagnosis.",
     price: "$399",
     shopifyUrl: "https://shop.theurbanmonk.com/products/dss-testing-tier-dss-entry",
     flag: "sleep_flag" as const,
   },
   gut: {
     name: "Gut Health Test Kit",
-    description: "Your gut microbiome directly regulates the hormones and neurochemicals behind desire and emotional connection. This kit reveals what's blocking you at the root.",
+    description: "An optional Fit22 resource that may help support a broader clinician-guided conversation about food sensitivity and gut permeability. It is not a diagnosis.",
     price: "$399",
     shopifyUrl: "https://shop.theurbanmonk.com/products/kbmo-fit-22-gut-permeability-test-kit-with-consultation",
     flag: "gut_flag" as const,
   },
   oral: {
     name: "Oral Health Test Kit",
-    description: "Oral inflammation quietly suppresses the hormones that drive desire and bonding. This kit finds the source.",
+    description: "An optional oral-health information resource to review alongside appropriate dental or medical care. It is not a diagnosis.",
     price: "$399",
     shopifyUrl: "https://shop.theurbanmonk.com/products/orobiome-testing-package",
     flag: "oral_flag" as const,
@@ -239,9 +267,58 @@ export const LIGHTS_ON_COURSE = {
 
 // ─── Routing Logic ────────────────────────────────────────────────────────────
 
+export type TantraCarePath = "intimacy" | "gut_health" | "sleep_health" | "oral_health" | "hormone_health" | "multifactor";
+
+export interface TantraSegmentation {
+  primaryPath: TantraCarePath;
+  carePaths: TantraCarePath[];
+  clinicianFollowUp: boolean;
+  kajabiTags: string[];
+}
+
+export function buildTantraSegmentation(flags: {
+  gutFlag: boolean;
+  sleepFlag: boolean;
+  oralFlag: boolean;
+  hormoneFlag: boolean;
+}): TantraSegmentation {
+  const clinicalPaths: TantraCarePath[] = [];
+  if (flags.hormoneFlag) clinicalPaths.push("hormone_health");
+  if (flags.gutFlag) clinicalPaths.push("gut_health");
+  if (flags.sleepFlag) clinicalPaths.push("sleep_health");
+  if (flags.oralFlag) clinicalPaths.push("oral_health");
+
+  const primaryPath = clinicalPaths.length > 1
+    ? "multifactor"
+    : clinicalPaths[0] ?? "intimacy";
+  const carePaths = ["intimacy", ...clinicalPaths] as TantraCarePath[];
+  const pathTags = clinicalPaths.map((path) => `tantra-path-${path.replace("_", "-")}`);
+
+  return {
+    primaryPath,
+    carePaths,
+    clinicianFollowUp: clinicalPaths.length > 0,
+    kajabiTags: [
+      "tantra-path-intimacy",
+      ...pathTags,
+      ...(clinicalPaths.length > 1 ? ["tantra-path-multifactor"] : []),
+      ...(clinicalPaths.length > 0 ? ["tantra-clinician-follow-up"] : []),
+    ],
+  };
+}
+
 export function routeToProduct(
   answers: Record<string, string | string[]>
-): { result: keyof typeof TANTRA_PRODUCTS; gender: "male" | "female" | "couple" | "unknown"; gutFlag: boolean; sleepFlag: boolean; oralFlag: boolean } {
+): {
+  result: keyof typeof TANTRA_PRODUCTS;
+  gender: "male" | "female" | "couple" | "unknown";
+  gutFlag: boolean;
+  sleepFlag: boolean;
+  oralFlag: boolean;
+  hormoneFlag: boolean;
+  segmentation: TantraSegmentation;
+  isCouple: boolean;
+} {
   // Gender routing from q_who
   const whoAnswer = answers["q_who"] as string;
   let gender: "male" | "female" | "couple" | "unknown" = "unknown";
@@ -261,8 +338,14 @@ export function routeToProduct(
   const gutFlag = symptomsArr.includes("gut_issues");
   const sleepFlag = symptomsArr.includes("poor_sleep");
   const oralFlag = symptomsArr.includes("oral_issues");
+  const hormoneFlag = ["q_hormone_symptoms", "q_hormone_male"].some((questionId) => {
+    const answer = answers[questionId] ?? [];
+    const selected = Array.isArray(answer) ? answer : [answer];
+    return selected.some((value) => value !== "none");
+  });
+  const segmentation = buildTantraSegmentation({ gutFlag, sleepFlag, oralFlag, hormoneFlag });
 
-  return { result, gender, gutFlag, sleepFlag, oralFlag, isCouple: gender === "couple" };
+  return { result, gender, gutFlag, sleepFlag, oralFlag, hormoneFlag, segmentation, isCouple: gender === "couple" };
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -304,7 +387,7 @@ export const tantraQuizRouter = router({
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
 
-      const { result, gender, gutFlag, sleepFlag, oralFlag } = routeToProduct(input.answers);
+      const { result, gender, gutFlag, sleepFlag, oralFlag, hormoneFlag, segmentation } = routeToProduct(input.answers);
       const product = TANTRA_PRODUCTS[result];
       const now = Date.now();
 
@@ -316,6 +399,8 @@ export const tantraQuizRouter = router({
           gutFlag,
           sleepFlag,
           oralFlag,
+          hormoneFlag,
+          referralPath: segmentation.primaryPath,
           completedAt: now,
         })
         .where(eq(tantraQuizLeads.sessionId, input.sessionId));
@@ -331,7 +416,13 @@ export const tantraQuizRouter = router({
           gender,
           product,
           upsells,
-          flags: { gutFlag, sleepFlag, oralFlag },
+          flags: { gutFlag, sleepFlag, oralFlag, hormoneFlag },
+          segmentation,
+          clinicalResources: {
+            fit22: TANTRA_UPSELLS.gut,
+            sleep: sleepFlag ? TANTRA_UPSELLS.sleep : null,
+            oral: oralFlag ? TANTRA_UPSELLS.oral : null,
+          },
           isCouple: gender === "couple",
           himProduct: gender === "couple" ? TANTRA_PRODUCTS.tantra_him : null,
           herProduct: gender === "couple" ? TANTRA_PRODUCTS.tantra_her : null,
@@ -383,6 +474,12 @@ export const tantraQuizRouter = router({
       if (session.gutFlag) upsells.push(TANTRA_UPSELLS.gut);
       if (session.sleepFlag) upsells.push(TANTRA_UPSELLS.sleep);
       if (session.oralFlag) upsells.push(TANTRA_UPSELLS.oral);
+      const segmentation = buildTantraSegmentation({
+        gutFlag: session.gutFlag,
+        sleepFlag: session.sleepFlag,
+        oralFlag: session.oralFlag,
+        hormoneFlag: session.hormoneFlag,
+      });
 
       // ── Fire all side effects in the background — do NOT block the response ──
       // The user sees results instantly; Kajabi/Klaviyo/Gmail/notify run async.
@@ -416,6 +513,9 @@ export const tantraQuizRouter = router({
             if (sessionSnapshot.gutFlag) await kajabiAddTagByName({ contactId: contact.id, tagName: "tantra-flag-gut" });
             if (sessionSnapshot.sleepFlag) await kajabiAddTagByName({ contactId: contact.id, tagName: "tantra-flag-sleep" });
             if (sessionSnapshot.oralFlag) await kajabiAddTagByName({ contactId: contact.id, tagName: "tantra-flag-oral" });
+            for (const tagName of segmentation.kajabiTags) {
+              await kajabiAddTagByName({ contactId: contact.id, tagName });
+            }
             const db2 = await getDb();
             if (db2) await db2.update(tantraQuizLeads)
               .set({ kajabiTagged: true, kajabiTaggedAt: now })
@@ -434,21 +534,37 @@ export const tantraQuizRouter = router({
             const upsellLines = upsellsSnapshot.map(u =>
               `* ${u.name} (${u.price}) - ${u.description.replace(/\u2014/g, '-').replace(/\u2013/g, '-')}\n  Order: ${u.shopifyUrl ?? "shop.theurbanmonk.com"}`
             ).join("\n\n");
+            const hasClinicalFlags = Boolean(
+              sessionSnapshot.hormoneFlag || sessionSnapshot.gutFlag || sessionSnapshot.sleepFlag || sessionSnapshot.oralFlag
+            );
+            const clinicalGuidance = hasClinicalFlags
+              ? [
+                  `WHAT TO CONSIDER FIRST:`,
+                  `Your responses suggest that some factors may be worth discussing with a licensed clinician. This quiz cannot diagnose a condition or identify the cause of a symptom.`,
+                  sessionSnapshot.hormoneFlag ? `* Hormone-related factors may be worth discussing. A clinician can decide whether a hormone-focused assessment is appropriate; this quiz cannot diagnose a hormone condition or menopausal status.` : ``,
+                  sessionSnapshot.gutFlag ? `* Persistent digestive symptoms warrant clinical evaluation; this quiz cannot diagnose a digestive condition.` : ``,
+                  sessionSnapshot.sleepFlag ? `* Persistent sleep disruption warrants clinical evaluation; this quiz cannot diagnose a sleep disorder.` : ``,
+                  sessionSnapshot.oralFlag ? `* Persistent mouth or gum symptoms may warrant discussion with an appropriate dental or medical clinician.` : ``,
+                  ``,
+                  `OPTIONAL CONNECTION PATH: ${productSnapshot.name}`,
+                  `If you would like a jump start on reconnecting with your partner while you address these factors, you may explore the physician-guided intake below.`,
+                ].filter(Boolean)
+              : [`YOUR RECOMMENDATION: ${productSnapshot.name}`, ``, productSnapshot.description];
             const emailBody = [
               `Hi ${firstName},`,``,`Your Tantra Vitality Quiz results are ready.`,``,
-              `YOUR RECOMMENDATION: ${productSnapshot.name}`,``,`${productSnapshot.description}`,``,
+              ...clinicalGuidance, ``,
               `ACTIVE INGREDIENTS:`,
               `* Oxytocin 40IU - the bonding molecule`,
               `* Bremelanotide 2mg - reawakens desire`,
               `* ${ingredientNote}`,``,
-              `Price: ${productSnapshot.price} per month`,`Order here: ${productSnapshot.shopifyUrl}`,``,
+              `Try it for 30 days: ${productSnapshot.price}`,`Order here: ${productSnapshot.shopifyUrl}`,``,
               upsellLines,``,
               `Dr. Pedram Shojai, OMD`,
             ].join("\n");
             await sendGmailOutreach({
               to: input.email,
               toName: input.name,
-              subject: `Your Tantra Vitality Results - ${productSnapshot.name} Recommended`,
+              subject: hasClinicalFlags ? `Your Tantra Quiz Results: Clinician-Guided Next Steps` : `Your Tantra Vitality Results - ${productSnapshot.name} Recommended`,
               body: emailBody,
             });
           } catch (e) {
@@ -466,7 +582,7 @@ export const tantraQuizRouter = router({
           ].filter(Boolean).join(", ") || "None";
           await notifyOwner({
             title: `🌿 Tantra Quiz Complete — ${productName}`,
-            content: `${firstName} (${input.email}) completed the Tantra Vitality Quiz.\n\nRecommendation: ${productName}\nGender: ${sessionSnapshot.gender}\nUpsell flags: ${flags}\nKajabi tagged: ${kajabiTagged ? "✅" : "❌"}\nUTM: ${sessionSnapshot.utmCampaign ?? "direct"}`,
+            content: `${firstName} (${input.email}) completed the Tantra Vitality Quiz.\n\nRecommendation: ${productName}\nGender: ${sessionSnapshot.gender}\nIntake pathway: ${segmentation.primaryPath}\nClinician follow-up: ${segmentation.clinicianFollowUp ? "Yes" : "No"}\nExisting test-resource flags: ${flags}\nKajabi tagged: ${kajabiTagged ? "✅" : "❌"}\nUTM: ${sessionSnapshot.utmCampaign ?? "direct"}`,
           });
         } catch (e) {
           console.warn("[tantraQuiz] notifyOwner failed (non-fatal):", e);
@@ -480,6 +596,10 @@ export const tantraQuizRouter = router({
             gutFlag: sessionSnapshot.gutFlag ?? false,
             sleepFlag: sessionSnapshot.sleepFlag ?? false,
             oralFlag: sessionSnapshot.oralFlag ?? false,
+            hormoneFlag: sessionSnapshot.hormoneFlag ?? false,
+            primaryPath: segmentation.primaryPath,
+            carePaths: segmentation.carePaths,
+            clinicianFollowUp: segmentation.clinicianFollowUp,
           });
         } catch (e) {
           console.warn("[tantraQuiz] Klaviyo push failed (non-fatal):", e);
@@ -493,6 +613,7 @@ export const tantraQuizRouter = router({
         result: session.result,
         product,
         upsells,
+        segmentation,
         tantraCourse: TANTRA_COURSE,
         lightsOn: LIGHTS_ON_COURSE,
       };

@@ -3961,7 +3961,7 @@ export type InsertWeeklyDeepDive = typeof weeklyDeepDives.$inferInsert;
 // ─── Tantra Quiz Funnel ────────────────────────────────────────────────────────
 // Captures leads from the /quiz/tantra funnel.
 // Gender routing: male → Tantra Him ($185), female → Tantra Her ($185), both → Bundle ($369)
-// Downstream flags: gut_flag, sleep_flag, oral_flag → conditional test kit upsells
+// Derived triage signals and referral_path drive clinician-guided segmentation.
 
 export const tantraQuizLeads = mysqlTable("tantra_quiz_leads", {
   id: int("id").autoincrement().primaryKey(),
@@ -3972,6 +3972,8 @@ export const tantraQuizLeads = mysqlTable("tantra_quiz_leads", {
   gutFlag: boolean("gut_flag").notNull().default(false),
   sleepFlag: boolean("sleep_flag").notNull().default(false),
   oralFlag: boolean("oral_flag").notNull().default(false),
+  hormoneFlag: boolean("hormone_flag").notNull().default(false),
+  referralPath: varchar("referral_path", { length: 32 }).notNull().default("intimacy"),
   email: varchar("email", { length: 255 }),
   name: varchar("name", { length: 255 }),
   emailCapturedAt: bigint("email_captured_at", { mode: "number" }),

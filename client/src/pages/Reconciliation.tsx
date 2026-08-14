@@ -44,9 +44,25 @@ function fmt(cents: number) {
 function fmtD(n: number) {
   return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
-function todayStr() { return new Date().toISOString().split("T")[0]; }
-function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split("T")[0]; }
-function monthStart() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`; }
+const REPORTING_TIME_ZONE = "America/Chicago";
+const CENTRAL_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: REPORTING_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+function centralDateString(date = new Date()) {
+  const values = Object.fromEntries(
+    CENTRAL_DATE_FORMATTER
+      .formatToParts(date)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
+  );
+  return `${values.year}-${values.month}-${values.day}`;
+}
+function todayStr() { return centralDateString(); }
+function daysAgo(n: number) { return centralDateString(new Date(Date.now() - n * 86_400_000)); }
+function monthStart() { return `${todayStr().slice(0, 7)}-01`; }
 
 // Preset definitions are functions so dates are always computed fresh at click time,
 // not frozen to the module-load timestamp.
@@ -116,7 +132,7 @@ export default function Reconciliation() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Sales Reconciliation</h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Meta spend vs. Kajabi + Shopify revenue — scoped to the selected funnel only.{" "}
+              Agora-only Meta spend vs. recorded Kajabi + Shopify revenue — scoped to the selected funnel and Central time.{" "}
               <span className="text-amber-500 font-medium">
                 ⚠️ Meta pixel cannot see Kajabi or Shopify sales — always verify here.
               </span>
@@ -342,7 +358,7 @@ export default function Reconciliation() {
             <Card>
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <DollarSign className="h-3.5 w-3.5" /> Total Revenue
+                  <DollarSign className="h-3.5 w-3.5" /> {summary?.filterApplied ? "Filtered Revenue" : "Recorded Revenue"}
                 </div>
                 <div className="text-2xl font-bold text-green-600">{fmtD(summary?.totalRevenue ?? 0)}</div>
                 <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
@@ -363,11 +379,11 @@ export default function Reconciliation() {
               </CardContent>
             </Card>
 
-            {/* ROAS */}
+            {/* Recorded ROAS */}
             <Card>
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <TrendingUp className="h-3.5 w-3.5" /> True ROAS
+                  <TrendingUp className="h-3.5 w-3.5" /> {summary?.filterApplied ? "Filtered ROAS" : "Recorded Revenue ROAS"}
                 </div>
                 {summary?.roas != null ? (
                   <>
@@ -377,6 +393,11 @@ export default function Reconciliation() {
                     <div className="text-xs text-muted-foreground mt-1">
                       {summary.roas >= 3 ? "✅ Strong" : summary.roas >= 1.5 ? "⚠️ Marginal" : "🔴 Below break-even"}
                     </div>
+                    {!summary?.filterApplied && summary?.leadMatchedRoas != null && (
+                      <div className="text-xs text-muted-foreground mt-1 border-t pt-1">
+                        Lead-matched lower bound: <strong className="text-foreground">{summary.leadMatchedRoas.toFixed(2)}x</strong>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="text-2xl font-bold text-muted-foreground">—</div>
@@ -403,6 +424,17 @@ export default function Reconciliation() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {data && !loading && summary?.reportingBasis && (
+          <Card className="border-primary/25 bg-primary/5">
+            <CardContent className="pt-4 text-xs text-muted-foreground leading-relaxed space-y-1.5">
+              <div className="font-medium text-foreground">Spend-decision methodology</div>
+              <p><strong>Recorded Revenue ROAS</strong> is all eligible paid Kajabi and mapped Shopify transactions in the selected Central-time date range divided by Agora-only Meta spend. It is the primary same-day operating metric.</p>
+              <p><strong>Lead-matched lower bound</strong> counts only recorded purchases whose buyer email has matched a tracked Meta/Manus lead. It will understate early results whenever a valid purchase has not yet received an email match.</p>
+              <p>Reporting time zone: <strong>{summary.reportingBasis.dateTimeZone}</strong>. Source data refreshes when you select a date range or press Refresh.</p>
+            </CardContent>
+          </Card>
         )}
 
         {/* Interconnected lead-acquisition cohort economics */}

@@ -4781,8 +4781,13 @@ Pricing model (corrected):
 - [x] Resolved the production Vite build termination by splitting public funnels from four smaller internal Hub bundles; full `pnpm build` now passes, with public and Hub static routes smoke-tested at HTTP 200.
 - [ ] Diagnose why the public deployment still serves the prior bundle and returns 404 for `/tantra/love-bank` after the successful split-build checkpoint.
 - [ ] Resolve the platform deployment failure that stops immediately after Metal-builder scheduling, despite the local split production build completing successfully.
-- [ ] Fix reconciliation dashboard "Today" preset — clicking Today leaves both date pickers on the previous day instead of updating them to the current date.
-- [ ] Fix $199 OCUS Kajabi revenue storage — webhook stores amount_cents=0; verify inference logic fired and correct the stored amount so the dashboard revenue total is accurate.
+- [x] Documented the verified local build stages and the remote builder's no-log termination for platform escalation in `docs/platform-deployment-escalation-2026-08-13.md`.
+- [x] Calculated and reported the verified Interconnected ROAS using reconciled recorded revenue and Agora-only Meta spend; the 13 Aug methodology is documented in `docs/interconnected-reporting-methodology-2026-08-14.md`.
+- [x] Created and verified an email-ready PDF with the approved 2026 Hinman dental conference program titles: `hinman-program-titles-2026/main.pdf`.
+- [x] Reconciled and repaired the Interconnected dashboard methodology: Central-time boundaries, explicit Recorded Revenue ROAS, lead-matched lower bound, and a verified 13 Aug source audit are documented in `docs/interconnected-reporting-methodology-2026-08-14.md`.
+- [x] Restored the My Browser connector and completed final source-system validation of the Interconnected reporting repair.
+- [x] Fix reconciliation dashboard "Today" preset — clicking Today now uses fresh Central-time dates, alongside the prior stale-module-load correction.
+- [x] Fix $199 OCUS Kajabi revenue storage — the resolved amount and funnel source are now used in the current reporting path; the 13 Aug ledger includes two recorded $199 OCUS purchases.
 - [x] Fixed reconciliation dashboard "Today" preset — PRESETS now uses getRange() functions called at click time; no more stale module-load date.
 - [x] Fixed Kajabi purchase webhook amountCents computation — now resolved after inference block so funnel_source correctly maps to "interconnected" for generic zero-amount webhooks; backfilled today's 13 records to $67 each (prior-purchase lookup found no $199 OCUS buyer among today's webhooks).
 - [x] Repair the specific WordPress draft whose persisted H2/H3 headings still fail Yoast’s keyphrase-subheading check

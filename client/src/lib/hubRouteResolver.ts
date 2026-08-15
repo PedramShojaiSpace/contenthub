@@ -8,7 +8,8 @@ const contentPaths = new Set([
   "/ask-urban-monk", "/presence-assessment", "/syndication", "/va", "/ads",
   "/lead-scrubber", "/email-optimizer", "/klaviyo-flow-optimizer", "/kids-research",
   "/kids-review", "/collective-sourcing", "/soro-intelligence", "/plain-text-email",
-  "/va-tasks", "/kajabi-live", "/advertorial-builder",
+  "/va-tasks", "/kajabi-live", "/advertorial-builder", "/webinar", "/webinar-intelligence",
+  "/viral-studio", "/video-variants", "/video-production", "/ebook-generator",
 ]);
 const growthPaths = new Set([
   "/upstream", "/meta-ads", "/ad-attribution", "/campaign-monitor", "/historical-posts",

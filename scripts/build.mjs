@@ -7,7 +7,10 @@ import { fileURLToPath } from "node:url";
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const viteCli = path.join(projectRoot, "node_modules", "vite", "bin", "vite.js");
 const esbuildCli = path.join(projectRoot, "node_modules", ".bin", "esbuild");
-const nodeOptions = process.env.NODE_OPTIONS || "--max-old-space-size=2200";
+// Keep each staged Vite process below the sandbox memory ceiling. Bundles build
+// sequentially, so a conservative per-process cap is safer than a larger heap
+// that can trigger an external SIGTERM before later Hub bundles are emitted.
+const nodeOptions = process.env.NODE_OPTIONS || "--max-old-space-size=1800";
 
 const bundles = [
   { label: "public funnel", mode: "public", from: "dist/public/public-index.html", to: "dist/public/index.html" },

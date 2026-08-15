@@ -26,7 +26,9 @@ function pathMatches(path: string, candidates: Set<string>) {
 function normalizeHubToolPath(path: string) {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   const match = /^\/hub(?:\/(?:core|content|growth|analytics))?(\/.*)?$/.exec(normalized);
-  return match ? (match[1] || "/") : normalized;
+  if (match) return match[1] || "/";
+  const nestedBundleMatch = /^\/(?:core|content|growth|analytics)(\/.*)$/.exec(normalized);
+  return nestedBundleMatch ? nestedBundleMatch[1] : normalized;
 }
 
 export function getHubBundleForPath(path: string): HubBundle {

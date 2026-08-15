@@ -4,7 +4,7 @@ if (!apiKey) throw new Error("KLAVIYO_PRIVATE_KEY is required");
 const ACTION_ID = "114303072";
 const EXPECTED_MESSAGE_NAME = "Day 0 opt in EG sp26";
 const PRODUCT_URL = "https://shop.theurbanmonk.com/products/interconnected-the-complete-healing-protocol?utm_source=copyToPasteBoard&amp;utm_medium=product-links&amp;utm_content=web";
-const OFFER_URL = "https://content.theurbanmonk.com/interconnected/offer?utm_source=klaviyo&amp;utm_medium=email&amp;utm_campaign=interconnected_14day&amp;utm_content=day0_67_offer_email";
+const OFFER_URL = "https://content.theurbanmonk.com/interconnected/offer-ko?utm_source=klaviyo&amp;utm_medium=email&amp;utm_campaign=interconnected_14day&amp;utm_content=day0_67_offer_email";
 const apply = process.argv.includes("--apply");
 
 const headers = {

@@ -29,6 +29,15 @@ const template = await request(`/templates/${message.template_id}/`);
 const html = template.data?.attributes?.html ?? "";
 const links = Array.from(html.matchAll(/href=["']([^"']+)["']/gi)).map((match) => match[1]);
 
+const writeHtmlPath = process.argv[process.argv.indexOf("--write-html") + 1];
+if (process.argv.includes("--write-html")) {
+  if (!writeHtmlPath || writeHtmlPath === "--write-html") {
+    throw new Error("Usage: --write-html <absolute-path>");
+  }
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(writeHtmlPath, html, "utf8");
+}
+
 process.stdout.write(JSON.stringify({
   flow: { id: flow.data?.id, name: flow.data?.attributes?.name, status: flow.data?.attributes?.status },
   action: { id: action.id, type: action.type, status: action.data?.status ?? action.data?.main_action?.data?.status ?? null },
@@ -45,5 +54,6 @@ process.stdout.write(JSON.stringify({
     editorType: template.data?.attributes?.editor_type,
     htmlLength: html.length,
     links,
+    savedHtmlPath: process.argv.includes("--write-html") ? writeHtmlPath : null,
   },
 }, null, 2));

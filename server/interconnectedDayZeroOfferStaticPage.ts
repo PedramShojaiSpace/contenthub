@@ -2,25 +2,42 @@
  * Interconnected Day 0 Offer Page
  *
  * A compact, static email landing page that provides context before the $67
- * Shopify checkout. It intentionally avoids the high-pressure thank-you-page
- * framing while preserving the user's one-time Day 0 invitation.
+ * channel-specific checkout. It intentionally avoids the high-pressure
+ * thank-you-page framing while preserving the user's one-time Day 0 invitation.
  */
 
 const SHOPIFY_67_CART_PERMALINK = "https://shop.theurbanmonk.com/cart/48959577653402:1";
+const KAJABI_67_CHECKOUT_URL = "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout";
 
-function buildTrackedCheckoutUrl(): string {
+export type InterconnectedDayZeroOfferChannel = "ko" | "kajabi";
+
+function buildKoCheckoutUrl(): string {
   const params = new URLSearchParams({
     destination: SHOPIFY_67_CART_PERMALINK,
     utm_source: "klaviyo",
     utm_medium: "email",
     utm_campaign: "interconnected_14day",
-    utm_content: "day0_67_offer_page",
+    utm_content: "day0_67_offer_page_ko",
   });
   return `/r/checkout?${params.toString()}`;
 }
 
-export function renderInterconnectedDayZeroOfferPage(): string {
-  const checkoutUrl = buildTrackedCheckoutUrl();
+function buildKajabiCheckoutUrl(): string {
+  const params = new URLSearchParams({
+    utm_source: "kajabi",
+    utm_medium: "email",
+    utm_campaign: "interconnected_14day",
+    utm_content: "day0_67_offer_page_kajabi",
+  });
+  return `${KAJABI_67_CHECKOUT_URL}?${params.toString()}`;
+}
+
+export function renderInterconnectedDayZeroOfferPage(
+  channel: InterconnectedDayZeroOfferChannel = "ko",
+): string {
+  const isKajabi = channel === "kajabi";
+  const checkoutUrl = isKajabi ? buildKajabiCheckoutUrl() : buildKoCheckoutUrl();
+  const checkoutLabel = isKajabi ? "Secure Kajabi checkout" : "Secure Shopify checkout";
   const year = new Date().getFullYear();
 
   return `<!doctype html>
@@ -108,7 +125,7 @@ export function renderInterconnectedDayZeroOfferPage(): string {
         <p class="price-row"><span class="was">$197</span><span class="now">$67</span></p>
         <p class="price-note">One payment. No recurring charge.</p>
         <a class="cta" href="${checkoutUrl}" onclick="fireCheckout()">Get the All-Access Bundle for $67</a>
-        <p class="cta-note">Secure Shopify checkout · Immediate access after purchase</p>
+        <p class="cta-note">${checkoutLabel} · Immediate access after purchase</p>
       </div>
     </section>
 
@@ -132,3 +149,10 @@ export function renderInterconnectedDayZeroOfferPage(): string {
 </html>`;
 }
 
+export function renderInterconnectedDayZeroKoOfferPage(): string {
+  return renderInterconnectedDayZeroOfferPage("ko");
+}
+
+export function renderInterconnectedDayZeroKajabiOfferPage(): string {
+  return renderInterconnectedDayZeroOfferPage("kajabi");
+}

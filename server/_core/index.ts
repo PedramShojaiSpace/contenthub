@@ -5,7 +5,10 @@ import { createServer } from "http";
 import { renderInterconnectedPage } from "../interconnectedStaticPage";
 import { renderInterconnectedBPage } from "../interconnectedBStaticPage";
 import { renderInterconnectedThankYouPage } from "../interconnectedThankYouStaticPage";
-import { renderInterconnectedDayZeroOfferPage } from "../interconnectedDayZeroOfferStaticPage";
+import {
+  renderInterconnectedDayZeroKajabiOfferPage,
+  renderInterconnectedDayZeroKoOfferPage,
+} from "../interconnectedDayZeroOfferStaticPage";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
@@ -1304,16 +1307,30 @@ async function startServer() {
     }
   });
 
-  // Contextual Day 0 sales page for email subscribers. This route stays static
-  // and no-store so it loads quickly without the React bundle.
-  app.get("/interconnected/offer", async (_req, res) => {
+  // Contextual KO/Klaviyo sales page for email subscribers. The legacy generic
+  // route remains an alias so previously delivered KO emails retain Shopify attribution.
+  app.get(["/interconnected/offer", "/interconnected/offer-ko"], async (_req, res) => {
     try {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "no-store");
-      return res.send(renderInterconnectedDayZeroOfferPage());
+      return res.send(renderInterconnectedDayZeroKoOfferPage());
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[interconnected-day0-offer] Error:`, msg);
+      console.error(`[interconnected-day0-offer-ko] Error:`, msg);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
+  // Kajabi-origin Day 0 sales page. Its identical context page preserves the
+  // Kajabi payment and attribution stack rather than sending traffic to Shopify.
+  app.get("/interconnected/offer-kajabi", async (_req, res) => {
+    try {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      return res.send(renderInterconnectedDayZeroKajabiOfferPage());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[interconnected-day0-offer-kajabi] Error:`, msg);
       return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
     }
   });

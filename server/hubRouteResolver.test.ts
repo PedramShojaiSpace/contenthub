@@ -7,6 +7,11 @@ describe("Hub cross-bundle route resolver", () => {
     expect(getHubPublicHref("/yt-analytics")).toBe("/hub/growth/yt-analytics");
   });
 
+  it("routes heavyweight creative-production tools to the content bundle", () => {
+    expect(getHubBundleForPath("/video-production")).toBe("content");
+    expect(getHubPublicHref("/ebook-generator")).toBe("/hub/content/ebook-generator");
+  });
+
   it("redirects a cross-bundle sidebar selection without rewriting same-bundle navigation", () => {
     expect(getHubNavigationHref("/yt-analytics", "/hub/analytics/reconciliation", "?view=week"))
       .toBe("/hub/growth/yt-analytics?view=week");

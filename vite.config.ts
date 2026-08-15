@@ -177,10 +177,11 @@ export default defineConfig(({ mode }) => {
       : path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: !hubEntry,
     chunkSizeWarningLimit: 1000,
-    // The public app remains minified. The internal operator bundles prioritize
-    // build reliability; they are behind authenticated Hub routes and use lazy
-    // route chunks rather than one giant rendered output.
-    minify: hubEntry ? false : undefined,
+    // Minification materially reduces Rollup's peak memory during the large
+    // Hub chunk-rendering phase. This keeps staged production builds from
+    // being terminated before fresh Hub assets can be deployed.
+    minify: "esbuild",
+    sourcemap: false,
     reportCompressedSize: !hubEntry,
     rollupOptions: {
       input: {
@@ -190,7 +191,14 @@ export default defineConfig(({ mode }) => {
           ? path.resolve(clientRoot, `${hubEntry}-index.html`)
           : path.resolve(clientRoot, "public-index.html"),
       },
-      output: {},
+      output: hubEntry === "hub-core"
+        ? {
+            manualChunks(id) {
+              if (id.includes("node_modules")) return "hub-core-vendor";
+              return undefined;
+            },
+          }
+        : {},
     },
   },
   server: {

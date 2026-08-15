@@ -32,6 +32,12 @@ const PlainTextEmailGenerator = lazy(() => import("./pages/PlainTextEmailGenerat
 const VATaskHub = lazy(() => import("./pages/VATaskHub"));
 const KajabiLiveHub = lazy(() => import("./pages/KajabiLiveHub"));
 const AdvertorialBuilder = lazy(() => import("./pages/AdvertorialBuilder"));
+const WebinarBuilder = lazy(() => import("./pages/WebinarBuilder"));
+const WebinarIntelligencePage = lazy(() => import("./pages/WebinarIntelligence"));
+const ViralStudio = lazy(() => import("./pages/ViralStudio"));
+const VideoVariantFactory = lazy(() => import("./pages/VideoVariantFactory"));
+const VideoProductionSession = lazy(() => import("./pages/VideoProductionSession"));
+const EBookGenerator = lazy(() => import("./pages/EBookGenerator"));
 
 export default function HubContentApp() {
   return <HubShell>
@@ -65,5 +71,11 @@ export default function HubContentApp() {
     <Route path="/va-tasks" component={VATaskHub} />
     <Route path="/kajabi-live" component={KajabiLiveHub} />
     <Route path="/advertorial-builder" component={AdvertorialBuilder} />
+    <Route path="/webinar" component={WebinarBuilder} />
+    <Route path="/webinar-intelligence" component={WebinarIntelligencePage} />
+    <Route path="/viral-studio" component={ViralStudio} />
+    <Route path="/video-variants" component={VideoVariantFactory} />
+    <Route path="/video-production" component={VideoProductionSession} />
+    <Route path="/ebook-generator" component={EBookGenerator} />
   </HubShell>;
 }

@@ -40,6 +40,10 @@ export default function InterconnectedEmailRevenue() {
           </div>
         </header>
 
+        <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-950">
+          <strong>Collection contract:</strong> KO/Klaviyo performance refreshes daily at 15:15 UTC using the prior 14 completed UTC days. Kajabi remains a separate payment and email-reporting path; it is never backfilled from Klaviyo or Shopify activity.
+        </div>
+
         <div className="grid gap-4 md:grid-cols-2">
           {(report.data?.paths ?? ["kajabi", "ko_klaviyo"].map((funnelPath) => typeof funnelPath === "string" ? { funnelPath, snapshots: [], checkoutTouches: [], cohort: { leads: 0, purchases: 0, revenueCents: 0, ltvCents: 0 } } : funnelPath)).map((path) => {
             const isKajabi = path.funnelPath === "kajabi";

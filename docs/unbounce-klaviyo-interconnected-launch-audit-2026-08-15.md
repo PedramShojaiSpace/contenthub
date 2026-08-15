@@ -89,3 +89,11 @@ The public page contains substantial legacy disease-treatment language such as �
 [1] [Klaviyo Developers — Track Klaviyo form activity using JavaScript](https://developers.klaviyo.com/en/docs/track_klaviyo_form_activity_using_javascript)  
 [2] [Meta Developers — Handling Duplicate Pixel and Conversions API Events](https://developers.facebook.com/documentation/ads-commerce/conversions-api/deduplicate-pixel-and-server-events)  
 [3] [Meta Developers — Conversion Tracking](https://developers.facebook.com/documentation/meta-pixel/implementation/conversion-tracking)
+
+## Controlled Test Update — August 15, 2026
+
+The Unbounce form integration is functioning. Klaviyo recorded the controlled submission as `Subscribed to List` and `Subscribed to Email Marketing`; its subscription event names the required **Interconnected Free Screening Opt-Ins** list (`Rrx44Q`). The live Interconnected flow (`YyFZPu`) is metric-triggered from that same list, has no profile filter, and has a live Day 0 action with Smart Sending disabled.
+
+Klaviyo recorded the live Day 0 email as **received at 16:17:08 UTC** by the controlled profile. This confirms the form-to-list-to-flow delivery path. The later Gmail-plus-alias test normalized to the same existing Klaviyo profile, so it is not a clean, separate-profile test; use a genuinely unused mailbox for any future clean test.
+
+The Content Hub bridge endpoint remains deployed and origin-restricted. However, no matching local `interconnectedLeads` bridge receipt was found for either controlled submission. Browser Pixel/CAPI proof is therefore **still pending** until a new, unused-mailbox test produces a bridge record carrying its shared event ID. Do not infer CAPI success solely from the confirmed Klaviyo email delivery.

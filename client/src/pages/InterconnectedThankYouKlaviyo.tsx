@@ -398,7 +398,7 @@ export default function InterconnectedThankYouKlaviyo() {
             WAIT! Don't Close or Navigate Away From This Page!
           </p>
           <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight" style={{ fontFamily: "Georgia, serif" }}>
-            Wait, one more thing!
+            You are registered. Listen to this important message first.
           </h1>
 
           {/* WISTIA VIDEO EMBED */}

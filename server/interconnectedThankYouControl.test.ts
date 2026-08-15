@@ -35,4 +35,21 @@ describe("Interconnected Thank You control routing", () => {
     expect(pageSource).toContain("89xb1oskij");
     expect(pageSource).not.toContain("10cdtpm3il");
   });
+
+  it("uses the approved registration-first headline on both the Kajabi-control and Klaviyo variants", () => {
+    const controlSource = readFileSync(
+      new URL("../client/src/pages/InterconnectedThankYouB.tsx", import.meta.url),
+      "utf8"
+    );
+    const klaviyoSource = readFileSync(
+      new URL("../client/src/pages/InterconnectedThankYouKlaviyo.tsx", import.meta.url),
+      "utf8"
+    );
+    const approvedHeadline = "You are registered. Listen to this important message first.";
+
+    expect(controlSource).toContain(approvedHeadline);
+    expect(klaviyoSource).toContain(approvedHeadline);
+    expect(controlSource).not.toContain("Wait, one more thing!");
+    expect(klaviyoSource).not.toContain("Wait, one more thing!");
+  });
 });

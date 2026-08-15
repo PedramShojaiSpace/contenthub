@@ -93,6 +93,7 @@ const ownerItems = [
   { icon: Zap, label: "Interconnected HQ", path: "/interconnected-command" },
   { icon: LayoutDashboard, label: "Funnel Command", path: "/funnels" },
   { icon: Target, label: "Funnel Economics", path: "/funnel-economics" },
+  { icon: BarChart3, label: "Email → Revenue", path: "/interconnected-email-revenue" },
   { icon: Zap, label: "Funnel Advisor", path: "/funnel-advisor" },
   { icon: Play, label: "MOF Content Engine", path: "/mof-content" },
   { icon: Brain, label: "Analyze", path: "/analyze" },

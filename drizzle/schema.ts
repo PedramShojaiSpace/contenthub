@@ -2870,6 +2870,72 @@ export const leadPurchaseAttributions = mysqlTable("lead_purchase_attributions",
 export type LeadPurchaseAttribution = typeof leadPurchaseAttributions.$inferSelect;
 export type InsertLeadPurchaseAttribution = typeof leadPurchaseAttributions.$inferInsert;
 
+// ─── Interconnected Email → Revenue Reporting ─────────────────────────────────
+// These tables deliberately retain the funnel path on every new record. The
+// Kajabi payment stack and the KO/Klaviyo-to-Shopify payment stack are reported
+// side by side, never pooled into one A/B decision metric.
+export const interconnectedEmailPerformanceSnapshots = mysqlTable("interconnected_email_performance_snapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  snapshotKey: varchar("snapshot_key", { length: 191 }).notNull().unique(),
+  funnelPath: mysqlEnum("funnel_path", ["kajabi", "ko_klaviyo"]).notNull(),
+  platform: mysqlEnum("platform", ["kajabi", "klaviyo"]).notNull(),
+  flowId: varchar("flow_id", { length: 96 }).notNull(),
+  messageId: varchar("message_id", { length: 96 }).notNull(),
+  messageName: varchar("message_name", { length: 255 }),
+  messageKey: varchar("message_key", { length: 128 }),
+  sendChannel: mysqlEnum("send_channel", ["email", "sms"]).notNull().default("email"),
+  windowStart: bigint("window_start", { mode: "number" }).notNull(),
+  windowEnd: bigint("window_end", { mode: "number" }).notNull(),
+  recipients: int("recipients").notNull().default(0),
+  delivered: int("delivered").notNull().default(0),
+  deliveryRate: double("delivery_rate").notNull().default(0),
+  opens: int("opens").notNull().default(0),
+  openRate: double("open_rate").notNull().default(0),
+  clicks: int("clicks").notNull().default(0),
+  clickRate: double("click_rate").notNull().default(0),
+  platformConversions: int("platform_conversions").notNull().default(0),
+  platformRevenueCents: int("platform_revenue_cents").notNull().default(0),
+  rawMetrics: longtext("raw_metrics"),
+  collectedAt: bigint("collected_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+
+export type InterconnectedEmailPerformanceSnapshot = typeof interconnectedEmailPerformanceSnapshots.$inferSelect;
+export type InsertInterconnectedEmailPerformanceSnapshot = typeof interconnectedEmailPerformanceSnapshots.$inferInsert;
+
+// An immutable bridge between a canonical email message key and a first-party
+// checkout click. Shopify order attribution joins through clickToken; Kajabi
+// remains in its own payment path and cannot be credited from this table.
+export const interconnectedEmailCheckoutTouches = mysqlTable("interconnected_email_checkout_touches", {
+  id: int("id").autoincrement().primaryKey(),
+  clickToken: varchar("click_token", { length: 64 }).notNull().unique(),
+  funnelPath: mysqlEnum("funnel_path", ["kajabi", "ko_klaviyo"]).notNull(),
+  platform: mysqlEnum("platform", ["kajabi", "klaviyo"]).notNull(),
+  messageKey: varchar("message_key", { length: 128 }).notNull(),
+  utmSource: varchar("utm_source", { length: 128 }).notNull(),
+  utmMedium: varchar("utm_medium", { length: 128 }).notNull(),
+  utmCampaign: varchar("utm_campaign", { length: 255 }).notNull(),
+  utmContent: varchar("utm_content", { length: 255 }).notNull(),
+  checkoutDestination: varchar("checkout_destination", { length: 1024 }).notNull(),
+  clickedAt: bigint("clicked_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+
+export type InterconnectedEmailCheckoutTouch = typeof interconnectedEmailCheckoutTouches.$inferSelect;
+export type InsertInterconnectedEmailCheckoutTouch = typeof interconnectedEmailCheckoutTouches.$inferInsert;
+
+export const interconnectedEmailReportingSettings = mysqlTable("interconnected_email_reporting_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  klaviyoFlowId: varchar("klaviyo_flow_id", { length: 96 }).notNull().default("VMpbLV"),
+  collectionScheduleTaskUid: varchar("collection_schedule_task_uid", { length: 65 }),
+  lastKlaviyoCollectedAt: bigint("last_klaviyo_collected_at", { mode: "number" }),
+  lastKlaviyoWindowStart: bigint("last_klaviyo_window_start", { mode: "number" }),
+  lastKlaviyoWindowEnd: bigint("last_klaviyo_window_end", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+
+export type InterconnectedEmailReportingSettings = typeof interconnectedEmailReportingSettings.$inferSelect;
+export type InsertInterconnectedEmailReportingSettings = typeof interconnectedEmailReportingSettings.$inferInsert;
+
 // ─── YouTube Pipeline (Operations Bible) ─────────────────────────────────────
 export const youtubePipelineVideos = mysqlTable("youtube_pipeline_videos", {
   id: int("id").autoincrement().primaryKey(),
@@ -4213,6 +4279,9 @@ export const interconnectedLeads = mysqlTable("interconnected_leads", {
   utmMedium: varchar("utm_medium", { length: 128 }),
   utmCampaign: varchar("utm_campaign", { length: 128 }),
   utmContent: varchar("utm_content", { length: 128 }),
+  // The top-down A/B bucket. New leads must be assigned at opt-in and are never
+  // silently moved between Kajabi and KO/Klaviyo payment paths.
+  funnelPath: mysqlEnum("funnel_path", ["kajabi", "ko_klaviyo"]),
   referrer: varchar("referrer", { length: 512 }),
   pageVariant: varchar("page_variant", { length: 10 }).default("A"),
   kajabiTagged: boolean("kajabi_tagged").notNull().default(false),

@@ -12,11 +12,12 @@ import { z } from "zod";
 import crypto from "crypto";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { adClicks, attributedSales } from "../drizzle/schema";
+import { adClicks, attributedSales, interconnectedEmailCheckoutTouches } from "../drizzle/schema";
 import { eq, desc, gte, sql, and, isNotNull } from "drizzle-orm";
 import { ENV } from "./_core/env";
 import { isAuthorizedShopifyWebhook } from "./shopifyWebhookAuth";
 import { buildTrackedCheckoutDestination } from "./emailCheckoutTracking";
+import { isIsolatedEmailAttribution } from "./interconnectedEmailAttributionHygiene";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -410,8 +411,13 @@ export async function handleTrackedEmailCheckout(req: any, res: any) {
     const utmCampaign = typeof req.query.utm_campaign === "string" ? req.query.utm_campaign : "";
     const utmContent = typeof req.query.utm_content === "string" ? req.query.utm_content : undefined;
     const fbclid = typeof req.query.fbclid === "string" ? req.query.fbclid : undefined;
+    const funnelPath = typeof req.query.funnel_path === "string" ? req.query.funnel_path : undefined;
+    const messageKey = typeof req.query.email_key === "string" ? req.query.email_key : undefined;
     if (!destination || !utmSource || !utmMedium || !utmCampaign) {
       return res.status(400).send("Missing checkout destination or required UTM parameters.");
+    }
+    if (!isIsolatedEmailAttribution({ funnelPath, messageKey, utmSource })) {
+      return res.status(400).send("Invalid isolated email-attribution path.");
     }
 
     const db = await getDb();
@@ -431,6 +437,20 @@ export async function handleTrackedEmailCheckout(req: any, res: any) {
       clickedAt: now,
       expiresAt: now + 30 * 24 * 60 * 60 * 1000,
     });
+    if (funnelPath && messageKey) {
+      await db.insert(interconnectedEmailCheckoutTouches).values({
+        clickToken,
+        funnelPath,
+        platform: funnelPath === "kajabi" ? "kajabi" : "klaviyo",
+        messageKey,
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        utmContent: utmContent || messageKey,
+        checkoutDestination: destination,
+        clickedAt: now,
+      });
+    }
     const trackedDestination = buildTrackedCheckoutDestination({
       destination,
       clickToken,

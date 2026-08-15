@@ -11,32 +11,48 @@ const KAJABI_67_CHECKOUT_URL = "https://theacademy.theurbanmonk.com/offers/57E3X
 
 export type InterconnectedDayZeroOfferChannel = "ko" | "kajabi";
 
-function buildKoCheckoutUrl(): string {
+type OfferTrackingQuery = Record<string, unknown>;
+
+function readSafeMessageKey(channel: InterconnectedDayZeroOfferChannel, query: OfferTrackingQuery): string {
+  const supplied = typeof query.email_key === "string" ? query.email_key.trim().toLowerCase() : "";
+  if (/^[a-z0-9_-]{3,128}$/.test(supplied)) return supplied;
+  return channel === "kajabi" ? "kajabi_d00_offer" : "ko_d00_offer";
+}
+
+function buildKoCheckoutUrl(query: OfferTrackingQuery): string {
+  const messageKey = readSafeMessageKey("ko", query);
   const params = new URLSearchParams({
     destination: SHOPIFY_67_CART_PERMALINK,
     utm_source: "klaviyo",
     utm_medium: "email",
     utm_campaign: "interconnected_14day",
-    utm_content: "day0_67_offer_page_ko",
+    utm_content: messageKey,
+    funnel_path: "ko_klaviyo",
+    email_key: messageKey,
   });
   return `/r/checkout?${params.toString()}`;
 }
 
-function buildKajabiCheckoutUrl(): string {
+function buildKajabiCheckoutUrl(query: OfferTrackingQuery): string {
+  const messageKey = readSafeMessageKey("kajabi", query);
   const params = new URLSearchParams({
+    destination: KAJABI_67_CHECKOUT_URL,
     utm_source: "kajabi",
     utm_medium: "email",
     utm_campaign: "interconnected_14day",
-    utm_content: "day0_67_offer_page_kajabi",
+    utm_content: messageKey,
+    funnel_path: "kajabi",
+    email_key: messageKey,
   });
-  return `${KAJABI_67_CHECKOUT_URL}?${params.toString()}`;
+  return `/r/checkout?${params.toString()}`;
 }
 
 export function renderInterconnectedDayZeroOfferPage(
   channel: InterconnectedDayZeroOfferChannel = "ko",
+  query: OfferTrackingQuery = {},
 ): string {
   const isKajabi = channel === "kajabi";
-  const checkoutUrl = isKajabi ? buildKajabiCheckoutUrl() : buildKoCheckoutUrl();
+  const checkoutUrl = isKajabi ? buildKajabiCheckoutUrl(query) : buildKoCheckoutUrl(query);
   const checkoutLabel = isKajabi ? "Secure Kajabi checkout" : "Secure Shopify checkout";
   const year = new Date().getFullYear();
 
@@ -149,10 +165,10 @@ export function renderInterconnectedDayZeroOfferPage(
 </html>`;
 }
 
-export function renderInterconnectedDayZeroKoOfferPage(): string {
-  return renderInterconnectedDayZeroOfferPage("ko");
+export function renderInterconnectedDayZeroKoOfferPage(query: OfferTrackingQuery = {}): string {
+  return renderInterconnectedDayZeroOfferPage("ko", query);
 }
 
-export function renderInterconnectedDayZeroKajabiOfferPage(): string {
-  return renderInterconnectedDayZeroOfferPage("kajabi");
+export function renderInterconnectedDayZeroKajabiOfferPage(query: OfferTrackingQuery = {}): string {
+  return renderInterconnectedDayZeroOfferPage("kajabi", query);
 }

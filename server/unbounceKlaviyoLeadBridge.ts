@@ -105,6 +105,9 @@ export function registerUnbounceKlaviyoLeadBridge(app: Express) {
               utmMedium: input.utmMedium ?? "embedded_form",
               utmCampaign: input.utmCampaign ?? "interconnected_unbounce",
               utmContent: input.utmContent ?? null,
+              // This entry point is permanently owned by the KO/Klaviyo
+              // experiment. Existing leads are intentionally never relabeled.
+              funnelPath: "ko_klaviyo",
               referrer: input.pageUrl,
               pageVariant: "unbounce",
               fbclid: input.fbclid ?? null,

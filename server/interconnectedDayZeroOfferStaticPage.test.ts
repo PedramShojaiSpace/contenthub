@@ -19,18 +19,30 @@ describe("Interconnected Day 0 offer page", () => {
     expect(koHtml).toContain("/r/checkout?");
     expect(koHtml).toContain("destination=https%3A%2F%2Fshop.theurbanmonk.com%2Fcart%2F48959577653402%3A1");
     expect(koHtml).toContain("utm_source=klaviyo");
-    expect(koHtml).toContain("utm_content=day0_67_offer_page_ko");
+    expect(koHtml).toContain("utm_content=ko_d00_offer");
+    expect(koHtml).toContain("funnel_path=ko_klaviyo");
+    expect(koHtml).toContain("email_key=ko_d00_offer");
     expect(koHtml).toContain("Secure Shopify checkout");
     expect(koHtml).not.toContain("theacademy.theurbanmonk.com/offers/57E3XFtT/checkout");
   });
 
   it("keeps Kajabi-origin traffic on the $67 Kajabi checkout stack", () => {
-    expect(kajabiHtml).toContain("https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout?");
+    expect(kajabiHtml).toContain("/r/checkout?");
+    expect(kajabiHtml).toContain("destination=https%3A%2F%2Ftheacademy.theurbanmonk.com%2Foffers%2F57E3XFtT%2Fcheckout");
     expect(kajabiHtml).toContain("utm_source=kajabi");
-    expect(kajabiHtml).toContain("utm_content=day0_67_offer_page_kajabi");
+    expect(kajabiHtml).toContain("utm_content=kajabi_d00_offer");
+    expect(kajabiHtml).toContain("funnel_path=kajabi");
+    expect(kajabiHtml).toContain("email_key=kajabi_d00_offer");
     expect(kajabiHtml).toContain("Secure Kajabi checkout");
     expect(kajabiHtml).not.toContain("shop.theurbanmonk.com/cart/48959577653402:1");
     expect(kajabiHtml).toContain("InitiateCheckout");
+  });
+
+  it("preserves a valid channel-specific message key without accepting unsafe values", () => {
+    expect(renderInterconnectedDayZeroKoOfferPage({ email_key: "ko_d03_episode_3" }))
+      .toContain("email_key=ko_d03_episode_3");
+    expect(renderInterconnectedDayZeroKajabiOfferPage({ email_key: "../cross-path" }))
+      .toContain("email_key=kajabi_d00_offer");
   });
 
   it("does not present fabricated customer reviews or a thank-you-page countdown", () => {

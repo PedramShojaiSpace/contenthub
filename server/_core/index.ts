@@ -1309,11 +1309,11 @@ async function startServer() {
 
   // Contextual KO/Klaviyo sales page for email subscribers. The legacy generic
   // route remains an alias so previously delivered KO emails retain Shopify attribution.
-  app.get(["/interconnected/offer", "/interconnected/offer-ko"], async (_req, res) => {
+  app.get(["/interconnected/offer", "/interconnected/offer-ko"], async (req, res) => {
     try {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "no-store");
-      return res.send(renderInterconnectedDayZeroKoOfferPage());
+      return res.send(renderInterconnectedDayZeroKoOfferPage(req.query));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[interconnected-day0-offer-ko] Error:`, msg);
@@ -1323,11 +1323,11 @@ async function startServer() {
 
   // Kajabi-origin Day 0 sales page. Its identical context page preserves the
   // Kajabi payment and attribution stack rather than sending traffic to Shopify.
-  app.get("/interconnected/offer-kajabi", async (_req, res) => {
+  app.get("/interconnected/offer-kajabi", async (req, res) => {
     try {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "no-store");
-      return res.send(renderInterconnectedDayZeroKajabiOfferPage());
+      return res.send(renderInterconnectedDayZeroKajabiOfferPage(req.query));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[interconnected-day0-offer-kajabi] Error:`, msg);
@@ -1625,6 +1625,9 @@ async function startServer() {
           utmSource: "kajabi_page",
           utmMedium: "webhook",
           utmCampaign: ((payload.form_name ?? payload.landing_page_title ?? "interconnected_optin") as string),
+          // New Kajabi form leads stay in the Kajabi experiment bucket for
+          // every downstream LTV and ROAS comparison.
+          funnelPath: "kajabi",
           kajabiTagged: 1,
           createdAt: Date.now(),
         });

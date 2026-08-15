@@ -470,10 +470,16 @@ function handleSubmit(e, which) {
   .then(function(r) { return r.json(); })
   .then(function(data) {
     var result = Array.isArray(data) ? data[0] : data;
-    if (result && result.result && result.result.data && result.result.data.json && result.result.data.json.success) {
+    var responseJson = result && result.result && result.result.data && (result.result.data.json || result.result.data);
+    if (responseJson && responseJson.success) {
+      // Persist the matching server-side CAPI event ID before redirecting so
+      // Meta treats the browser and CAPI Lead events as a single conversion.
+      if (responseJson.capiLeadEventId) {
+        try { sessionStorage.setItem('__capi_lead_event_id', responseJson.capiLeadEventId); } catch(e) {}
+      }
       // Tag landing page variant so TY splitter can cross-tabulate LP-A vs LP-B
       try { localStorage.setItem('ic_lp_variant', 'B'); } catch(e) {}
-      // Redirect to thank-you page — Lead pixel fires there on confirmed load
+      // Redirect to thank-you page — Lead fires only with this matching CAPI ID.
       window.location.href = '/interconnected/thank-you';
     } else {
       var msg = (result && result.error && result.error.message) ? result.error.message : 'Something went wrong. Please try again.';

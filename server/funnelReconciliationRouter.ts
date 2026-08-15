@@ -18,6 +18,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { kajabiPurchases, interconnectedLeads, leadPurchaseAttributions } from "../drizzle/schema";
 import { and, gte, lte, eq, inArray, sql } from "drizzle-orm";
+import { canonicalMetaCheckoutCount, canonicalMetaLeadCount } from "./metaActionMetrics";
 import {
   classifyInterconnectedCohortPath,
   dayOffsetFromLead,
@@ -831,13 +832,8 @@ async function fetchMetaForFunnel(
   for (const row of filtered) {
     const spend = parseFloat(row.spend || "0");
     const actions: any[] = row.actions || [];
-    const leads =
-      parseInt(actions.find((a: any) => a.action_type === "lead")?.value || "0") +
-      parseInt(actions.find((a: any) => a.action_type === "onsite_conversion.lead_grouped")?.value || "0") +
-      parseInt(actions.find((a: any) => a.action_type === "complete_registration")?.value || "0");
-    const checkouts =
-      parseInt(actions.find((a: any) => a.action_type === "initiate_checkout")?.value || "0") +
-      parseInt(actions.find((a: any) => a.action_type === "add_to_cart")?.value || "0");
+    const leads = canonicalMetaLeadCount(actions);
+    const checkouts = canonicalMetaCheckoutCount(actions);
 
     totalSpend += spend;
     totalLeads += leads;

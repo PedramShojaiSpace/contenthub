@@ -16,7 +16,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { kajabiPurchases, interconnectedLeads, leadPurchaseAttributions } from "../drizzle/schema";
+import { kajabiPurchases, interconnectedLeads, leadPurchaseAttributions, reconciliationMetaSnapshots } from "../drizzle/schema";
 import { and, gte, lte, eq, inArray, sql } from "drizzle-orm";
 import { canonicalMetaCheckoutCount, canonicalMetaLeadCount } from "./metaActionMetrics";
 import {
@@ -780,18 +780,24 @@ async function fetchShopifyOrdersViaGraphQL(
 
 // ── Meta spend fetch ──────────────────────────────────────────────────────────
 
-async function fetchMetaForFunnel(
-  funnel: FunnelDef,
-  startDate: string,
-  endDate: string
-): Promise<{
+export type ReconciliationMetaResult = {
   spend: number;
   leads: number;
   checkouts: number;
   campaigns: Array<{ name: string; spend: number; leads: number; cpl: number | null }>;
   error: string | null;
   note?: string;
-}> {
+};
+
+export function reconciliationMetaSnapshotKey(funnelId: string, startDate: string, endDate: string) {
+  return `${funnelId}:${startDate}:${endDate}`;
+}
+
+export async function fetchMetaForFunnel(
+  funnel: FunnelDef,
+  startDate: string,
+  endDate: string
+): Promise<ReconciliationMetaResult> {
   if (!funnel.metaActive) {
     return { spend: 0, leads: 0, checkouts: 0, campaigns: [], error: null, note: "placeholder" };
   }
@@ -863,6 +869,32 @@ async function fetchMetaForFunnel(
   };
 }
 
+export async function oneCallManualMetaRefresh<T>(fetchOnce: () => Promise<T>): Promise<T> {
+  return fetchOnce();
+}
+
+async function getSavedMetaForFunnel(funnel: FunnelDef, startDate: string, endDate: string): Promise<ReconciliationMetaResult & { collectedAt: number | null }> {
+  if (!funnel.metaActive) return { spend: 0, leads: 0, checkouts: 0, campaigns: [], error: null, note: "placeholder", collectedAt: null };
+  const db = await getDb();
+  if (!db) return { spend: 0, leads: 0, checkouts: 0, campaigns: [], error: "Database unavailable", collectedAt: null };
+  const snapshotKey = reconciliationMetaSnapshotKey(funnel.id, startDate, endDate);
+  const snapshot = (await db.select().from(reconciliationMetaSnapshots).where(eq(reconciliationMetaSnapshots.snapshotKey, snapshotKey)).limit(1))[0];
+  if (!snapshot) {
+    return { spend: 0, leads: 0, checkouts: 0, campaigns: [], error: null, note: "No saved Meta snapshot for this range. Select Refresh Meta to make one on-demand API request.", collectedAt: null };
+  }
+  return {
+    spend: snapshot.spendCents / 100,
+    leads: snapshot.leads,
+    checkouts: snapshot.checkouts,
+    campaigns: Array.isArray(snapshot.campaigns) ? snapshot.campaigns as ReconciliationMetaResult["campaigns"] : [],
+    error: snapshot.error,
+    note: "saved_snapshot",
+    collectedAt: snapshot.collectedAt,
+  };
+}
+
+let manualMetaRefreshInFlight = false;
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 export const funnelReconciliationRouter = router({
@@ -875,6 +907,51 @@ export const funnelReconciliationRouter = router({
       metaActive: f.metaActive,
     }));
   }),
+
+  refreshMetaSnapshot: protectedProcedure
+    .input(z.object({
+      funnelId: z.string(),
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    }))
+    .mutation(async ({ input }) => {
+      if (manualMetaRefreshInFlight) throw new Error("A Meta refresh is already in progress. Wait for it to finish before refreshing again.");
+      const funnel = FUNNELS.find((item) => item.id === input.funnelId);
+      if (!funnel) throw new Error(`Unknown funnel: ${input.funnelId}`);
+      manualMetaRefreshInFlight = true;
+      try {
+        // Intentionally one account insights request. Never add campaign/adset metadata calls here.
+        const meta = await oneCallManualMetaRefresh(() => fetchMetaForFunnel(funnel, input.startDate, input.endDate));
+        const db = await getDb();
+        if (!db) throw new Error("Database unavailable");
+        const collectedAt = Date.now();
+        const snapshotKey = reconciliationMetaSnapshotKey(funnel.id, input.startDate, input.endDate);
+        await db.insert(reconciliationMetaSnapshots).values({
+          snapshotKey,
+          funnelId: funnel.id,
+          startDate: input.startDate,
+          endDate: input.endDate,
+          spendCents: Math.round(meta.spend * 100),
+          leads: meta.leads,
+          checkouts: meta.checkouts,
+          campaigns: meta.campaigns,
+          error: meta.error,
+          collectedAt,
+        }).onDuplicateKeyUpdate({
+          set: {
+            spendCents: Math.round(meta.spend * 100),
+            leads: meta.leads,
+            checkouts: meta.checkouts,
+            campaigns: meta.campaigns,
+            error: meta.error,
+            collectedAt,
+          },
+        });
+        return { ...meta, collectedAt, metaApiCalls: 1 };
+      } finally {
+        manualMetaRefreshInFlight = false;
+      }
+    }),
 
   getReconciliation: protectedProcedure
     .input(z.object({
@@ -896,7 +973,7 @@ export const funnelReconciliationRouter = router({
       const [kajabi, shopify, meta, cohortAnalytics] = await Promise.all([
         fetchKajabiForFunnel(funnel, input.startDate, input.endDate, dbLookup),
         fetchShopifyForFunnel(funnel, input.startDate, input.endDate),
-        fetchMetaForFunnel(funnel, input.startDate, input.endDate),
+        getSavedMetaForFunnel(funnel, input.startDate, input.endDate),
         funnel.id === "interconnected_agora"
           ? getInterconnectedCohortAnalytics(input.startDate, input.endDate)
           : Promise.resolve(null),

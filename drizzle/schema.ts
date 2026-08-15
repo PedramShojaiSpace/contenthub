@@ -2299,6 +2299,23 @@ export const metaBatchSettings = mysqlTable("meta_batch_settings", {
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
 
+// ─── Reconciliation Meta Snapshots ───────────────────────────────────────────
+// Saved Meta results for the owner-triggered reconciliation refresh. Dashboard
+// reads never call Meta; only the explicit protected mutation writes a snapshot.
+export const reconciliationMetaSnapshots = mysqlTable("reconciliation_meta_snapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  snapshotKey: varchar("snapshot_key", { length: 160 }).notNull().unique(),
+  funnelId: varchar("funnel_id", { length: 96 }).notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  spendCents: int("spend_cents").notNull().default(0),
+  leads: int("leads").notNull().default(0),
+  checkouts: int("checkouts").notNull().default(0),
+  campaigns: json("campaigns"),
+  error: text("error"),
+  collectedAt: bigint("collected_at", { mode: "number" }).notNull(),
+});
+
 // ─── Per-SKU CPA Targets ─────────────────────────────────────────────────────
 // One row per product SKU; editable in-app from the Optimizer tab
 export const skuCpaTargets = mysqlTable("sku_cpa_targets", {

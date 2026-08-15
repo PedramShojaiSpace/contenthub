@@ -8,6 +8,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
   buildControlledEmailCheckoutLink,
   CONTROLLED_EMAIL_DEFAULT_DESTINATIONS,
@@ -93,8 +94,15 @@ export default function Reconciliation() {
     { funnelId, startDate, endDate, newCustomersOnly: newCustOnly, attributionFilter: attrFilter },
     { staleTime: 60_000 }
   );
+  const refreshMeta = trpc.funnelRecon.refreshMetaSnapshot.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Saved Meta snapshot with ${result.metaApiCalls} API call`);
+      refetch();
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
-  const loading = isLoading || isRefetching;
+  const loading = isLoading || isRefetching || refreshMeta.isPending;
   const activeFunnel = funnels.find(f => f.id === funnelId);
   const { summary, meta, kajabi, shopify, individualSales, cohortAnalytics } = data ?? {};
   const cohortDay0Revenue = cohortAnalytics?.cohorts.reduce((sum, cohort) => sum + cohort.day0RevenueCents, 0) ?? 0;
@@ -138,11 +146,21 @@ export default function Reconciliation() {
               </span>
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={loading} className="gap-2 shrink-0">
+          <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={loading} className="gap-2">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Refresh
+            Refresh view
           </Button>
+          <Button size="sm" onClick={() => refreshMeta.mutate({ funnelId, startDate, endDate })} disabled={loading || !activeFunnel?.metaActive} className="gap-2">
+            {refreshMeta.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+            Refresh Meta (1 call)
+          </Button>
+          </div>
         </div>
+
+        {meta?.note && <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          {meta.note}{meta.collectedAt ? ` · Saved ${new Date(meta.collectedAt).toLocaleString()}` : ""}
+        </div>}
 
         {/* Funnel Selector */}
         <Card>

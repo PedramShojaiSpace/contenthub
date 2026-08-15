@@ -349,9 +349,10 @@ export default function InterconnectedThankYouB() {
     const variantId = cachedVariant === 'B' ? 2 : 1;
     sessionStorage.setItem('__ab_variant_id', String(variantId));
 
-    // Fire pixel Lead event
-    const leadEventId = sessionStorage.getItem('__capi_lead_event_id') ?? undefined;
-    firePixel("Lead", {}, leadEventId);
+    // Fire the browser Lead only when the matching server CAPI event ID exists.
+    // This avoids counting direct visits, reloads, and browser/CAPI pairs twice.
+    const leadEventId = sessionStorage.getItem('__capi_lead_event_id');
+    if (leadEventId) firePixel("Lead", {}, leadEventId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

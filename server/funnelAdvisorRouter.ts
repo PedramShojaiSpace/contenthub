@@ -19,6 +19,7 @@
 
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
+import { canonicalMetaLeadCount } from "./metaActionMetrics";
 
 // ── Benchmarks ────────────────────────────────────────────────────────────────
 // These are the target ranges for a healthy funnel at this price point.
@@ -233,11 +234,7 @@ async function analyzeFunnel(datePreset: string): Promise<FunnelAdvisorResult> {
       const name = (row.campaign_name || "").toLowerCase();
       if (!name.includes("interconnected")) continue;
       totalSpend += parseFloat(row.spend || "0");
-      for (const a of row.actions || []) {
-        if (a.action_type === "lead" || a.action_type === "onsite_conversion.lead_grouped") {
-          totalLeads += parseInt(a.value || "0", 10);
-        }
-      }
+      totalLeads += canonicalMetaLeadCount(row.actions || []);
     }
   } catch { /* non-fatal */ }
 

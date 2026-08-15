@@ -518,9 +518,15 @@ function submitForm(e, id) {
   .then(function(data) {
     var result = data && data[0] && data[0].result;
     if (result && result.data) {
+      // Persist the server-generated CAPI event ID so the confirmed browser Lead
+      // event on the thank-you page can be deduplicated by Meta.
+      var responseJson = result.data.json || result.data;
+      if (responseJson && responseJson.capiLeadEventId) {
+        try { sessionStorage.setItem('__capi_lead_event_id', responseJson.capiLeadEventId); } catch(e) {}
+      }
       // Tag landing page variant so TY splitter can cross-tabulate LP-A vs LP-B
       try { localStorage.setItem('ic_lp_variant', 'A'); } catch(e) {}
-      // Redirect to thank-you page — Lead pixel fires there on confirmed load
+      // Redirect to thank-you page — Lead fires only with this matching CAPI ID.
       window.location.href = '/interconnected/thank-you';
     } else {
       var msg = (data && data[0] && data[0].error && data[0].error.message) || 'Something went wrong. Please try again.';

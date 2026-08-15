@@ -4832,4 +4832,5 @@ Pricing model (corrected):
 - [ ] Restore the Meta app’s Marketing API write capability for the Content Hub integration so approved paused draft packages can be created without altering active ads.
 - [ ] Request production/advanced access for `ads_management` and the next available Marketing API Access Tier for the Urban Monk Ads Manager app, then retest paused-draft creation.
 - [x] Prepare a Curt handoff for the deferred Meta production-access application and the final paused Tantra draft completion steps, while preserving all current drafts and no-spend settings.
+- [x] Reconcile Interconnected Agora Meta lead reporting against unique form/CRM opt-ins, identify duplicate-event and overlapping-action causes, and correct confirmed measurement defects before scaling spend.
 - [x] Remediate the Interconnected audit’s structural gaps: added valid footer-address handling to the six affected draft messages and enabled consistent Klaviyo tracking parameters across the 26 draft emails without changing message copy or status; the live Day 0 email remains intentionally untouched pending explicit approval.

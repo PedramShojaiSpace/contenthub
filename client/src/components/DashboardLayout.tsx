@@ -84,6 +84,7 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
+import { getHubNavigationHref } from "@/lib/hubRouteResolver";
 
 // ─── WORKSPACE DEFINITIONS ────────────────────────────────────────────────────
 // Three workspaces: OWNER (funnel-focused), VA (queue-focused), SYSTEM (everything else)
@@ -413,6 +414,14 @@ function DashboardLayoutContent({
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const navigate = (path: string) => {
+    const crossBundleHref = getHubNavigationHref(path, window.location.pathname, window.location.search);
+    if (crossBundleHref) {
+      window.location.assign(crossBundleHref);
+      return;
+    }
+    setLocation(path);
+  };
 
   // Determine active workspace from current route, with localStorage persistence
   const getWorkspaceForPath = (path: string): Workspace => {
@@ -544,7 +553,7 @@ function DashboardLayoutContent({
                       <SidebarMenuItem key={item.path}>
                         <SidebarMenuButton
                           isActive={isActive}
-                          onClick={() => setLocation(item.path)}
+                          onClick={() => navigate(item.path)}
                           tooltip={item.label}
                           className={`h-10 transition-all font-normal ${isActive ? "text-primary" : ""}`}
                         >
@@ -560,7 +569,7 @@ function DashboardLayoutContent({
                     items={ownerAdsItems}
                     isCollapsed={isCollapsed}
                     location={location}
-                    setLocation={setLocation}
+                    setLocation={navigate}
                   />
                   <NavGroup
                     icon={Search}
@@ -568,7 +577,7 @@ function DashboardLayoutContent({
                     items={ownerSeoItems}
                     isCollapsed={isCollapsed}
                     location={location}
-                    setLocation={setLocation}
+                    setLocation={navigate}
                   />
                 </>
               )}
@@ -582,7 +591,7 @@ function DashboardLayoutContent({
                       <SidebarMenuItem key={item.path}>
                         <SidebarMenuButton
                           isActive={isActive}
-                          onClick={() => setLocation(item.path)}
+                          onClick={() => navigate(item.path)}
                           tooltip={item.label}
                           className={`h-10 transition-all font-normal ${isActive ? "text-primary" : ""}`}
                         >
@@ -598,7 +607,7 @@ function DashboardLayoutContent({
                     items={vaProductionItems}
                     isCollapsed={isCollapsed}
                     location={location}
-                    setLocation={setLocation}
+                    setLocation={navigate}
                   />
                   <NavGroup
                     icon={Zap}
@@ -606,7 +615,7 @@ function DashboardLayoutContent({
                     items={vaShortFormItems}
                     isCollapsed={isCollapsed}
                     location={location}
-                    setLocation={setLocation}
+                    setLocation={navigate}
                   />
                   <NavGroup
                     icon={Video}
@@ -614,7 +623,7 @@ function DashboardLayoutContent({
                     items={vaVideoItems}
                     isCollapsed={isCollapsed}
                     location={location}
-                    setLocation={setLocation}
+                    setLocation={navigate}
                   />
                   <NavGroup
                     icon={Hash}
@@ -622,7 +631,7 @@ function DashboardLayoutContent({
                     items={vaRedditItems}
                     isCollapsed={isCollapsed}
                     location={location}
-                    setLocation={setLocation}
+                    setLocation={navigate}
                   />
                 </>
               )}
@@ -636,7 +645,7 @@ function DashboardLayoutContent({
                     items={systemLibraryItems}
                     isCollapsed={isCollapsed}
                     location={location}
-                    setLocation={setLocation}
+                    setLocation={navigate}
                     defaultOpen={true}
                   />
                   <NavGroup
@@ -645,7 +654,7 @@ function DashboardLayoutContent({
                     items={systemLinksItems}
                     isCollapsed={isCollapsed}
                     location={location}
-                    setLocation={setLocation}
+                    setLocation={navigate}
                   />
                   <NavGroup
                     icon={Globe}
@@ -653,7 +662,7 @@ function DashboardLayoutContent({
                     items={systemPagesItems}
                     isCollapsed={isCollapsed}
                     location={location}
-                    setLocation={setLocation}
+                    setLocation={navigate}
                   />
                   <NavGroup
                     icon={Sparkles}
@@ -661,7 +670,7 @@ function DashboardLayoutContent({
                     items={systemIntelItems}
                     isCollapsed={isCollapsed}
                     location={location}
-                    setLocation={setLocation}
+                    setLocation={navigate}
                   />
                   <NavGroup
                     icon={BookMarked}
@@ -669,7 +678,7 @@ function DashboardLayoutContent({
                     items={systemArchiveItems}
                     isCollapsed={isCollapsed}
                     location={location}
-                    setLocation={setLocation}
+                    setLocation={navigate}
                   />
                 </>
               )}

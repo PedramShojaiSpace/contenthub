@@ -4,6 +4,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { getHubPublicHref } from "./lib/hubRouteResolver";
 
 const TantraQuiz = lazy(() => import("./pages/TantraQuiz"));
 const TantraContentDivorce = lazy(() => import("./pages/TantraContentDivorce"));
@@ -34,31 +35,7 @@ function HubRedirect() {
   useEffect(() => {
     const query = window.location.search;
     const path = window.location.pathname;
-    const analyticsPaths = ["/tantra-funnel", "/reconciliation", "/interconnected-command"];
-    const contentPaths = [
-      "/content-pipeline", "/podcast-production", "/seo", "/scoreboard",
-      "/competitive-intelligence", "/keyword-strategy", "/ch-pages", "/qr-generator",
-      "/backlink-outreach", "/video-to-blog", "/blog-to-youtube", "/review-queue",
-      "/ask-urban-monk", "/presence-assessment", "/syndication", "/va", "/ads",
-      "/lead-scrubber", "/email-optimizer", "/klaviyo-flow-optimizer", "/kids-research",
-      "/kids-review", "/collective-sourcing", "/soro-intelligence", "/plain-text-email",
-      "/va-tasks", "/kajabi-live", "/advertorial-builder",
-    ];
-    const growthPaths = [
-      "/upstream", "/meta-ads", "/ad-attribution", "/campaign-monitor", "/historical-posts",
-      "/reddit-personas", "/reddit-roas", "/youtube-pipeline", "/substack", "/deep-dive",
-      "/system-health", "/funnels", "/ascension", "/ab-tests", "/claims-review", "/yt-analytics",
-      "/ga4-analytics", "/analyze", "/transcript-engine", "/corpus-builder", "/pattern-extractor",
-      "/script-factory", "/performance-loop", "/funnel-economics", "/funnel-advisor", "/mof-content",
-    ];
-    const target = analyticsPaths.some((item) => path.startsWith(item))
-      ? `/hub/analytics${path}`
-      : contentPaths.some((item) => path.startsWith(item))
-        ? `/hub/content${path}`
-        : growthPaths.some((item) => path.startsWith(item))
-          ? `/hub/growth${path}`
-          : `/hub${path}`;
-    window.location.replace(`${target}${query}`);
+    window.location.replace(getHubPublicHref(path, query));
   }, []);
   return <PageLoader />;
 }

@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { renderInterconnectedPage } from "../interconnectedStaticPage";
 import { renderInterconnectedBPage } from "../interconnectedBStaticPage";
 import { renderInterconnectedThankYouPage } from "../interconnectedThankYouStaticPage";
+import { renderInterconnectedDayZeroOfferPage } from "../interconnectedDayZeroOfferStaticPage";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
@@ -1299,6 +1300,20 @@ async function startServer() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[interconnected-ty] Error:`, msg);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
+  // Contextual Day 0 sales page for email subscribers. This route stays static
+  // and no-store so it loads quickly without the React bundle.
+  app.get("/interconnected/offer", async (_req, res) => {
+    try {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      return res.send(renderInterconnectedDayZeroOfferPage());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[interconnected-day0-offer] Error:`, msg);
       return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
     }
   });

@@ -279,7 +279,7 @@ export function renderInterconnectedThankYouPage(): string {
 <section style="background:var(--bg0);padding-top:16px">
   <div class="container-sm">
     <p style="text-align:center;font-size:.875rem;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:8px">⚠️ IMPORTANT — Read This Before You Leave</p>
-    <h1 class="section-title" style="margin-bottom:8px">You're In. But You're About to Miss the Most Important Part.</h1>
+    <h1 id="headline-ab-test" class="section-title" style="margin-bottom:8px">Wait, one more thing!</h1>
     <p style="text-align:center;color:#fca5a5;font-weight:600;font-size:1rem;margin-bottom:24px">This offer only appears once — and it disappears when you close this tab.</p>
     <!-- Wistia native embed — Wistia handles its own thumbnail, play button, and controls -->
     <div class="wistia-container">
@@ -469,10 +469,15 @@ function toggleFaq(i) {
 
 // ── A/B Test Tracking ────────────────────────────────────────────────────────
 // The static TY page bypasses the React SPA, so we call assignVariant directly.
+// The existing video test and the approved headline test are intentionally
+// independent: headline copy is the only change in test 30001.
 // Video A (control) = hobj7srg3q | Video B (treatment) = 10cdtpm3il
 var TY_AB_TEST_ID = 1;
+var HEADLINE_AB_TEST_ID = 30001;
 var VIDEO_A = 'hobj7srg3q';
 var VIDEO_B = '10cdtpm3il';
+var HEADLINE_A = 'Wait, one more thing!';
+var HEADLINE_B = 'You are registered. Listen to this important message first.';
 var currentVideoId = VIDEO_A; // default; updated after variant assignment
 
 function getOrCreateVisitorId() {
@@ -544,6 +549,50 @@ function getCachedTyVariant() {
   });
 })();
 
+// ── Headline A/B Test (Kajabi control only) ──────────────────────────────────
+(function initHeadlineAbTracking() {
+  var visitorId = getOrCreateVisitorId();
+  var cacheKey = 'ic_ty_headline_ab_variant_30001';
+  var cached = localStorage.getItem(cacheKey);
+
+  function applyHeadlineVariant(variant, variantId) {
+    var headline = document.getElementById('headline-ab-test');
+    if (!headline) return;
+    localStorage.setItem(cacheKey, variant);
+    sessionStorage.setItem('__headline_ab_variant_id', String(variantId));
+    headline.textContent = variant === 'B' ? HEADLINE_B : HEADLINE_A;
+  }
+
+  if (cached === 'A' || cached === 'B') {
+    applyHeadlineVariant(cached, cached === 'B' ? 2 : 1);
+    return;
+  }
+
+  var params = new URLSearchParams(window.location.search);
+  fetch('/api/trpc/abTest.assignVariant', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({
+      json: {
+        testId: HEADLINE_AB_TEST_ID,
+        visitorId: visitorId,
+        utmSource: params.get('utm_source') || undefined,
+        utmCampaign: params.get('utm_campaign') || 'organic'
+      }
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    var result = data && data.result && data.result.data && data.result.data.json;
+    if (result) applyHeadlineVariant(result.isControl ? 'A' : 'B', result.variantId);
+  })
+  .catch(function() {
+    var fallback = Math.random() < 0.5 ? 'A' : 'B';
+    applyHeadlineVariant(fallback, fallback === 'B' ? 2 : 1);
+  });
+})();
+
 // ── Wistia native embed — A/B variant swap ───────────────────────────────────
 // applyVariant (above) sets currentVideoId; we swap the embed class so Wistia
 // re-initialises with the correct video. Called once on DOMContentLoaded.
@@ -577,6 +626,28 @@ function firePixel() {
           json: {
             testId: TY_AB_TEST_ID,
             visitorId: vid,
+            conversionType: 'checkout_start',
+            revenueCents: 6700
+          }
+        })
+      }).catch(function() {});
+    }
+  } catch(_) {}
+
+  // Record the same checkout-start conversion separately for the headline test.
+  // This deliberately does not change the older video-test measurement.
+  try {
+    var headlineVariantId = sessionStorage.getItem('__headline_ab_variant_id');
+    var headlineVisitorId = getOrCreateVisitorId();
+    if (headlineVariantId && headlineVisitorId) {
+      fetch('/api/trpc/abTest.recordConversion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          json: {
+            testId: HEADLINE_AB_TEST_ID,
+            visitorId: headlineVisitorId,
             conversionType: 'checkout_start',
             revenueCents: 6700
           }

@@ -11,6 +11,14 @@ import { trpc } from "@/lib/trpc";
 // A/B test constants — must match InterconnectedThankYou.tsx and the splitter
 const AB_TEST_ID = 1;
 
+// Kajabi-control-only headline experiment. The existing video test remains intact
+// and the Klaviyo treatment does not import or use these values.
+const HEADLINE_AB_TEST_ID = 30001;
+const ORIGINAL_HEADLINE = "Wait, one more thing!";
+const REGISTRATION_FIRST_HEADLINE = "You are registered. Listen to this important message first.";
+const HEADLINE_VARIANT_STORAGE_KEY = "interconnected_ty_headline_variant_id";
+const HEADLINE_COPY_STORAGE_KEY = "interconnected_ty_headline_copy";
+
 /** Shared visitor ID key — must match InterconnectedThankYouSplitter and InterconnectedThankYou */
 function getVisitorId(): string {
   const KEY = "ty_visitor_id";
@@ -334,6 +342,10 @@ const StarRating = ({ count = 5 }: { count?: number }) => (
 
 export default function InterconnectedThankYouB() {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [headline, setHeadline] = useState(() => {
+    if (typeof window === "undefined") return ORIGINAL_HEADLINE;
+    return localStorage.getItem(HEADLINE_COPY_STORAGE_KEY) ?? ORIGINAL_HEADLINE;
+  });
   const visitorId = useRef(getVisitorId());
 
   // A/B tracking: variant is already assigned by the Splitter before this page mounts.
@@ -341,6 +353,7 @@ export default function InterconnectedThankYouB() {
   // via the 'ty_ab_variant' localStorage key. We just need to store variantId for
   // conversion recording and fire the pixel.
   const recordConversion = trpc.abTest.recordConversion.useMutation();
+  const assignHeadlineVariant = trpc.abTest.assignVariant.useMutation();
 
   useEffect(() => {
     // Read the variant assignment the Splitter already made
@@ -356,12 +369,51 @@ export default function InterconnectedThankYouB() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    let cancelled = false;
+
+    assignHeadlineVariant.mutate(
+      {
+        testId: HEADLINE_AB_TEST_ID,
+        visitorId: visitorId.current,
+        utmSource: params.get("utm_source") ?? undefined,
+        utmCampaign: params.get("utm_campaign") ?? undefined,
+      },
+      {
+        onSuccess: (assignment) => {
+          if (cancelled) return;
+          const assignedHeadline = assignment.headline ?? REGISTRATION_FIRST_HEADLINE;
+          localStorage.setItem(HEADLINE_VARIANT_STORAGE_KEY, String(assignment.variantId));
+          localStorage.setItem(HEADLINE_COPY_STORAGE_KEY, assignedHeadline);
+          sessionStorage.setItem(HEADLINE_VARIANT_STORAGE_KEY, String(assignment.variantId));
+          setHeadline(assignedHeadline);
+        },
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  // The test must assign once per mounted visitor; the stable visitor ID is held in a ref.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleBuyClick = () => {
     // Record A/B conversion
     const storedVariantId = sessionStorage.getItem('__ab_variant_id');
     if (storedVariantId) {
       recordConversion.mutate({
         testId: AB_TEST_ID,
+        visitorId: visitorId.current,
+        conversionType: "checkout_start",
+        revenueCents: 6700,
+      });
+    }
+    const storedHeadlineVariantId = sessionStorage.getItem(HEADLINE_VARIANT_STORAGE_KEY);
+    if (storedHeadlineVariantId) {
+      recordConversion.mutate({
+        testId: HEADLINE_AB_TEST_ID,
         visitorId: visitorId.current,
         conversionType: "checkout_start",
         revenueCents: 6700,
@@ -407,7 +459,7 @@ export default function InterconnectedThankYouB() {
             WAIT! Don't Close or Navigate Away From This Page!
           </p>
           <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight" style={{ fontFamily: "Georgia, serif" }}>
-            You are registered. Listen to this important message first.
+            {headline}
           </h1>
 
           {/* WISTIA VIDEO EMBED */}

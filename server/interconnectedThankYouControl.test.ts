@@ -36,7 +36,7 @@ describe("Interconnected Thank You control routing", () => {
     expect(pageSource).not.toContain("10cdtpm3il");
   });
 
-  it("uses the approved registration-first headline on both the Kajabi-control and Klaviyo variants", () => {
+  it("keeps the registration-first headline on the isolated Klaviyo treatment while the Kajabi control can test it", () => {
     const controlSource = readFileSync(
       new URL("../client/src/pages/InterconnectedThankYouB.tsx", import.meta.url),
       "utf8"
@@ -47,9 +47,28 @@ describe("Interconnected Thank You control routing", () => {
     );
     const approvedHeadline = "You are registered. Listen to this important message first.";
 
+    expect(controlSource).toContain("const REGISTRATION_FIRST_HEADLINE");
     expect(controlSource).toContain(approvedHeadline);
     expect(klaviyoSource).toContain(approvedHeadline);
-    expect(controlSource).not.toContain("Wait, one more thing!");
+    expect(controlSource).toContain("Wait, one more thing!");
     expect(klaviyoSource).not.toContain("Wait, one more thing!");
+  });
+
+  it("runs the headline split test only on the Kajabi control while preserving both approved variants", () => {
+    const controlSource = readFileSync(
+      new URL("../client/src/pages/InterconnectedThankYouB.tsx", import.meta.url),
+      "utf8"
+    );
+    const klaviyoSource = readFileSync(
+      new URL("../client/src/pages/InterconnectedThankYouKlaviyo.tsx", import.meta.url),
+      "utf8"
+    );
+
+    expect(controlSource).toContain("const HEADLINE_AB_TEST_ID = 30001");
+    expect(controlSource).toContain("Wait, one more thing!");
+    expect(controlSource).toContain("You are registered. Listen to this important message first.");
+    expect(controlSource).toContain('conversionType: "checkout_start"');
+    expect(klaviyoSource).not.toContain("HEADLINE_AB_TEST_ID");
+    expect(klaviyoSource).not.toContain("interconnected_ty_headline_variant_id");
   });
 });

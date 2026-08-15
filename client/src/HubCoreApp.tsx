@@ -1,6 +1,7 @@
 import { lazy } from "react";
 import { Route } from "wouter";
 import { HubShell } from "./HubShell";
+import { HubCrossBundleRedirect } from "./components/HubCrossBundleRedirect";
 
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const CreationStudio = lazy(() => import("./pages/CreationStudio"));
@@ -53,5 +54,6 @@ export default function HubCoreApp() {
     <Route path="/manychat-wizard" component={ManyChatWizard} />
     <Route path="/book-library" component={BookLibrary} />
     <Route path="/reddit-intelligence" component={RedditIntelligence} />
+    <Route component={HubCrossBundleRedirect} />
   </HubShell>;
 }

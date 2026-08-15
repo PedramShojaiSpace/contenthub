@@ -5,5 +5,5 @@ import HubCoreApp from "./HubCoreApp";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
-  <AppProviders><Router base="/hub"><HubCoreApp /></Router></AppProviders>,
+  <AppProviders><Router base="/hub/core"><HubCoreApp /></Router></AppProviders>,
 );

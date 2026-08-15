@@ -13,7 +13,11 @@ const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 
 export default function InterconnectedEmailRevenue() {
   const [days, setDays] = useState(14);
-  const [endAt] = useState(() => Date.now());
+  const [endAt] = useState(() => {
+    const completedDayBoundary = new Date();
+    completedDayBoundary.setUTCHours(0, 0, 0, 0);
+    return completedDayBoundary.getTime();
+  });
   const startAt = useMemo(() => endAt - days * 86_400_000, [days, endAt]);
   const report = trpc.emailRevenue.getReport.useQuery({ startAt, endAt, funnelPath: "all" });
   const collect = trpc.emailRevenue.collectKlaviyo.useMutation({

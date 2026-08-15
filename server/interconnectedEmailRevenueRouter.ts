@@ -2,6 +2,7 @@ import { z } from "zod";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
+import { canonicalKoKlaviyoMessageKey } from "./interconnectedEmailAttributionHygiene";
 import {
   attributedSales,
   interconnectedEmailCheckoutTouches,
@@ -77,7 +78,7 @@ async function collectKlaviyoSnapshot(startAt: number, endAt: number) {
       flowId: String(groupings.flow_id ?? FLOW_ID),
       messageId,
       messageName: groupings.flow_message_name ?? null,
-      messageKey: null,
+      messageKey: canonicalKoKlaviyoMessageKey(messageId),
       sendChannel: groupings.send_channel === "sms" ? "sms" : "email",
       windowStart: startAt,
       windowEnd: endAt,
@@ -95,6 +96,7 @@ async function collectKlaviyoSnapshot(startAt: number, endAt: number) {
     }).onDuplicateKeyUpdate({
       set: {
         messageName: groupings.flow_message_name ?? null,
+        messageKey: canonicalKoKlaviyoMessageKey(messageId),
         sendChannel: groupings.send_channel === "sms" ? "sms" : "email",
         recipients: Number(statistics.recipients ?? 0), delivered: Number(statistics.delivered ?? 0), deliveryRate: Number(statistics.delivery_rate ?? 0),
         opens: Number(statistics.opens ?? 0), openRate: Number(statistics.open_rate ?? 0), clicks: Number(statistics.clicks ?? 0), clickRate: Number(statistics.click_rate ?? 0),
@@ -146,7 +148,15 @@ export const interconnectedEmailRevenueRouter = router({
       window: { startAt: input.startAt, endAt: input.endAt },
       paths: paths.map((funnelPath) => ({
         funnelPath,
-        snapshots: snapshots.filter((row) => row.funnelPath === funnelPath),
+        snapshots: snapshots.filter((row) => row.funnelPath === funnelPath).map((snapshot) => {
+          const direct = snapshot.messageKey ? touches.find((touch) => touch.funnelPath === funnelPath && touch.messageKey === snapshot.messageKey) : undefined;
+          return {
+            ...snapshot,
+            directCheckoutTouches: Number(direct?.touches ?? 0),
+            directPurchases: Number(direct?.purchases ?? 0),
+            directRevenueCents: Number(direct?.revenueCents ?? 0),
+          };
+        }),
         checkoutTouches: touches.filter((row) => row.funnelPath === funnelPath).map((row) => ({ ...row, touches: Number(row.touches), purchases: Number(row.purchases), revenueCents: Number(row.revenueCents) })),
         cohort: (() => {
           const revenue = cohortRevenue.find((row) => row.funnelPath === funnelPath);

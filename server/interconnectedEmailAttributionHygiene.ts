@@ -1,5 +1,14 @@
 export type InterconnectedFunnelPath = "kajabi" | "ko_klaviyo";
 
+const KO_KLAVIYO_MESSAGE_KEYS: Record<string, string> = {
+  // Verified against the active Interconnected Day 0 email action.
+  XzP5hq: "ko_d00_offer",
+};
+
+export function canonicalKoKlaviyoMessageKey(messageId: string): string | null {
+  return KO_KLAVIYO_MESSAGE_KEYS[messageId] ?? null;
+}
+
 export function isIsolatedEmailAttribution(params: {
   funnelPath?: string;
   messageKey?: string;

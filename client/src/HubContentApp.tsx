@@ -1,6 +1,7 @@
 import { lazy } from "react";
 import { Route } from "wouter";
 import { HubShell } from "./HubShell";
+import { HubCrossBundleRedirect } from "./components/HubCrossBundleRedirect";
 
 const ContentPipeline = lazy(() => import("./pages/ContentPipeline"));
 const PodcastProduction = lazy(() => import("./pages/PodcastProduction"));
@@ -77,5 +78,6 @@ export default function HubContentApp() {
     <Route path="/video-variants" component={VideoVariantFactory} />
     <Route path="/video-production" component={VideoProductionSession} />
     <Route path="/ebook-generator" component={EBookGenerator} />
+    <Route component={HubCrossBundleRedirect} />
   </HubShell>;
 }

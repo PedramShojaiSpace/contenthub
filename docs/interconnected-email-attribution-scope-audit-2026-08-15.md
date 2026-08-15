@@ -80,6 +80,12 @@ Every monetary result will include an explicit label rather than a generic “em
 4. Retain Kajabi’s native per-email report values as a separate platform-attributed source and write a secure, repeatable import/sync adapter only after the authenticated report/export mechanism is verified. The current Kajabi purchase webhook remains the source of truth for captured Kajabi payment revenue and cohort LTV.
 5. Join every qualifying Kajabi and Shopify purchase back to its original Interconnected lead email and opt-in timestamp. The dashboard will calculate **Day 0, Day 7, and Day 14 cumulative revenue** from that cohort date, then divide by lead count for LTV per lead. Campaign ROAS will divide the same cohort revenue by the matching Meta spend after the campaign-to-lead mapping is verified.
 
+### Implemented KO/Klaviyo collection operation
+
+The first release now persists KO/Klaviyo message snapshots in an isolated reporting table and refreshes them daily at **15:15 UTC** from the trailing fourteen completed UTC days. The managed callback accepts only its persisted task identity (`dUCiBTafiaMuNGZqkR76AJ`) and returns a harmless skip for any other scheduled caller. This makes the collection idempotent and prevents an unrelated scheduled task from updating the experiment’s reporting data.
+
+The automated collection deliberately updates the **KO/Klaviyo** path only. Kajabi remains a separate payment and analytics path; it is not populated from Klaviyo or Shopify activity. Until a verified Kajabi report export or API synchronizer is added, its per-email engagement remains a native-report input and its captured purchase revenue remains a cohort-level record rather than direct email-click proof.
+
 ### Boundaries that keep the report honest
 
 Open rates will be displayed for operational context, but click rate and revenue are the primary decision metrics because email-open signals can be affected by recipient privacy protections. Kajabi’s own reported revenue only applies after a Kajabi-site link click and uses last-click attribution inside its stated window; it cannot be added to first-party direct-credit revenue without deduplication.[4]

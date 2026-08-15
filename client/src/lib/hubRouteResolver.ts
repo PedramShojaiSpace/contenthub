@@ -23,10 +23,17 @@ function pathMatches(path: string, candidates: Set<string>) {
   return [...candidates].some((candidate) => path === candidate || path.startsWith(`${candidate}/`));
 }
 
+function normalizeHubToolPath(path: string) {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  const match = /^\/hub(?:\/(?:core|content|growth|analytics))?(\/.*)?$/.exec(normalized);
+  return match ? (match[1] || "/") : normalized;
+}
+
 export function getHubBundleForPath(path: string): HubBundle {
-  if (pathMatches(path, analyticsPaths)) return "analytics";
-  if (pathMatches(path, contentPaths)) return "content";
-  if (pathMatches(path, growthPaths)) return "growth";
+  const toolPath = normalizeHubToolPath(path);
+  if (pathMatches(toolPath, analyticsPaths)) return "analytics";
+  if (pathMatches(toolPath, contentPaths)) return "content";
+  if (pathMatches(toolPath, growthPaths)) return "growth";
   return "core";
 }
 
@@ -38,6 +45,7 @@ export function getHubNavigationHref(path: string, currentPathname: string, sear
 }
 
 export function getHubPublicHref(path: string, search = "") {
-  const bundle = getHubBundleForPath(path);
-  return bundle === "core" ? `/hub${path}${search}` : `/hub/${bundle}${path}${search}`;
+  const toolPath = normalizeHubToolPath(path);
+  const bundle = getHubBundleForPath(toolPath);
+  return bundle === "core" ? `/hub${toolPath}${search}` : `/hub/${bundle}${toolPath}${search}`;
 }

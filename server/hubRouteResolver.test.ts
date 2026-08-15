@@ -12,6 +12,11 @@ describe("Hub cross-bundle route resolver", () => {
     expect(getHubPublicHref("/ebook-generator")).toBe("/hub/content/ebook-generator");
   });
 
+  it("normalizes a full wrong-bundle URL before redirecting to its owner", () => {
+    expect(getHubPublicHref("/hub/core/video-production", "?source=deep-link"))
+      .toBe("/hub/content/video-production?source=deep-link");
+  });
+
   it("redirects a cross-bundle sidebar selection without rewriting same-bundle navigation", () => {
     expect(getHubNavigationHref("/yt-analytics", "/hub/analytics/reconciliation", "?view=week"))
       .toBe("/hub/growth/yt-analytics?view=week");

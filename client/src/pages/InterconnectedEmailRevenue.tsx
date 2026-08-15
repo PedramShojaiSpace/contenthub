@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart3, RefreshCw, ShieldCheck, ShoppingCart, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -24,6 +25,16 @@ export default function InterconnectedEmailRevenue() {
     onSuccess: (result) => { toast.success(`Collected ${result.messageRows} Klaviyo message rows`); report.refetch(); },
     onError: (error) => toast.error(error.message),
   });
+  const [kajabiForm, setKajabiForm] = useState({ messageId: "", messageName: "", recipients: "", delivered: "", opens: "", clicks: "", conversions: "0", revenue: "0" });
+  const importKajabi = trpc.emailRevenue.importKajabiSnapshot.useMutation({
+    onSuccess: () => {
+      toast.success("Imported one Kajabi-native email snapshot");
+      setKajabiForm({ messageId: "", messageName: "", recipients: "", delivered: "", opens: "", clicks: "", conversions: "0", revenue: "0" });
+      report.refetch();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const setKajabiField = (field: keyof typeof kajabiForm, value: string) => setKajabiForm((current) => ({ ...current, [field]: value }));
 
   return (
     <DashboardLayout>
@@ -47,6 +58,36 @@ export default function InterconnectedEmailRevenue() {
         <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-950">
           <strong>Collection contract:</strong> KO/Klaviyo performance refreshes daily at 15:15 UTC using the prior 14 completed UTC days. Kajabi remains a separate payment and email-reporting path; it is never backfilled from Klaviyo or Shopify activity.
         </div>
+
+        <Card className="border-amber-300">
+          <CardHeader className="border-b bg-amber-50/50 pb-4"><div className="flex items-center justify-between gap-3"><div><CardTitle className="text-base">Import Kajabi-native email metrics</CardTitle><p className="mt-1 text-xs text-muted-foreground">Use values from Kajabi’s per-email report for the selected completed-day window. These values remain platform-attributed and never create Shopify direct-click credit.</p></div><Badge variant="outline">Kajabi only</Badge></div></CardHeader>
+          <CardContent className="pt-4">
+            <form className="grid gap-3 md:grid-cols-4" onSubmit={(event) => {
+              event.preventDefault();
+              importKajabi.mutate({
+                messageId: kajabiForm.messageId,
+                messageName: kajabiForm.messageName,
+                windowStart: startAt,
+                windowEnd: endAt,
+                recipients: Number(kajabiForm.recipients || 0),
+                delivered: Number(kajabiForm.delivered || 0),
+                opens: Number(kajabiForm.opens || 0),
+                clicks: Number(kajabiForm.clicks || 0),
+                platformConversions: Number(kajabiForm.conversions || 0),
+                platformRevenueCents: Math.round(Number(kajabiForm.revenue || 0) * 100),
+              });
+            }}>
+              <Field label="Kajabi email ID" value={kajabiForm.messageId} onChange={(value) => setKajabiField("messageId", value)} placeholder="2151341113" required />
+              <Field label="Email name" value={kajabiForm.messageName} onChange={(value) => setKajabiField("messageName", value)} placeholder="Interconnected Day 0" required />
+              <Field label="Recipients" type="number" value={kajabiForm.recipients} onChange={(value) => setKajabiField("recipients", value)} required />
+              <Field label="Delivered" type="number" value={kajabiForm.delivered} onChange={(value) => setKajabiField("delivered", value)} required />
+              <Field label="Opens" type="number" value={kajabiForm.opens} onChange={(value) => setKajabiField("opens", value)} required />
+              <Field label="Clicks" type="number" value={kajabiForm.clicks} onChange={(value) => setKajabiField("clicks", value)} required />
+              <Field label="Kajabi conversions" type="number" value={kajabiForm.conversions} onChange={(value) => setKajabiField("conversions", value)} />
+              <div className="flex items-end gap-2"><Field label="Kajabi revenue ($)" type="number" step="0.01" value={kajabiForm.revenue} onChange={(value) => setKajabiField("revenue", value)} /><Button className="shrink-0" type="submit" disabled={importKajabi.isPending}>{importKajabi.isPending ? "Importing" : "Import"}</Button></div>
+            </form>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-4 md:grid-cols-2">
           {(report.data?.paths ?? ["kajabi", "ko_klaviyo"].map((funnelPath) => typeof funnelPath === "string" ? { funnelPath, snapshots: [], checkoutTouches: [], cohort: { leads: 0, purchases: 0, revenueCents: 0, ltvCents: 0 } } : funnelPath)).map((path) => {
@@ -74,4 +115,8 @@ export default function InterconnectedEmailRevenue() {
 
 function Metric({ label, value, icon }: { label: string; value: string; icon: ReactNode }) {
   return <div className="rounded-lg bg-muted/50 p-3"><div className="flex items-center gap-1 text-muted-foreground">{icon}<span>{label}</span></div><p className="mt-1 text-lg font-bold">{value}</p></div>;
+}
+
+function Field({ label, value, onChange, placeholder, required, type = "text", step }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; required?: boolean; type?: string; step?: string }) {
+  return <label className="space-y-1 text-xs font-medium"><span>{label}</span><Input min={type === "number" ? "0" : undefined} step={step} type={type} value={value} placeholder={placeholder} required={required} onChange={(event) => onChange(event.target.value)} /></label>;
 }

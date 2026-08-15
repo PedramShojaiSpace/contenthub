@@ -15,6 +15,8 @@ describe("Hub cross-bundle route resolver", () => {
   it("normalizes a full wrong-bundle URL before redirecting to its owner", () => {
     expect(getHubPublicHref("/hub/core/video-production", "?source=deep-link"))
       .toBe("/hub/content/video-production?source=deep-link");
+    expect(getHubPublicHref("/core/video-production"))
+      .toBe("/hub/content/video-production");
   });
 
   it("redirects a cross-bundle sidebar selection without rewriting same-bundle navigation", () => {

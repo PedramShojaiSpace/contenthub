@@ -1939,6 +1939,37 @@ async function startServer() {
     }
   });
 
+  // POST /api/scheduled/interconnected-email-performance — daily 14-day
+  // trailing Klaviyo snapshot. The handler trusts only its persisted Heartbeat
+  // task UID; payload fields are never used to select a reporting job.
+  app.post("/api/scheduled/interconnected-email-performance", async (req, res) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      if (!user.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only" });
+      const db = await getDb();
+      if (!db) return res.status(500).json({ error: "database-unavailable" });
+      const { interconnectedEmailReportingSettings } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const settings = (await db.select().from(interconnectedEmailReportingSettings).limit(1))[0];
+      if (!settings || settings.collectionScheduleTaskUid !== user.taskUid) {
+        return res.json({ ok: true, skipped: "orphan-or-unrecognized-email-reporting-job" });
+      }
+      const { collectKlaviyoSnapshot, completedTrailingWindow } = await import("../interconnectedEmailRevenueRouter");
+      const { startAt: windowStart, endAt: windowEnd } = completedTrailingWindow();
+      const result = await collectKlaviyoSnapshot(windowStart, windowEnd);
+      await db.update(interconnectedEmailReportingSettings).set({
+        lastKlaviyoCollectedAt: result.collectedAt,
+        lastKlaviyoWindowStart: windowStart,
+        lastKlaviyoWindowEnd: windowEnd,
+        updatedAt: Date.now(),
+      }).where(eq(interconnectedEmailReportingSettings.id, settings.id));
+      return res.json({ ok: true, windowStart, windowEnd, ...result });
+    } catch (err: any) {
+      console.error("[interconnected-email-performance] Error:", err);
+      return res.status(500).json({ error: err?.message, stack: err?.stack, timestamp: new Date().toISOString() });
+    }
+  });
+
   // POST /api/scheduled/weekly-deep-dive — Every Monday 2pm UTC: auto-generate paid deep dive
   // Heartbeat task UID: 48eEdUgHD5ippYzSsqkonz
   app.post("/api/scheduled/weekly-deep-dive", async (req, res) => {

@@ -15,6 +15,13 @@ const FLOW_ID = "VMpbLV";
 const PATHS = ["kajabi", "ko_klaviyo"] as const;
 type FunnelPath = (typeof PATHS)[number];
 
+export function completedTrailingWindow(now = Date.now()) {
+  const end = new Date(now);
+  end.setUTCHours(0, 0, 0, 0);
+  const endAt = end.getTime();
+  return { startAt: endAt - 14 * 86_400_000, endAt };
+}
+
 const inputWindow = z.object({
   startAt: z.number().int().positive(),
   endAt: z.number().int().positive(),
@@ -43,7 +50,7 @@ async function klaviyoRequest(path: string, init: RequestInit = {}) {
   return text ? JSON.parse(text) : {};
 }
 
-async function collectKlaviyoSnapshot(startAt: number, endAt: number) {
+export async function collectKlaviyoSnapshot(startAt: number, endAt: number) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const metrics = await klaviyoRequest("/metrics/");

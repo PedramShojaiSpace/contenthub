@@ -28,8 +28,49 @@ const inputWindow = z.object({
   funnelPath: z.enum(["kajabi", "ko_klaviyo", "all"]).default("all"),
 });
 
+const kajabiSnapshotInput = z.object({
+  messageId: z.string().trim().min(1).max(96),
+  messageName: z.string().trim().min(1).max(255),
+  windowStart: z.number().int().positive(),
+  windowEnd: z.number().int().positive(),
+  recipients: z.number().int().min(0),
+  delivered: z.number().int().min(0),
+  opens: z.number().int().min(0),
+  clicks: z.number().int().min(0),
+  platformConversions: z.number().int().min(0).default(0),
+  platformRevenueCents: z.number().int().min(0).default(0),
+});
+
 function uniqueSnapshotKey(messageId: string, startAt: number, endAt: number) {
   return `ko_klaviyo:${messageId}:${startAt}:${endAt}`;
+}
+
+export function buildKajabiSnapshot(input: z.infer<typeof kajabiSnapshotInput>, collectedAt = Date.now()) {
+  if (input.windowEnd <= input.windowStart) throw new Error("Kajabi report window must have an end after its start");
+  if (input.delivered > input.recipients) throw new Error("Kajabi delivered count cannot exceed recipients");
+  return {
+    snapshotKey: `kajabi:${input.messageId}:${input.windowStart}:${input.windowEnd}`,
+    funnelPath: "kajabi" as const,
+    platform: "kajabi" as const,
+    flowId: "kajabi-interconnected-sequence",
+    messageId: input.messageId,
+    messageName: input.messageName,
+    messageKey: null,
+    sendChannel: "email" as const,
+    windowStart: input.windowStart,
+    windowEnd: input.windowEnd,
+    recipients: input.recipients,
+    delivered: input.delivered,
+    deliveryRate: input.recipients ? input.delivered / input.recipients : 0,
+    opens: input.opens,
+    openRate: input.delivered ? input.opens / input.delivered : 0,
+    clicks: input.clicks,
+    clickRate: input.delivered ? input.clicks / input.delivered : 0,
+    platformConversions: input.platformConversions,
+    platformRevenueCents: input.platformRevenueCents,
+    rawMetrics: JSON.stringify({ source: "kajabi-native-manual-import", attribution: "platform-attributed", ...input }),
+    collectedAt,
+  };
 }
 
 async function klaviyoRequest(path: string, init: RequestInit = {}) {
@@ -120,6 +161,29 @@ export const interconnectedEmailRevenueRouter = router({
     if (input.endAt <= input.startAt) throw new Error("End date must follow start date");
     if (input.endAt - input.startAt > 31 * 86_400_000) throw new Error("Choose a 31-day or shorter collection window");
     return collectKlaviyoSnapshot(input.startAt, input.endAt);
+  }),
+
+  importKajabiSnapshot: protectedProcedure.input(kajabiSnapshotInput).mutation(async ({ input }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
+    const snapshot = buildKajabiSnapshot(input);
+    await db.insert(interconnectedEmailPerformanceSnapshots).values(snapshot).onDuplicateKeyUpdate({
+      set: {
+        messageName: snapshot.messageName,
+        recipients: snapshot.recipients,
+        delivered: snapshot.delivered,
+        deliveryRate: snapshot.deliveryRate,
+        opens: snapshot.opens,
+        openRate: snapshot.openRate,
+        clicks: snapshot.clicks,
+        clickRate: snapshot.clickRate,
+        platformConversions: snapshot.platformConversions,
+        platformRevenueCents: snapshot.platformRevenueCents,
+        rawMetrics: snapshot.rawMetrics,
+        collectedAt: snapshot.collectedAt,
+      },
+    });
+    return { imported: true, snapshotKey: snapshot.snapshotKey, funnelPath: snapshot.funnelPath, attribution: "platform-attributed" as const };
   }),
 
   getReport: protectedProcedure.input(inputWindow).query(async ({ input }) => {

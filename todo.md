@@ -4821,8 +4821,8 @@ Pricing model (corrected):
 - [x] Preserve the approved beige Episode 1 design after the footer correction; prioritize authentication, copy structure, list engagement, and link discipline rather than color changes for deliverability.
 - [x] Apply the approved footer-only address relocation across the remaining Interconnected flow messages while preserving each message’s beige design, current sender, timing, links, and draft/live status.
 - [x] Resolve the Klaviyo UI-created-template write behavior under the confirmed full-access key, then complete the approved remaining footer-only email updates.
-- [ ] Perform a complete pre-launch audit of the Interconnected Klaviyo sequence, covering message content, links and UTMs, footer compliance, sender settings, delivery-critical configuration, and draft/live status without activating any message.
-- [ ] Add the approved organization-address footer to the live Interconnected Day 0 email without changing its copy, sender, timing, offer, tracking, or send status.
+- [x] Perform a complete pre-launch audit of the Interconnected Klaviyo sequence, covering message content, links and UTMs, footer compliance, sender settings, delivery-critical configuration, and draft/live status without activating any message.
+- [x] Add the approved organization-address footer to the live Interconnected Day 0 email without changing its copy, sender, timing, offer, tracking, or send status.
 - [x] Replace the seven Tantra content-page video placeholders with the matching finalized Descript embeds and verify each page retains its soft quiz CTA.
 - [x] Generate and deliver seven distinct 16:9 Wistia-ready thumbnail images, each visually matched to its finalized Tantra video narrative.
 - [x] Create a Curt-ready document mapping all seven finalized Tantra content pages and videos to their matched Meta ad packages, URLs, funnel roles, and implementation instructions.
@@ -4836,4 +4836,6 @@ Pricing model (corrected):
 - [x] Audit the Unbounce/Klaviyo Interconnected landing page for Chrome-specific form reliability, pixel coverage, and launch readiness before traffic is scaled.
 - [ ] Add the Urban Monk Meta Pixel and a Klaviyo-success-to-Content-Hub CAPI bridge to the Unbounce Interconnected page using a shared Lead event ID, after the page team approves the external-page implementation.
 - [x] Implement the public Content Hub endpoint for the approved Unbounce/Klaviyo shared-event-ID Lead bridge and deliver a paste-ready VA installation and validation guide.
+- [x] Verify the controlled Unbounce/Klaviyo test submission for pedram@theurbanmonk.com and diagnose the missing Interconnected sequence email before launch — Klaviyo recorded the list subscription and Day 0 email receipt at 16:17:08 UTC; Gmail-plus-alias retest normalized to the same profile.
+- [x] Replace the “Wait, one more thing!” headline with “You are registered. Listen to this important message first.” on both the Kajabi-control and Klaviyo thank-you paths, then verify the new pedram+dummy test submission.
 - [x] Remediate the Interconnected audit’s structural gaps: added valid footer-address handling to the six affected draft messages and enabled consistent Klaviyo tracking parameters across the 26 draft emails without changing message copy or status; the live Day 0 email remains intentionally untouched pending explicit approval.

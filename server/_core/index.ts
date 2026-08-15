@@ -43,6 +43,7 @@ import {
   resolveGenericKajabiUpsellCents,
   resolveKajabiKnownPriceCents,
 } from "../interconnectedUpsellAttribution";
+import { registerUnbounceKlaviyoLeadBridge } from "../unbounceKlaviyoLeadBridge";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -108,6 +109,8 @@ async function startServer() {
   // Ingest endpoint — accepts research reports from external apps
   // POST /api/ingest/research-report (authenticated via INGEST_SECRET header)
   app.post("/api/ingest/research-report", handleIngestResearchReport);
+  // Public Unbounce/Klaviyo bridge — origin and form scoped; preserves one browser/CAPI Lead event ID.
+  registerUnbounceKlaviyoLeadBridge(app);
   // Daily newsfeed refresh — called by Manus scheduled task at 7 AM
   app.post("/api/scheduled/newsfeed-refresh", handleNewsfeedRefresh);
   // Weekly GSC SEO digest — every Monday 09:00 UTC

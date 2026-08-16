@@ -16,6 +16,8 @@
 - [ ] Perform a deep Content Hub audit covering production route/bundle ownership, shared app shell, server health, logs, tRPC/API behavior, database connectivity, scheduled jobs, authentication boundaries, and representative tools across Core, Content, Growth, and Analytics.
 - [ ] Verify representative high-value workflows for analytics, YouTube, content generation, SEO/blog, funnel reconciliation, Interconnected, Tantra, email attribution, and commerce tooling; distinguish verified working behavior from untested or blocked external integrations.
 - [x] Repair the reproduced `/hub/youtube-to-blog` blank route by mapping the legacy path to the Content bundle’s canonical `/video-to-blog` tool route and add route-regression coverage.
+- [ ] Support legacy `/hub/{tool}` paths in the Core bundle’s client router base so cross-bundle fallbacks run even when a static host serves the Core entry without the current server alias middleware.
+- [ ] Repair the reproduced Email → Revenue blank Hub route by registering its existing page in the Core bundle and adding the shared wrong-bundle fallback to Growth so `/hub/growth/interconnected-email-revenue` resolves to its true owner.
 - [ ] Document confirmed defects, regressions, performance/build risks, and operational blockers with severity, evidence, user impact, and recommended next action.
 - [ ] Deliver a prioritized Content Hub audit report suitable for morning review, including a concise health summary, verified routes/tools, open defects, and a repair order.
 

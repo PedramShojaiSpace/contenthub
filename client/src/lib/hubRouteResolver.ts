@@ -18,6 +18,7 @@ const growthPaths = new Set([
   "/ga4-analytics", "/analyze", "/transcript-engine", "/corpus-builder", "/pattern-extractor",
   "/script-factory", "/performance-loop", "/funnel-economics", "/funnel-advisor", "/mof-content",
 ]);
+const corePaths = new Set(["/interconnected-email-revenue"]);
 
 const legacyToolAliases: Record<string, string> = {
   "/youtube-to-blog": "/video-to-blog",
@@ -41,6 +42,7 @@ export function getHubBundleForPath(path: string): HubBundle {
   if (pathMatches(toolPath, analyticsPaths)) return "analytics";
   if (pathMatches(toolPath, contentPaths)) return "content";
   if (pathMatches(toolPath, growthPaths)) return "growth";
+  if (pathMatches(toolPath, corePaths)) return "core";
   return "core";
 }
 

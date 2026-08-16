@@ -1,6 +1,7 @@
 import { lazy } from "react";
 import { Route } from "wouter";
 import { HubShell } from "./HubShell";
+import { HubCrossBundleRedirect } from "./components/HubCrossBundleRedirect";
 
 const UpstreamHome = lazy(() => import("./pages/UpstreamHome"));
 const UpstreamRegister = lazy(() => import("./pages/UpstreamRegister"));
@@ -66,5 +67,6 @@ export default function HubGrowthApp() {
     <Route path="/funnel-economics" component={FunnelEconomics} />
     <Route path="/funnel-advisor" component={FunnelAdvisor} />
     <Route path="/mof-content" component={MofContentEngine} />
+    <Route component={HubCrossBundleRedirect} />
   </HubShell>;
 }

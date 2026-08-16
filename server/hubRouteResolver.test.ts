@@ -18,6 +18,12 @@ describe("Hub cross-bundle route resolver", () => {
     expect(getHubPublicHref("/ebook-generator")).toBe("/hub/content/ebook-generator");
   });
 
+  it("routes Email → Revenue to its Core owner from a wrong Growth URL", () => {
+    expect(getHubBundleForPath("/interconnected-email-revenue")).toBe("core");
+    expect(getHubPublicHref("/hub/growth/interconnected-email-revenue"))
+      .toBe("/hub/interconnected-email-revenue");
+  });
+
   it("normalizes a full wrong-bundle URL before redirecting to its owner", () => {
     expect(getHubPublicHref("/hub/core/video-production", "?source=deep-link"))
       .toBe("/hub/content/video-production?source=deep-link");

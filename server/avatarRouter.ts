@@ -5,7 +5,7 @@
  */
 
 import { z } from "zod";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import {
   avatarPainPoints,
@@ -22,7 +22,7 @@ import { getUpstreamAudienceIntelligenceBlock } from "./upstreamAudienceIntellig
 
 export const avatarRouter = router({
   // ── Pain Points ────────────────────────────────────────────────────────────
-  listPainPoints: publicProcedure
+  listPainPoints: protectedProcedure
     .input(z.object({ stage: z.string().optional() }).optional())
     .query(async ({ input }) => {
       const db = await getDb();
@@ -38,28 +38,28 @@ export const avatarRouter = router({
     }),
 
   // ── Personas ───────────────────────────────────────────────────────────────
-  listPersonas: publicProcedure.query(async () => {
+  listPersonas: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];
     return db.select().from(avatarPersonas).orderBy(asc(avatarPersonas.name)) as Promise<AvatarPersona[]>;
   }),
 
   // ── Messaging Frameworks ───────────────────────────────────────────────────
-  listFrameworks: publicProcedure.query(async () => {
+  listFrameworks: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];
     return db.select().from(avatarMessagingFrameworks).orderBy(asc(avatarMessagingFrameworks.name)) as Promise<AvatarMessagingFramework[]>;
   }),
 
   // ── Objections ─────────────────────────────────────────────────────────────
-  listObjections: publicProcedure.query(async () => {
+  listObjections: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];
     return db.select().from(avatarObjections).orderBy(asc(avatarObjections.objection)) as Promise<AvatarObjection[]>;
   }),
 
   // ── Stats ──────────────────────────────────────────────────────────────────
-  getStats: publicProcedure.query(async () => {
+  getStats: protectedProcedure.query(async () => {
     const db = await getDb();
     if (!db) return { totalPainPoints: 0, totalPersonas: 0, totalFrameworks: 0, totalObjections: 0, stages: [], stageBreakdown: [] };
     const [painPoints, personas, frameworks, objections] = await Promise.all([
@@ -87,7 +87,7 @@ export const avatarRouter = router({
    * Get a rich avatar context block for a given topic and optional journey stage.
    * Used by all AI generation procedures to inject avatar intelligence into prompts.
    */
-  getContextBlock: publicProcedure
+  getContextBlock: protectedProcedure
     .input(
       z.object({
         topic: z.string(),

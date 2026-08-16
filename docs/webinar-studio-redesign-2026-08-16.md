@@ -83,3 +83,9 @@ The same production browser session selected the real intelligence-backed Upstre
 ### Final base-switch preservation state
 
 For the stricter pass, the selected webinar’s persisted outputs were recorded before interaction: `outline` MD5 `ca3501305737b8d3c05b73f36601c964`, landing-page copy MD5 `600197092096a11c3fd16f9e82ed435c`, thank-you copy MD5 `f4794582810b80cb41e06dfbfd62338f`, with existing Gamma IDs/URLs retained. In production, the **Deep Sleep** base was selected without a save action; the editor showed the session-default Deep Sleep topic and offer while the saved webinar list remained intact. The next read-only steps are to load the same intelligence-backed Upstream session, copy the brief, and compare this persisted-output metadata afterward.
+
+## Session-to-Intelligence Linkage Audit
+
+The apparent mismatch was resolved without a code or data change. The Studio correctly filters a session’s imports to records with an `extractedAt` timestamp, because only extracted records contain usable themes, questions, and audience language. The legacy saved session `30002` has a valid imported post-webinar row (`webinar_intelligence.id = 1`, 49 responses) but its `extractedAt` is null, so its intentional Studio state is **0 responses / 0 analyzed imports** and the transparent next step is to extract that import in Webinar Intelligence.
+
+The original Upstream session `1` has six extracted imports totaling **584** source responses, so it correctly renders the populated Studio state. Session `90001` likewise has one extracted 149-response import. The query, filtering logic, and displayed states are therefore consistent: there is no broken foreign key and no need to rewrite stored webinar or Typeform data. The only legacy data-quality follow-up is optional extraction of old raw imports that deliberately remain unextracted.

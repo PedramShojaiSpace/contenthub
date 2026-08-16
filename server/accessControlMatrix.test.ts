@@ -22,4 +22,10 @@ describe("remaining intentional public procedure surface", () => {
       caller.system.notifyOwner({ title: "Unauthorized probe", content: "This must not send." })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
+
+  it("blocks anonymous callers from discovery-transcript-derived Avatar Intelligence", async () => {
+    const caller = appRouter.createCaller(createAnonymousContext());
+    await expect(caller.avatar.getStats()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller.avatar.getContextBlock({ topic: "sleep" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
 });

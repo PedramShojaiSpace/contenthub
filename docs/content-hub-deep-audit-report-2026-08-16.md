@@ -127,7 +127,7 @@ Apollo was marked degraded only because the health check deliberately does not s
 
 ### 9. Scheduled Email → Revenue collector needs first-run verification — **Priority 2**
 
-The KO/Klaviyo collector is registered as a managed, isolated daily job with a completed-day reporting window. The job configuration and callback ownership are in place, but it had not yet completed its first scheduled production execution at audit time.
+The KO/Klaviyo collector is registered as the enabled `interconnected-email-performance-daily` managed job (task UID `PN4tSqosxNU94dEpREqYAN`) with a completed-day reporting window. The job configuration and callback ownership are in place. A direct managed-job inventory and execution-log check found zero completed runs at audit time because its first 15:15 UTC window had not yet occurred.
 
 **Impact.** The dashboard is usable for manual snapshots now. Treat automatic refresh as provisional until its first job log and saved snapshot are confirmed.
 

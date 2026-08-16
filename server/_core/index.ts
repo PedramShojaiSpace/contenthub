@@ -1950,6 +1950,7 @@ async function startServer() {
       if (!settings || settings.collectionScheduleTaskUid !== user.taskUid) {
         return res.json({ ok: true, skipped: "orphan-or-unrecognized-email-reporting-job" });
       }
+      const firstCollection = !settings.lastKlaviyoCollectedAt;
       const { collectKlaviyoSnapshot, completedTrailingWindow } = await import("../interconnectedEmailRevenueRouter");
       const { startAt: windowStart, endAt: windowEnd } = completedTrailingWindow();
       const result = await collectKlaviyoSnapshot(windowStart, windowEnd);
@@ -1959,6 +1960,17 @@ async function startServer() {
         lastKlaviyoWindowEnd: windowEnd,
         updatedAt: Date.now(),
       }).where(eq(interconnectedEmailReportingSettings.id, settings.id));
+      if (firstCollection) {
+        try {
+          const { notifyOwner } = await import("./notification");
+          await notifyOwner({
+            title: "KO/Klaviyo Email Revenue Collector Verified",
+            content: `The first isolated KO/Klaviyo collection completed successfully for ${new Date(windowStart).toISOString()} through ${new Date(windowEnd).toISOString()}. Saved message rows: ${result.messageRows}. Kajabi data was not collected and no Meta API call was made.`,
+          });
+        } catch (notificationError) {
+          console.warn("[interconnected-email-performance] First-run notification failed:", notificationError);
+        }
+      }
       return res.json({ ok: true, windowStart, windowEnd, ...result });
     } catch (err: any) {
       console.error("[interconnected-email-performance] Error:", err);

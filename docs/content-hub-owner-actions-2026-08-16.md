@@ -56,6 +56,8 @@ Completion is Meta’s approval of the permission for production—not merely a 
 
 The isolated KO/Klaviyo collector is registered for **15:15 UTC** each day as `interconnected-email-performance-daily` with task UID `PN4tSqosxNU94dEpREqYAN`. A live schedule-inventory check confirmed that it is enabled; its execution log contained zero runs at the time of this audit, which is expected because the first scheduled window had not yet occurred. Its first managed run must be checked before operators treat it as an automatic reporting control.
 
+Once the first successful collection is persisted, the Content Hub will send a one-time owner confirmation that states the completed reporting window and saved message-row count. The confirmation explicitly preserves the KO/Klaviyo-only boundary: Kajabi remains excluded and no Meta API call is made.
+
 After the scheduled time, open the Email → Revenue dashboard and inspect the current collector status. Confirm a successful managed-job result, a saved snapshot timestamp, and a nonzero/expected row count for the completed reporting day. Ensure that the stored path identifiers and displayed data remain entirely in the KO/Klaviyo column; Kajabi should continue to use its distinct native-import workflow.
 
 If the job does not run or produces no snapshot, preserve the execution time and visible error. Do not trigger repeated Meta refreshes while troubleshooting, because the reconciliation page is intentionally designed to make only an explicit single Meta API call per manual refresh.

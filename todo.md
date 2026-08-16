@@ -95,7 +95,8 @@
 - [x] Complete the source-reference update for WordPress post 11154 by adding the missing original citation [4] at the existing plastic-container guidance, then link it to its PubMed source and re-verify the published Sources section — post remains published; the source-four anchor and PubMed bibliography entry are present.
 - [x] Verify the final published post 11154 includes live anchors and bibliography entries for all source citations [2], [4], [9], [14], and [18] — authenticated WordPress readback confirmed the published guarded Sources section, all five in-text anchors, and all five matching bibliography IDs.
 - [x] Correct the visible Sources list in post 11154 so each bibliography entry displays its original article citation number—[2], [4], [9], [14], and [18]—rather than automatic list ordinals — direct public-page verification confirmed all five visible numbered entries and the linked Sources section.
-- [ ] Audit the site’s active SEO plugin metadata path for generated posts; the public page shows SmartCrawl controls while current generation safeguards write Yoast-compatible fields.
+- [x] Audit the site’s active SEO plugin metadata path for generated posts; the public page shows SmartCrawl controls while current generation safeguards write Yoast-compatible fields — public post 11154 renders Yoast meta, canonical, Open Graph, Twitter, and `yoast-schema-graph`; Content Hub writes matching Yoast field families. No production metadata change warranted. Evidence: `docs/wordpress-seo-metadata-path-audit-2026-08-16.md`.
+- [ ] Inspect one administrative WordPress post read-only to clarify whether SmartCrawl is a coexisting editor interface, migration remnant, or separate active output path before adding any SmartCrawl-specific metadata handling.
 
 ## Database Schema
 - [x] Add content_items table (title, platform, status, text, image_url, scheduled_at, published_at)

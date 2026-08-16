@@ -52,6 +52,8 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
+import { WebinarLiveRunStudio } from "@/components/WebinarLiveRunStudio";
+import { getWebinarBasePreset } from "@/lib/webinarLiveRunConfig";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1483,17 +1485,33 @@ export default function WebinarBuilder() {
           </div>
         )}
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-6 border border-[#d4af37]/25 bg-[#0d2818] px-6 py-5 text-white">
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Video className="h-4 w-4 text-primary" />
+            <div className="w-8 h-8 border border-[#d4af37]/45 bg-[#d4af37]/10 flex items-center justify-center">
+              <Video className="h-4 w-4 text-[#d4af37]" />
             </div>
-            <h1 className="text-2xl font-semibold text-foreground">Webinar Funnel Builder</h1>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#d4af37]">The Urban Monk</p>
+              <h1 className="font-serif text-2xl font-semibold tracking-tight text-white">Webinar Studio</h1>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground ml-11">
-            Build a complete webinar funnel — outline, landing page, thank you page, and Kajabi automation — in minutes.
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-white/65">
+            Build the funnel once. Then use the live-run board below to keep a beautiful base deck intact and refresh only the moments that need to respond to the room.
           </p>
         </div>
+
+        <WebinarLiveRunStudio
+          webinarSessionId={activeWebinarId}
+          topic={topic}
+          registrationUrl={registrationUrl}
+          onUseProfile={(profile) => {
+            const preset = getWebinarBasePreset(profile);
+            setTopic(preset.topic);
+            setCta(preset.cta);
+            setStep(1);
+            toast.success(`${profile === "sleep" ? "Sleep" : "Upstream"} base selected — complete the session details below.`);
+          }}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
           {/* Sidebar — webinar list + funnel progress + cross-module panel */}
@@ -1589,7 +1607,7 @@ export default function WebinarBuilder() {
           </div>
 
           {/* Main wizard — always in the second column */}
-          <div className="p-6 rounded-xl border border-border/50 bg-card">
+          <div className="p-6 rounded-xl border border-[#d4af37]/20 bg-card">
             <StepIndicator current={step} completed={completedSteps} />
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}

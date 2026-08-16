@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
+import { registerLegacyHubAliases } from "../hubLegacyAliases";
 
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
@@ -34,6 +35,7 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
+  registerLegacyHubAliases(app);
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
@@ -72,6 +74,7 @@ export function serveStatic(app: Express) {
     );
   }
 
+  registerLegacyHubAliases(app);
   app.use(express.static(distPath));
 
   // The internal Content Hub is compiled as four operator bundles under /hub

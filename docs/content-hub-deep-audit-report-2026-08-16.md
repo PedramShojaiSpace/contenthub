@@ -86,13 +86,11 @@ The Reconciliation page is behaving as designed: it uses saved Meta data by defa
 
 **Recommended action.** Confirm the desired Shopify source and enable the supported, path-isolated revenue pull only after preserving the Kajabi-versus-KO/Klaviyo attribution boundaries.
 
-### 6. Commerce tRPC contract is missing from the main app router — **Priority 1**
+### 6. Commerce tRPC contract was missing from the main app router — **Remediated during audit**
 
-Four full-suite failures show that the implemented `commerceRouter` exists but is not registered at `commerce.products.list` and `commerce.cart.create` in the main `appRouter`. Shopify storefront smoke tests pass, so live storefront data is still available. The gap is between the intended Hub tRPC contract and the composed application router.
+The audit found that the implemented `commerceRouter` was absent from the main `appRouter`, leaving `commerce.products.list` and `commerce.cart.create` unavailable despite the underlying Shopify storefront working. The router is now composed under `commerce`, and focused contract coverage confirms that the product, collection, and cart procedures are present.
 
-**Impact.** Any existing or future Hub UI that calls the documented commerce procedures will receive a `NOT_FOUND` error. This is a real application-contract issue even if the present external storefront works.
-
-**Recommended action.** Register `commerceRouter` under `commerce` in `server/routers.ts`, then run `server/commerce.router.test.ts` and a browser cart smoke test. Keep Shopify storefront behavior unchanged.
+**Follow-up.** Run a browser cart smoke test after the next verified fresh bundle publication. The repair does not change storefront navigation or payment behavior.
 
 ### 7. Three test groups are stale, not confirmed runtime outages — **Priority 2**
 
@@ -130,7 +128,7 @@ The Tantra Quiz Funnel itself works and returned 452 quiz starts, 272 completion
 
 ## Testing and Build Health
 
-The automated suite has broad coverage and most tests passed during the audit, including live credential smoke tests. The full test result is **7 failures**, grouped above. Focused route-resolver coverage passed after the cross-bundle repair; focused reconciliation, attribution, Interconnected, Tantra, Shopify-order, and integration tests also passed.
+The automated suite has broad coverage and most tests passed during the audit, including live credential smoke tests. The initial full-suite run showed **7 failures**. Four were the commerce-composition issue now remediated with a focused 1/1 contract test; the remaining stale Meta-creative and Klaviyo layout expectations should be re-run and reconciled before claiming a fully green suite. Focused route-resolver coverage passed after the cross-bundle repair; focused reconciliation, attribution, Interconnected, Tantra, Shopify-order, and integration tests also passed.
 
 The production build process is a second operational risk. Hub Core rendering can be terminated under sandbox memory pressure when the local development watcher is running. A complete staged build succeeded after stopping the watcher and using a bounded 1.8 GB heap. This means the build is recoverable, but it is not yet robust.
 
@@ -145,7 +143,7 @@ The production build process is a second operational risk. Hub Core rendering ca
 |---:|---|---|---|
 | 1 | Resolve the hosting build/publication synchronization issue. | Without fresh assets, every client-side route fix can remain invisible in production. | Cache-busted public bundle hashes match the latest staged build for all five Hub bundles. |
 | 2 | Run a production deep-link smoke suite after publication. | Confirms that known legacy and canonical routes do not blank. | Legacy YouTube-to-Blog, Email → Revenue, Studio, SEO, YouTube Analytics, Reconciliation, and Video Production routes all mount or redirect correctly. |
-| 3 | Register and test the `commerce` tRPC router. | Restores a real application contract missing from the current app router. | `commerce.router.test.ts` passes and a browser cart operation succeeds without affecting storefront navigation. |
+| 3 | Browser-verify the restored `commerce` tRPC cart path. | The contract repair is code-verified; the owner-facing cart interaction still needs a fresh-bundle smoke test. | Cart operation succeeds without affecting storefront navigation. |
 | 4 | Repair/validate the Shopify paid-order webhook. | Required for trustworthy revenue attribution and downstream ROAS. | A recent paid order appears in Shopify, the webhook recorder, and the path-isolated attribution view. |
 | 5 | Update stale Meta creative and Day 0 layout tests. | Restores a green suite and prevents genuine regressions from hiding behind accepted failures. | Full regression suite passes with no known baseline failures. |
 | 6 | Migrate the direct internal navigation inventory to the shared resolver. | Prevents the next blank-page regression. | All Hub navigation uses approved resolver helpers or an explicit documented exception. |

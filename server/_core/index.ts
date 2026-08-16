@@ -50,6 +50,7 @@ import {
 } from "../interconnectedUpsellAttribution";
 import { normalizeKajabiPurchase, parseKajabiWebhookPayload } from "../kajabiWebhookPayload";
 import { registerUnbounceKlaviyoLeadBridge } from "../unbounceKlaviyoLeadBridge";
+import { createCronOnlyMiddleware } from "../cronOnlyMiddleware";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -133,6 +134,10 @@ async function startServer() {
   app.post("/api/ingest/research-report", handleIngestResearchReport);
   // Public Unbounce/Klaviyo bridge — origin and form scoped; preserves one browser/CAPI Lead event ID.
   registerUnbounceKlaviyoLeadBridge(app);
+  // Every scheduled callback is externally addressable, so enforce the Manus
+  // cron identity at the shared route boundary. Handlers may additionally
+  // verify their specific task UID before doing any work.
+  app.use("/api/scheduled", createCronOnlyMiddleware((req) => sdk.authenticateRequest(req)));
   // Daily newsfeed refresh — called by Manus scheduled task at 7 AM
   app.post("/api/scheduled/newsfeed-refresh", handleNewsfeedRefresh);
   // Weekly GSC SEO digest — every Monday 09:00 UTC

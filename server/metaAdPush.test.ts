@@ -73,8 +73,8 @@ describe("AD_CATALOG", () => {
 
   it("should have correct image file naming convention", () => {
     for (const variant of AD_CATALOG) {
-      // Skip Interconnected variant which uses .jpg files
-      if (variant.variantSlug === "interconnected") continue;
+      // Interconnected and Tantra variants use their own approved JPEG conventions.
+      if (variant.variantSlug === "interconnected" || variant.variantSlug === "tantra") continue;
       for (const ad of variant.ads) {
         expect(ad.imageFile).toMatch(/^ad-[a-z]+-[123]\.webp$/);
         expect(ad.imageFile).toContain(variant.variantSlug);
@@ -82,8 +82,8 @@ describe("AD_CATALOG", () => {
     }
   });
 
-  it("should have variant numbers 1-6 (KBMO 1-5 + Interconnected 6)", () => {
+  it("should have variant numbers 1-7 (KBMO 1-5 + Interconnected 6 + Tantra 7)", () => {
     const nums = AD_CATALOG.map((v) => v.variantNum).sort((a, b) => a - b);
-    expect(nums).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(nums).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 });

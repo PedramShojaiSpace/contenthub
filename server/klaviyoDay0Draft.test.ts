@@ -26,8 +26,8 @@ describe("Interconnected Day 0 deliverability draft", () => {
       "utf8"
     );
 
-    expect(source).toContain("background-color:#f3f0e9");
-    expect(source).toContain("The Urban Monk");
+    expect(source).toContain("background-color:#ffffff");
+    expect(source).toContain("max-width:640px");
     expect(source).toContain("@media only screen and (max-width: 620px)");
   });
 });

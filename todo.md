@@ -20,6 +20,9 @@
 - [ ] Repair the reproduced Email → Revenue blank Hub route by registering its existing page in the Core bundle and adding the shared wrong-bundle fallback to Growth so `/hub/growth/interconnected-email-revenue` resolves to its true owner.
 - [x] Document confirmed defects, regressions, performance/build risks, and operational blockers with severity, evidence, user impact, and recommended next action.
 - [x] Investigate and repair the audit-confirmed missing `commerce.products.list` and `commerce.cart.create` tRPC registration so the existing Hub commerce contract and its Shopify-backed test coverage are restored without changing storefront behavior — the existing commerce router is now composed into the public app router and focused contract coverage passes 1/1.
+- [x] Complete the stale Klaviyo Day 0 draft source-assertion cleanup by replacing the obsolete brand-string check with a structural shared-email-frame check, then prove it passes without changing live or draft email content — Klaviyo Day 0 and Meta catalog suites pass 13/13 with no live or draft email, creative, audience, or spend changes.
+- [x] Update the stale Tantra Meta creative-catalog assertions to the current seven-variant JPEG inventory without changing campaign, creative, audience, or spend behavior.
+- [x] Document the remaining external operational checks for production deployment validation, Shopify paid-order webhook evidence, Meta production access, and the first KO/Klaviyo collector run — owner-action runbook saved as `docs/content-hub-owner-actions-2026-08-16.md`.
 - [x] Deliver a prioritized Content Hub audit report suitable for morning review, including a concise health summary, verified routes/tools, open defects, and a repair order.
 
 ## Deferred Generated Blog Quality Remediation

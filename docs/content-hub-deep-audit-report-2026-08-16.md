@@ -2,7 +2,7 @@
 
 **Audit date:** August 16, 2026  
 **Scope:** Production Content Hub routes and bundles; shared client/server routing; critical tool workflows; connected-service health; test status; reporting and commerce dependencies.  
-**Assessment:** **Operational, but not fully release-safe.** The Hub is not broadly down. Multiple canonical tools work in production. However, a stale production-bundle publication problem and unresolved cross-bundle navigation inventory can still make some legacy or misowned URLs show a blank shell.
+**Assessment:** **Operational, with targeted release-validation work remaining.** The Hub is not broadly down. Multiple canonical tools work in production, the previously missing public commerce contract is restored, and the full automated regression suite is now green. Deployment synchronization was previously inconsistent; the platform subsequently reported a successful deployment, so final live route verification is still required before declaring every historical Hub URL stable.
 
 > **Bottom line:** The immediate user-facing failure is primarily a **routing and deployment-asset problem**, not a universal server or database outage. The architecture repair is in source and passes focused tests, but production has intermittently served older bundle assets after successful checkpoints. That is the first issue to close before treating the Hub as fully stable.
 
@@ -16,7 +16,7 @@
 | Canonical Growth tools | **Working with route caveat** | `/hub/growth/yt-analytics` loaded video metrics and populated rows. | Growth bundle works for existing canonical routes. |
 | Analytics tools | **Working with data limitations** | `/hub/analytics/reconciliation` loaded saved data and exposed the explicit manual Meta refresh action. | Analytics bundle works; revenue completeness remains constrained by the Shopify setting. |
 | Cross-bundle deep links | **At risk** | Reproduced blank routes for legacy/misowned URLs; source-level resolver and fallback repairs were applied. | Repairs are implemented, but production asset freshness must be confirmed before declaring every historical URL healthy. |
-| Production deployment assets | **Blocked / inconsistent** | Cache-busted production requests continued to serve Hub assets timestamped before later local builds/checkpoints. | Newly added aliases and newly registered Hub routes cannot be trusted as live until the hosting build/publish layer advances. |
+| Production deployment assets | **Published; live verification pending** | Earlier cache-busted requests served old Hub entries; the platform has subsequently reported a successful deployment. | Verify fresh assets and representative deep links before relying on historical route repairs. |
 | Database connectivity | **Healthy** | Application health and multiple protected reporting tools loaded; current database-backed dashboards returned data. | No audit evidence of a database outage. |
 | Connected services | **Mostly healthy** | WordPress, Meta Ads, Shopify Storefront, Kajabi, Klaviyo, Gmail, YouTube, Buffer, Pexels, DataForSEO, and Shopify order-reading tests succeeded. | Credentials/connectivity are broadly intact; see targeted exceptions below. |
 | Automated email reporting | **Configured; first production run pending** | The KO/Klaviyo daily collector is registered with isolated path ownership. | It needs its first successful managed execution before becoming a fully proven operational control. |
@@ -42,15 +42,15 @@ The following were directly observed in production during the audit or verified 
 
 ## Confirmed Defects and Risks
 
-### 1. Production bundle publication is stale or inconsistent — **Priority 0**
+### 1. Production bundle publication was stale or inconsistent; current deployment needs confirmation — **Priority 0 validation**
 
-The most important finding is not a code syntax failure. The local staged production build completed after route fixes, and source inspections confirmed the fixes were included in local output. Yet cache-busted production requests continued to receive older bundle entries whose modification time predated the later build and checkpoint.
+The most important earlier finding was not a code syntax failure. The local staged production build completed after route fixes, and source inspections confirmed the fixes were included in local output. Yet cache-busted production requests had continued to receive older bundle entries whose modification time predated the later build and checkpoint. The platform subsequently reported a successful deployment, which is encouraging but does not replace a post-publication route and asset check.
 
 This causes a dangerous mismatch: a repair can be correct in source, pass its focused tests, and still not be available to users. It also explains why canonical pre-existing tools may work while a newly registered tool or alias remains blank.
 
-**Impact.** Do not treat a successful source checkpoint alone as proof that a Hub-bundle repair is live. This affects reliability of all multi-bundle route changes.
+**Impact.** Do not treat a successful source checkpoint alone as proof that a Hub-bundle repair is live. Until a current production smoke test completes, this remains relevant to multi-bundle route changes.
 
-**Recommended action.** Escalate the build/publication synchronization problem with the hosting platform using the exact evidence in `docs/content-hub-deep-audit-2026-08-16.md`: successful local staged build, successful checkpoint, but stale public entry asset on cache-busted request. Require confirmation that all public, Core, Content, Growth, and Analytics artifacts are atomically rebuilt and published from the latest checkpoint.
+**Recommended action.** Run the post-publication smoke suite described below. If any bundle remains stale, escalate using the exact evidence in `docs/content-hub-deep-audit-2026-08-16.md`: successful local staged build and checkpoint paired with a stale public entry asset on a cache-busted request. Require confirmation that all public, Core, Content, Growth, and Analytics artifacts are atomically rebuilt and published from the latest checkpoint.
 
 ### 2. Legacy and wrong-bundle routes can still blank until fresh bundles publish — **Priority 0**
 
@@ -92,9 +92,9 @@ The audit found that the implemented `commerceRouter` was absent from the main `
 
 **Follow-up.** Run a browser cart smoke test after the next verified fresh bundle publication. The repair does not change storefront navigation or payment behavior.
 
-### 7. Three test groups are stale, not confirmed runtime outages — **Priority 2**
+### 7. Commerce and stale-test cleanup — **Remediated**
 
-The full Vitest suite showed seven failures total:
+The audit’s initial full Vitest suite showed seven failures total:
 
 | Group | Failing tests | Interpretation | Repair order |
 |---|---:|---|---|
@@ -102,7 +102,7 @@ The full Vitest suite showed seven failures total:
 | Meta creative catalog expectations | 2 | Tests expect old WebP names/six variants while current Tantra assets use newer naming/seven variants. | Update test fixtures after validating the current catalog is intentional. |
 | Klaviyo Day 0 draft layout expectation | 1 | Test expects obsolete beige declaration after approved email treatment changes. | Update the assertion to the approved current visual contract. |
 
-These failures should be corrected so the full test suite returns green; they should not be silently accepted as normal background noise.
+All seven are now remediated. The commerce router is composed into the public app router and its focused contract test passes. The Klaviyo Day 0 test now asserts the approved white shared-email frame and structural content width rather than obsolete visual/brand strings. The Meta catalog test accepts the approved Tantra JPEG convention and its seventh variant. The post-remediation full suite passed **149 test files, 1,524 tests, and 2 intentional skips**, with no failures.
 
 ### 8. Integration-health caveats — **Priority 2**
 
@@ -128,7 +128,7 @@ The Tantra Quiz Funnel itself works and returned 452 quiz starts, 272 completion
 
 ## Testing and Build Health
 
-The automated suite has broad coverage and most tests passed during the audit, including live credential smoke tests. The initial full-suite run showed **7 failures**. Four were the commerce-composition issue now remediated with a focused 1/1 contract test; the remaining stale Meta-creative and Klaviyo layout expectations should be re-run and reconciled before claiming a fully green suite. Focused route-resolver coverage passed after the cross-bundle repair; focused reconciliation, attribution, Interconnected, Tantra, Shopify-order, and integration tests also passed.
+The automated suite has broad coverage and includes live credential smoke tests. The initial audit run showed **7 failures**; all are now remediated. The latest full-suite run passed **149 test files and 1,524 tests**, with **2 intentional skips** and no failures. Focused route-resolver coverage passed after the cross-bundle repair; focused reconciliation, attribution, Interconnected, Tantra, Shopify-order, and integration tests also passed.
 
 The production build process is a second operational risk. Hub Core rendering can be terminated under sandbox memory pressure when the local development watcher is running. A complete staged build succeeded after stopping the watcher and using a bounded 1.8 GB heap. This means the build is recoverable, but it is not yet robust.
 
@@ -141,13 +141,11 @@ The production build process is a second operational risk. Hub Core rendering ca
 
 | Order | Action | Why it comes first | Definition of done |
 |---:|---|---|---|
-| 1 | Resolve the hosting build/publication synchronization issue. | Without fresh assets, every client-side route fix can remain invisible in production. | Cache-busted public bundle hashes match the latest staged build for all five Hub bundles. |
-| 2 | Run a production deep-link smoke suite after publication. | Confirms that known legacy and canonical routes do not blank. | Legacy YouTube-to-Blog, Email → Revenue, Studio, SEO, YouTube Analytics, Reconciliation, and Video Production routes all mount or redirect correctly. |
-| 3 | Browser-verify the restored `commerce` tRPC cart path. | The contract repair is code-verified; the owner-facing cart interaction still needs a fresh-bundle smoke test. | Cart operation succeeds without affecting storefront navigation. |
-| 4 | Repair/validate the Shopify paid-order webhook. | Required for trustworthy revenue attribution and downstream ROAS. | A recent paid order appears in Shopify, the webhook recorder, and the path-isolated attribution view. |
-| 5 | Update stale Meta creative and Day 0 layout tests. | Restores a green suite and prevents genuine regressions from hiding behind accepted failures. | Full regression suite passes with no known baseline failures. |
-| 6 | Migrate the direct internal navigation inventory to the shared resolver. | Prevents the next blank-page regression. | All Hub navigation uses approved resolver helpers or an explicit documented exception. |
-| 7 | Confirm the first automated KO/Klaviyo reporting run. | Completes operational proof for downstream email reporting. | Managed job log and saved 14-day snapshot validate successfully with no path contamination. |
+| 1 | Run a production deep-link and asset-freshness smoke suite after the reported successful deployment. | Confirms the formerly stale deployment now serves the repaired bundles. | Legacy YouTube-to-Blog, Email → Revenue, Studio, SEO, YouTube Analytics, Reconciliation, and Video Production routes all mount or redirect correctly; cache-busted bundle assets are current. |
+| 2 | Browser-verify the restored `commerce` tRPC cart path. | The contract repair is code-verified; the owner-facing cart interaction still needs a fresh-bundle smoke test. | Cart operation succeeds without affecting storefront navigation. |
+| 3 | Repair/validate the Shopify paid-order webhook. | Required for trustworthy revenue attribution and downstream ROAS. | A recent paid order appears in Shopify, the webhook recorder, and the path-isolated attribution view. |
+| 4 | Migrate the direct internal navigation inventory to the shared resolver. | Prevents the next blank-page regression. | All Hub navigation uses approved resolver helpers or an explicit documented exception. |
+| 5 | Confirm the first automated KO/Klaviyo reporting run. | Completes operational proof for downstream email reporting. | Managed job log and saved 14-day snapshot validate successfully with no path contamination. |
 
 ## Audit Evidence and Limits
 
@@ -157,4 +155,4 @@ This report distinguishes direct verification from source-level analysis. Canoni
 
 The Content Hub has a healthy core: major integrations authenticate, canonical tools across the Core, Content, Growth, and Analytics bundles work, and the server/database are not showing a broad outage. The user’s blank-page experience is real, but it has a specific architectural cause: multi-bundle ownership and stale production asset publication.
 
-The most important business decision is to treat the next deployment verification as an operations priority, not a cosmetic web fix. Once the platform serves the current bundle set, the route protections already added can be proven live. Then the commerce contract and Shopify webhook should be repaired before using the Hub as the single source of truth for revenue allocation and scaling.
+The most important business decision is to treat post-deployment verification as an operations priority, not a cosmetic web fix. Once the reported current bundle set is proven live, the route protections and restored commerce contract can be proven through owner-facing flows. Then the Shopify webhook and scheduled KO/Klaviyo report should be verified before using the Hub as the single source of truth for revenue allocation and scaling.

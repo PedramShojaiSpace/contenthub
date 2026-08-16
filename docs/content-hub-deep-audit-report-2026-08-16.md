@@ -79,6 +79,8 @@ Source-level protections are now in place: a shared ownership resolver, bundle f
 
 **2026-08-16 follow-up.** Two additional legacy URLs were opened in production without changing any tool configuration. `/hub/yt-analytics?legacy_route_check=1` resolved to `/hub/growth/yt-analytics?legacy_route_check=1` and rendered the YouTube Analytics shell. `/hub/video-production?legacy_route_check=1` resolved to `/hub/content/video-production?legacy_route_check=1` and loaded the Content bundle shell. These results confirm representative public legacy redirects work today. They do not independently prove the rare Core-static-host fallback edge case in isolation, so that hardening item should be closed only with a targeted route-base regression test rather than a speculative client change.
 
+**Email → Revenue follow-up.** The wrong-bundle URL `/hub/growth/interconnected-email-revenue?route_audit=1` resolved to `/hub/interconnected-email-revenue?route_audit=1` and rendered the full isolated Email → Revenue interface. The production view retained the Kajabi-versus-KO/Klaviyo split, displayed no pooled winner metric, and showed the completed-day collector contract. No reporting data, attribution rule, schedule, or refresh action was changed during this route check.
+
 ### 3. Cross-bundle navigation inventory remains large — **Priority 1**
 
 The source audit found **49** internal usages of `Link`, `setLocation`, or `window.location` outside the shared resolver/sidebar. Direct paths including `/studio`, `/video-production`, `/viral-studio`, `/manychat-wizard`, and `/script-library` may cross bundle ownership depending on where the user clicks from.

@@ -23,6 +23,7 @@
 - [x] Complete the stale Klaviyo Day 0 draft source-assertion cleanup by replacing the obsolete brand-string check with a structural shared-email-frame check, then prove it passes without changing live or draft email content — Klaviyo Day 0 and Meta catalog suites pass 13/13 with no live or draft email, creative, audience, or spend changes.
 - [x] Update the stale Tantra Meta creative-catalog assertions to the current seven-variant JPEG inventory without changing campaign, creative, audience, or spend behavior.
 - [x] Document the remaining external operational checks for production deployment validation, Shopify paid-order webhook evidence, Meta production access, and the first KO/Klaviyo collector run — owner-action runbook saved as `docs/content-hub-owner-actions-2026-08-16.md`.
+- [x] Verify representative post-deployment public Hub routes in production — legacy YouTube-to-Blog redirected and rendered; Email → Revenue, Creation Studio, Reconciliation, YouTube Analytics, and Video Production all loaded without a blank shell while preserving reporting guardrails.
 - [x] Deliver a prioritized Content Hub audit report suitable for morning review, including a concise health summary, verified routes/tools, open defects, and a repair order.
 
 ## Deferred Generated Blog Quality Remediation

@@ -54,6 +54,39 @@ const AMOUNT_TO_TIER: Record<number, { tier: string; label: string; priceCents: 
   19900:  { tier: "199",   label: "Enhanced Package $199",                                      priceCents: 19900  },
 };
 
+// The Command Center's current-funnel ROAS must use only the active entry offer
+// and the current $199 OCUS. Matching on price alone is insufficient because the
+// academy has other offers at overlapping price points.
+export const CURRENT_INTERCONNECTED_OFFER_TIERS = {
+  "2151314475": { tier: "67", label: "Interconnected $67 Bundle OTO", priceCents: 6700 },
+  "2151333044": { tier: "199", label: "Gut Permeability + Food Sensitivity Test w/ Coach ($199 OCUS)", priceCents: 19900 },
+} as const;
+
+// A separately audited all-time reference for the retired $299 OCUS. It is
+// intentionally never included in current-period $67/$199 ROAS or take-rate
+// calculations. The source audit identified 4 $299 purchases across 16 paid
+// entry buyers (25.0%) before the current $199 offer existed.
+export const HISTORICAL_299_OCUS_BENCHMARK = {
+  entryPurchases: 16,
+  upsellPurchases: 4,
+  upsellRevenueCents: 119600,
+  takeRatePct: 25,
+  auditReference: "Direct Kajabi historical offer audit — 2026-08-16",
+} as const;
+
+type CurrentInterconnectedOfferId = keyof typeof CURRENT_INTERCONNECTED_OFFER_TIERS;
+
+export interface KajabiTransactionRow {
+  id: string;
+  attributes: {
+    amount_in_cents: number;
+    state?: string;
+    action?: string;
+    created_at: string;
+  };
+  relationships?: { offer?: { data?: { id: string } } };
+}
+
 // ── Token cache ───────────────────────────────────────────────────────────────
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
@@ -103,6 +136,17 @@ interface KajabiSalesMetrics {
   pagesScanned: number;
 }
 
+export interface CurrentInterconnectedSalesMetrics {
+  tiers: TierSummary[];
+  totalRevenueCents: number;
+  totalPurchases: number;
+  fetchedAt: number;
+  startDate: string;
+  endDate: string;
+  apiMethod: "transactions_by_site_exact_offer";
+  pagesScanned: number;
+}
+
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
 function getStartDate(datePreset: string): string {
@@ -121,7 +165,97 @@ function getStartDate(datePreset: string): string {
   }
 }
 
+function isCurrentInterconnectedOfferId(offerId: string): offerId is CurrentInterconnectedOfferId {
+  return offerId in CURRENT_INTERCONNECTED_OFFER_TIERS;
+}
+
+/**
+ * Isolate only the active Interconnected entry offer and current $199 OCUS from
+ * Kajabi's site-wide transaction feed. The public API ignores offer filters, so
+ * the offer relationship must be checked locally rather than inferring the funnel
+ * from amount alone.
+ */
+export function summarizeCurrentInterconnectedTransactions(
+  rows: KajabiTransactionRow[],
+  startDate: string,
+  endDate: string,
+): Omit<CurrentInterconnectedSalesMetrics, "fetchedAt" | "pagesScanned"> {
+  const tierMap: Record<string, TierSummary> = {};
+
+  for (const row of rows) {
+    const createdAt = row.attributes?.created_at || "";
+    const dateStr = createdAt.substring(0, 10);
+    if (dateStr < startDate || dateStr > endDate) continue;
+
+    const state = row.attributes?.state || "";
+    const action = row.attributes?.action || "";
+    const amount = row.attributes?.amount_in_cents || 0;
+    if (amount <= 0 || state === "failed" || state === "refunded" || action === "refund") continue;
+
+    const offerId = row.relationships?.offer?.data?.id || "";
+    if (!isCurrentInterconnectedOfferId(offerId)) continue;
+
+    const tierDef = CURRENT_INTERCONNECTED_OFFER_TIERS[offerId];
+    if (amount !== tierDef.priceCents) continue;
+
+    if (!tierMap[tierDef.tier]) {
+      tierMap[tierDef.tier] = { ...tierDef, count: 0, revenueCents: 0 };
+    }
+    tierMap[tierDef.tier].count++;
+    tierMap[tierDef.tier].revenueCents += amount;
+  }
+
+  const tiers = Object.values(tierMap).sort((a, b) => a.priceCents - b.priceCents);
+  return {
+    tiers,
+    totalRevenueCents: tiers.reduce((sum, tier) => sum + tier.revenueCents, 0),
+    totalPurchases: tiers.reduce((sum, tier) => sum + tier.count, 0),
+    startDate,
+    endDate,
+    apiMethod: "transactions_by_site_exact_offer",
+  };
+}
+
 // ── Main fetch logic ──────────────────────────────────────────────────────────
+
+async function fetchCurrentInterconnectedSales(
+  startDate: string,
+  endDate: string,
+): Promise<CurrentInterconnectedSalesMetrics> {
+  const token = await getToken();
+  const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
+  const rows: KajabiTransactionRow[] = [];
+  let pagesScanned = 0;
+  let hitOldData = false;
+
+  for (let page = 1; page <= 60 && !hitOldData; page++) {
+    const url = `${KAJABI_API_BASE}/transactions?filter[site_id]=${SITE_ID}&page[number]=${page}`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) throw new Error(`Kajabi transaction read failed with HTTP ${res.status}`);
+
+    const data = await res.json() as { data?: KajabiTransactionRow[]; links?: { next?: string } };
+    const pageRows = data.data || [];
+    pagesScanned = page;
+    if (pageRows.length === 0) break;
+
+    for (const row of pageRows) {
+      const dateStr = (row.attributes?.created_at || "").substring(0, 10);
+      if (dateStr < startDate) {
+        hitOldData = true;
+        break;
+      }
+      rows.push(row);
+    }
+
+    if (!data.links?.next) break;
+  }
+
+  return {
+    ...summarizeCurrentInterconnectedTransactions(rows, startDate, endDate),
+    fetchedAt: Date.now(),
+    pagesScanned,
+  };
+}
 
 async function fetchKajabiSalesCustomRange(startDate: string, endDate: string): Promise<KajabiSalesMetrics & { startDate: string; endDate: string; individualSales: Array<{ time: string; amountCents: number; label: string; offerId: string }> }> {
   const token = await getToken();
@@ -420,6 +554,22 @@ export const kajabiSalesRouter = router({
       return fetchKajabiSalesCustomRange(input.startDate, input.endDate);
     }),
 
+  // Direct Kajabi source for the Command Center. This bypasses the lagging local
+  // webhook ledger and excludes KO/Klaviyo/Shopify, historical $299, and other
+  // Academy offer revenue from the current Interconnected ROAS calculation.
+  getLiveInterconnectedPurchases: protectedProcedure
+    .input(z.object({
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    }))
+    .query(async ({ input }) => {
+      return fetchCurrentInterconnectedSales(input.startDate, input.endDate);
+    }),
+
+  // Immutable historical context for the retired $299 OCUS. Kept in a separate
+  // procedure so it cannot accidentally affect the current $67/$199 funnel ROAS.
+  getHistorical299Benchmark: protectedProcedure.query(() => HISTORICAL_299_OCUS_BENCHMARK),
+
   getFunnelSales: protectedProcedure
     .input(z.object({
       datePreset: z
@@ -605,6 +755,7 @@ export const kajabiSalesRouter = router({
       return {
         scorecard,
         dateRange: { startDate: input.startDate, endDate: input.endDate },
+        meta: metaResult,
         metaError: metaResult.error,
       };
     }),

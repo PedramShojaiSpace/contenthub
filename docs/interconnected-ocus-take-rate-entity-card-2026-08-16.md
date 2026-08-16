@@ -18,3 +18,13 @@ The Kajabi paid-order records identify **15 unique $67 Interconnected entry buye
 The same source contains four historical $299 OCUS-labeled purchases across two offer names, but none matches a recorded $67 entry buyer after that buyer’s entry purchase. Those $299 records cannot be treated as a $199 take-rate numerator, and they do not alter the 0 / 15 $199 baseline.
 
 The calculation is directional rather than a mature cohort result: recent $67 orders have not all had a full 14-day observation window, Kajabi records do not currently show a $199 OCUS purchase, and the current Shopify attributed-sales table contains no matching August $67 or $199 Interconnected order. Before judging the new $199 page, persist the original CRM path, price cell, entry-order ID, OCUS-view timestamp, $199 checkout touch, downstream order ID, payment status, and refund status on the same buyer-level record.
+
+## Historical-Source Reassessment
+
+The authenticated Interconnected Command Center remains configured around a **legacy $299 Upsell** primary KPI. Its current-day dashboard reported 0 upsells, 0 Kajabi revenue, and no sales by tier, while the scorecard displayed 7 buyer matches from the selected lead cohort but $0 recorded revenue. This confirms the view is useful for current operational monitoring but is not a sufficient historical $199 OCUS source of truth. The historical reconstruction must use the direct Kajabi transaction endpoint—already implemented in the protected `kajabiSalesRouter`—and distinguish it from the webhook capture table that initially undercounted the user-observed $199 purchases.
+
+## Corrected Historical Result
+
+The authenticated month-to-date Command Center calls the direct Kajabi transaction source and reports **16 paid $67 Interconnected Bundle OTO transactions** and **4 paid $299 Gut Permeability + Food Sensitivity Test with Coach upsells**. The historical paid upsell attachment is therefore **25.0% (4 / 16)** for the previous **$299** OCUS—not 0%.
+
+This corrects the prior webhook-only 0 / 15 conclusion, which was incomplete. The direct Kajabi source is the authoritative source for the historical transaction count because it scans the site-level Kajabi transaction feed rather than relying solely on inbound purchase webhooks. However, it also reveals a critical pricing distinction: the historical four upsells were recorded at **$299**, not $199. The current $199 OCUS therefore has **no mature direct-transaction sample yet**; it should not be judged against the prior 25.0% $299 attachment until at least one full 14-day cohort is available. The prior webhook-table result is retained only as a data-capture gap, not as a conversion result.

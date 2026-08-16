@@ -5,6 +5,7 @@
 - [x] Run database migrations
 
 ## Read-Only Content Hub Audit — 2026-08-13
+- [x] Create seven separate copy-ready, policy-safe Tantra Meta ad documents—one per video landing page—with dated campaign naming, ad-set targeting, destination UTM, five distinct headlines, five 1,800–2,200-character Dr. Pedram narrative posts, and seven matched AI image prompts; no Meta object was created or published. All 35 primary texts and 49 prompts passed structural validation; review index saved at `docs/tantra-meta-copy-package/INDEX.md`.
 - [x] Verify the saved corrected Meta inventory audit distinguishes the existing direct-to-quiz campaign families from the unbuilt seven video-page packages and the incomplete King and Queen draft before marking the audit complete — independently verified in `docs/tantra-meta-actual-inventory-audit-2026-08-16.md`.
 - [x] Produce an exact Curt-ready map of the six paused Tantra Meta campaign records to their intended seven-video landing-page paths, including direct Meta review links and a no-reactivation review checklist — independently verified in `docs/curt-paused-tantra-campaign-video-map-2026-08-16.md`.
 - [ ] Correct the Interconnected Command Center OCUS reporting so the current $199 offer is labeled and measured separately from the verified historical $299 baseline, without changing any offer, checkout, CRM, or funnel behavior.

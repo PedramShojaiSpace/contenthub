@@ -21,7 +21,7 @@
 | `/api/ingest/research-report`, `/api/wp/publish-webhook` | Trusted external sender only | Require `INGEST_SECRET` request header. | Verified shared-secret webhook surfaces. |
 | `/api/kajabi/purchase` | Kajabi only | Preserves signed body and validates an available Kajabi signature header. | Receiver hardened; passive real-sale validation remains pending. |
 | `/api/kajabi/optin` | Kajabi only | Currently accepts the event before any sender-authentication check, then can write a lead, invoke CAPI, subscribe a contact, and notify the owner. | **Authorization gap — separate hardening required before closure.** |
-| `/api/scheduled/*` | Manus cron only | Two newest handlers explicitly verify `user.isCron` and task UID. A source-wide search did not establish equivalent checks for all legacy schedule handlers. | **Incomplete legacy inventory — do not treat all as verified.** |
+| `/api/scheduled/*` | Manus cron only | A shared `cronOnlyMiddleware` now runs before every scheduled handler, rejects a missing or failed cron identity with 403, and preserves each handler’s task-UID ownership check. | Verified common authorization boundary; regression-covered. |
 | Public Interconnected, Tantra, campaign, and advertorial GET pages | Public marketing traffic | Public rendering is required by funnel design; data access is limited to rendered published content. | Intentional public funnel surface. |
 | `/bridge/:slug`, `/r/checkout`, `/r/ic67`, `/api/attribution/click` | Public marketing traffic | Required for published advertorials and first-party tracked checkout / attribution handoffs. | Intentional public marketing surface; input validation/rate controls remain separate concerns. |
 | `/api/email-optimizer/optimize` | Authorized bookmarklet callers | Checks an optimizer key and allows configured Kajabi/Urban Monk/local origins. | Shared-key public utility; legacy fixed-key retirement should be assessed separately. |
@@ -34,7 +34,7 @@
 
 ## Closure Criteria
 
-The full access-control matrix must remain open until the Kajabi opt-in receiver is sender-authenticated without interrupting real Kajabi delivery, every mounted scheduled callback has been classified or moved behind a common cron-only guard, and representative public funnel, commerce, webhook, and redirect endpoints have route-level regression coverage. No endpoint should be converted from public to protected without confirming its required external caller and rollback path.
+The full access-control matrix remains open until the Kajabi opt-in receiver is sender-authenticated without interrupting real Kajabi delivery and representative public funnel, commerce, webhook, and redirect endpoints have route-level regression coverage. Scheduled callbacks are now behind a common cron-only guard. No endpoint should be converted from public to protected without confirming its required external caller and rollback path.
 
 ## Kajabi Form-Webhook Constraint
 

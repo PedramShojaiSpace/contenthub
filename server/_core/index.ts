@@ -48,6 +48,7 @@ import {
   resolveGenericKajabiUpsellCents,
   resolveKajabiKnownPriceCents,
 } from "../interconnectedUpsellAttribution";
+import { normalizeKajabiPurchase, parseKajabiWebhookPayload } from "../kajabiWebhookPayload";
 import { registerUnbounceKlaviyoLeadBridge } from "../unbounceKlaviyoLeadBridge";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -109,7 +110,17 @@ async function startServer() {
     const { handleShopifyOrderPaid } = await import("../attributionRouter");
     return handleShopifyOrderPaid(req, res);
   });
-  app.use(express.json({ limit: "50mb" }));
+  app.use(express.json({
+    limit: "50mb",
+    verify: (req, _res, buffer) => {
+      // Preserve the exact signed Kajabi payload before JSON parsing. Rebuilding
+      // JSON from req.body can change byte ordering or whitespace and invalidate
+      // an HMAC signature.
+      if (req.originalUrl === "/api/kajabi/purchase") {
+        (req as express.Request & { rawKajabiBody?: Buffer }).rawKajabiBody = Buffer.from(buffer);
+      }
+    },
+  }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // Storage proxy — serves /manus-storage/* paths via signed S3 URLs
   registerStorageProxy(app);
@@ -1692,32 +1703,38 @@ async function startServer() {
 
   app.post("/api/kajabi/purchase", async (req, res) => {
     try {
+      const { rawBody, payload } = parseKajabiWebhookPayload(
+        (req as express.Request & { rawKajabiBody?: Buffer }).rawKajabiBody ?? req.body
+      );
       const secret = process.env.INGEST_SECRET;
       // Kajabi sends a signature header — verify if secret is configured
       if (secret) {
         const sig = req.headers["x-kajabi-signature"] as string | undefined;
         if (sig) {
           const { createHmac } = await import("crypto");
-          const expected = createHmac("sha256", secret).update(JSON.stringify(req.body)).digest("hex");
+          const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
           if (sig !== expected) {
             console.warn("[kajabi/purchase] Invalid signature — ignoring");
             return res.status(401).json({ error: "Invalid signature" });
           }
         }
       }
-      const payload = req.body as Record<string, unknown>;
       const event = payload.event as string | undefined;
       // Only process purchase events
       if (event && !event.toLowerCase().includes("purchase") && !event.toLowerCase().includes("payment")) {
         return res.json({ ok: true, skipped: true, event });
       }
-      const email = (payload.email ?? (payload.member as any)?.email ?? "") as string;
-      const name = (payload.name ?? (payload.member as any)?.name ?? "") as string;
-      const rawAmount = parseFloat(String(payload.amount ?? payload.total ?? payload.price ?? 0));
-      const orderId = String(payload.id ?? payload.order_id ?? payload.purchase_id ?? Date.now());
-      const offerName = String(payload.offer_name ?? payload.product_name ?? payload.title ?? "Kajabi Purchase");
-      const offerId = String(payload.offer_id ?? payload.product_id ?? "");
-      const upsellId = String(payload.upsell_id ?? (payload.upsell as any)?.id ?? "");
+      const normalized = normalizeKajabiPurchase(payload);
+      const email = normalized.email;
+      const name = normalized.name;
+      const rawAmount = normalized.amount;
+      // Kajabi's current Payment Succeeded payload puts its stable transaction
+      // ID under payment_transaction.id. Hash the exact payload only as a final
+      // deterministic fallback, never Date.now(), so delivery retries stay safe.
+      const orderId = normalized.orderId || `kajabi_${createHash("sha256").update(rawBody).digest("hex").slice(0, 32)}`;
+      const offerName = normalized.offerName;
+      const offerId = normalized.offerId;
+      const upsellId = normalized.upsellId;
       if (!email) {
         console.warn("[kajabi/purchase] No email in payload — cannot send CAPI");
         return res.json({ ok: false, reason: "no_email" });
@@ -1739,7 +1756,7 @@ async function startServer() {
           const { getDb } = await import("../db");
           const { interconnectedLeads, kajabiPurchases: kajabiPurchasesTable } = await import("../../drizzle/schema");
           const { eq, and, gt } = await import("drizzle-orm");
-          const db = getDb();
+          const db = await getDb();
           const sixtyDaysAgo = Date.now() - 60 * 24 * 60 * 60 * 1000;
           const [lead] = await db.select({ id: interconnectedLeads.id, createdAt: interconnectedLeads.createdAt })
             .from(interconnectedLeads)
@@ -1824,41 +1841,52 @@ async function startServer() {
       const isMetaAttributed = lead ? 1 : 0;
 
       // ── Save purchase to local DB for funnel attribution tracking ──────────
+      let duplicateWebhookPurchase = false;
       if (db) {
         try {
           const { kajabiPurchases } = await import("../../drizzle/schema");
-          await db.insert(kajabiPurchases).values({
-            email: email.toLowerCase().trim(),
-            amountCents,
-            offerName,
-            funnelSource,
-            kajabiOrderId: orderId,
-            isEmailListBuyer: 0,
-            isMetaAttributed,
-            notes: `offer_id:${offerId} | upsell_id:${upsellId}${upsellId === KAJABI_INTERCONNECTED_199_UPSELL_ID ? " | $199 Interconnected OCU" : ""}`,
-            purchasedAt: Date.now(),
-          });
-          console.log(`[kajabi/purchase] DB record saved for ${email} — funnel: ${funnelSource}, amount: $${amount}, meta_attributed: ${isMetaAttributed}`);
+          const [existingPurchase] = await db.select({ id: kajabiPurchases.id })
+            .from(kajabiPurchases)
+            .where(eq(kajabiPurchases.kajabiOrderId, orderId))
+            .limit(1);
 
-          // Kajabi's current purchase webhook does not supply a message-click
-          // token. Preserve the acquisition cohort exactly and make the closing
-          // touch explicitly modeled, rather than claiming click-level proof.
-          if (funnelSource === "interconnected") {
-            try {
-              const { inferKajabiClosingTouch, recordLeadCohortPurchaseCredit } = await import("../leadCohortAttribution");
-              await recordLeadCohortPurchaseCredit({
-                funnelId: "interconnected_agora",
-                purchasePlatform: "kajabi",
-                externalPurchaseId: orderId,
-                purchaseEmail: email,
-                purchaseAmountCents: amountCents,
-                purchasedAt: Date.now(),
-                closingTouch: inferKajabiClosingTouch({
-                  kajabiTagged: Boolean(lead?.kajabiTagged),
-                }),
-              });
-            } catch (creditErr: any) {
-              console.warn("[kajabi/purchase] Lead-cohort credit failed:", creditErr?.message);
+          if (existingPurchase) {
+            duplicateWebhookPurchase = true;
+            console.log(`[kajabi/purchase] Duplicate delivery skipped for order ${orderId}`);
+          } else {
+            await db.insert(kajabiPurchases).values({
+              email: email.toLowerCase().trim(),
+              amountCents,
+              offerName,
+              funnelSource,
+              kajabiOrderId: orderId,
+              isEmailListBuyer: 0,
+              isMetaAttributed,
+              notes: `offer_id:${offerId} | upsell_id:${upsellId}${upsellId === KAJABI_INTERCONNECTED_199_UPSELL_ID ? " | $199 Interconnected OCU" : ""}${normalized.hasMultipleOffers ? " | combined_payment_transaction" : ""}`,
+              purchasedAt: Date.now(),
+            });
+            console.log(`[kajabi/purchase] DB record saved for ${email} — funnel: ${funnelSource}, amount: $${amount}, meta_attributed: ${isMetaAttributed}`);
+
+            // Kajabi's current purchase webhook does not supply a message-click
+            // token. Preserve the acquisition cohort exactly and make the closing
+            // touch explicitly modeled, rather than claiming click-level proof.
+            if (funnelSource === "interconnected") {
+              try {
+                const { inferKajabiClosingTouch, recordLeadCohortPurchaseCredit } = await import("../leadCohortAttribution");
+                await recordLeadCohortPurchaseCredit({
+                  funnelId: "interconnected_agora",
+                  purchasePlatform: "kajabi",
+                  externalPurchaseId: orderId,
+                  purchaseEmail: email,
+                  purchaseAmountCents: amountCents,
+                  purchasedAt: Date.now(),
+                  closingTouch: inferKajabiClosingTouch({
+                    kajabiTagged: Boolean(lead?.kajabiTagged),
+                  }),
+                });
+              } catch (creditErr: any) {
+                console.warn("[kajabi/purchase] Lead-cohort credit failed:", creditErr?.message);
+              }
             }
           }
         } catch (dbErr: any) {
@@ -1879,6 +1907,9 @@ async function startServer() {
       const eventSourceUrl = eventSourceUrls[funnelSource] ?? "https://theacademy.theurbanmonk.com/checkout";
 
       const purchaseEventId = generateEventId(email, "Purchase", orderId);
+      if (duplicateWebhookPurchase) {
+        return res.json({ ok: true, duplicate: true, capiSent: false, purchaseEventId, email, amount, funnelSource, isMetaAttributed });
+      }
       const capiReceipt = await sendCapiEventWithReceipt({
         eventName: "Purchase",
         eventId: purchaseEventId,

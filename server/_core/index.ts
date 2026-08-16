@@ -102,6 +102,12 @@ async function startServer() {
   });
 
   // Configure body parser with larger size limit for JSON/form endpoints
+  // Shopify signs the original bytes, so this route must run before the global
+  // JSON parser and receive a Buffer rather than a re-serialized object.
+  app.post("/api/shopify/order-paid", express.raw({ type: "application/json" }), async (req, res) => {
+    const { handleShopifyOrderPaid } = await import("../attributionRouter");
+    return handleShopifyOrderPaid(req, res);
+  });
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // Storage proxy — serves /manus-storage/* paths via signed S3 URLs
@@ -1559,16 +1565,6 @@ async function startServer() {
       utm_content: "day0_sms_one_time_67_offer",
     });
     return res.redirect(302, `/r/checkout?${trackingQuery.toString()}`);
-  });
-
-  // POST /api/shopify/order-paid — Shopify webhook: orders/paid
-  // Configure in Shopify Admin → Settings → Notifications → Webhooks
-  // URL: https://content.theurbanmonk.com/api/shopify/order-paid
-  // Auth: signed Shopify HMAC when SHOPIFY_WEBHOOK_SECRET is configured, or the
-  // managed callback URL with ?ingest_key=<INGEST_SECRET>.
-  app.post("/api/shopify/order-paid", async (req, res) => {
-    const { handleShopifyOrderPaid } = await import("../attributionRouter");
-    return handleShopifyOrderPaid(req, res);
   });
 
   // POST /api/kajabi/purchase — Kajabi webhook: member_purchase event

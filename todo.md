@@ -5,6 +5,11 @@
 - [x] Run database migrations
 
 ## Read-Only Content Hub Audit — 2026-08-13
+- [x] Perform a non-destructive browser smoke test of the restored commerce cart path without changing storefront navigation, checkout URLs, product visibility, cart contents, or payment behavior — the System Health browser control passed after creating and clearing an isolated cart; checkout was never opened and no existing visitor cart was touched.
+- [ ] Investigate and repair Shopify paid-order webhook attribution evidence, preserving separate Kajabi and KO/Klaviyo paths and avoiding any Shopify URL swap unless explicitly approved.
+- [x] Migrate high-risk direct internal Hub navigation paths to the shared route resolver, add regression coverage, and preserve canonical tool URLs and bundle ownership — audited Studio and Viral Studio destinations now use canonical resolver-owned full-document URLs; targeted resolver tests pass 8/8.
+- [ ] Verify the first scheduled isolated KO/Klaviyo Email → Revenue collector run after its 15:15 UTC window, including saved snapshot and attribution-isolation evidence, without triggering extra Meta API calls.
+- [ ] Resolve the Hub-core production-build resource termination or obtain platform support for it; full regression and focused client/server checks are green, but the staged Hub-core Vite render is externally terminated under multiple safe heap caps.
 - [x] Conduct a read-only deep audit of the current Content Hub, including active product areas, integrations, measurement, code health, and operational gaps; deliver recommendations only with no implementation — report saved as `docs/content-hub-deep-audit-2026-08-13.md`.
 - [x] Protect the first high-risk internal management procedures while preserving intentionally public funnels and verified webhook entry points — UTM history, Typeform intelligence, YouTube pipeline, and YouTube analytics now require an authenticated operator.
 - [ ] Complete the remaining access-control matrix for legacy public procedures, explicitly isolating verified webhook and intentional public-funnel paths before any further conversion.

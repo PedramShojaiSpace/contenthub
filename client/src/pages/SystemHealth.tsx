@@ -109,6 +109,8 @@ function HealthCard({ check }: { check: HealthCheck }) {
 
 export default function SystemHealth() {
   const [refreshKey, setRefreshKey] = useState(0);
+  const [cartSmokeState, setCartSmokeState] = useState<"idle" | "running" | "passed" | "failed">("idle");
+  const [cartSmokeDetail, setCartSmokeDetail] = useState("");
 
   // Substack session
   const { data: substackHealth, isLoading: substackLoading, refetch: refetchSubstack } = trpc.substack.validateSession.useQuery(undefined, {
@@ -118,6 +120,7 @@ export default function SystemHealth() {
   const { data: criticalHealth, isLoading: criticalLoading, refetch: refetchCritical } = trpc.integrationHealth.critical.useQuery(undefined, {
     staleTime: 0,
   });
+  const utils = trpc.useUtils();
   const service = (id: keyof NonNullable<typeof criticalHealth>["services"]) => criticalHealth?.services[id];
   const healthStatus = (id: keyof NonNullable<typeof criticalHealth>["services"]): HealthStatus =>
     criticalLoading ? "checking" : service(id)?.status ?? "unknown";
@@ -126,6 +129,43 @@ export default function SystemHealth() {
     setRefreshKey((key) => key + 1);
     void refetchSubstack();
     void refetchCritical();
+  };
+
+  const runDisposableCartSmoke = async () => {
+    setCartSmokeState("running");
+    setCartSmokeDetail("Loading an available product…");
+
+    try {
+      const products = await utils.commerce.products.list.fetch({ first: 10 });
+      const purchasable = products
+        .flatMap(product => product.variants)
+        .find(variant => variant.availableForSale);
+
+      if (!purchasable) {
+        throw new Error("No purchasable Shopify variant was available for the smoke test.");
+      }
+
+      setCartSmokeDetail("Creating an isolated one-item cart…");
+      const cart = await utils.client.commerce.cart.create.mutate({
+        lines: [{ variantId: purchasable.id, quantity: 1 }],
+      });
+
+      setCartSmokeDetail("Clearing the isolated cart…");
+      const cleared = await utils.client.commerce.cart.removeLines.mutate({
+        cartId: cart.id,
+        lineIds: cart.items.map(item => item.lineId),
+      });
+
+      if (cleared.itemCount !== 0 || cleared.items.length !== 0) {
+        throw new Error("The disposable cart did not clear completely.");
+      }
+
+      setCartSmokeState("passed");
+      setCartSmokeDetail("Passed: an isolated cart was created and cleared. Checkout was never opened.");
+    } catch (error) {
+      setCartSmokeState("failed");
+      setCartSmokeDetail(error instanceof Error ? error.message : "The disposable cart smoke test failed.");
+    }
   };
 
   const wpHealth = service("wordpress");
@@ -312,6 +352,34 @@ export default function SystemHealth() {
           {checks.filter((c) => c.status === "ok").map((c) => <HealthCard key={c.id} check={c} />)}
           {checks.filter((c) => c.status === "unknown").map((c) => <HealthCard key={c.id} check={c} />)}
         </div>
+
+        <Card className="border border-zinc-800 bg-zinc-900/50">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium text-zinc-200">Disposable Commerce Cart Smoke Test</p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Creates a separate one-item cart and immediately clears it through the public commerce route. It never opens checkout or touches an existing visitor cart.
+                </p>
+                {cartSmokeState !== "idle" && (
+                  <p className={`text-xs mt-1.5 ${cartSmokeState === "passed" ? "text-emerald-400" : cartSmokeState === "failed" ? "text-red-400" : "text-blue-400"}`}>
+                    {cartSmokeDetail}
+                  </p>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={cartSmokeState === "running"}
+                className="border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+                onClick={() => void runDisposableCartSmoke()}
+              >
+                {cartSmokeState === "running" ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
+                Run cart smoke
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <p className="text-xs text-zinc-600 text-center">
           Checks run on page load. Click the refresh button to re-run all checks.

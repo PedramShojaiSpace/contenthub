@@ -30,6 +30,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { trpc } from "@/lib/trpc";
+import { getHubPublicHref } from "@/lib/hubRouteResolver";
 import { BufferChannelSelector } from "@/components/BufferChannelSelector";
 import {
   DndContext,
@@ -3184,7 +3185,7 @@ export default function CommandCenter() {
               </div>
               <button
                 className="text-xs text-amber-400 hover:text-amber-300 font-medium transition-colors"
-                onClick={() => setLocation("/viral-studio")}
+                onClick={() => window.location.assign(getHubPublicHref("/viral-studio"))}
               >
                 Open studio →
               </button>
@@ -3195,7 +3196,7 @@ export default function CommandCenter() {
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Recent Hooks</p>
               {viralSummary?.recentHooks && viralSummary.recentHooks.length > 0 ? (
                 viralSummary.recentHooks.map((h: { id: number; topic: string; platform: string; topPick: string | null; createdAt: Date | string }) => (
-                  <div key={h.id} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setLocation("/viral-studio")}>
+                  <div key={h.id} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => window.location.assign(getHubPublicHref("/viral-studio"))}>
                     <Zap className="w-3 h-3 text-amber-400 mt-0.5 shrink-0" />
                     <div className="min-w-0">
                       <p className="text-xs text-foreground truncate leading-snug">{h.topPick ?? h.topic}</p>
@@ -3225,7 +3226,7 @@ export default function CommandCenter() {
             {/* Generate Today's Topic shortcut */}
             <button
               className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors text-xs font-medium text-amber-400 hover:text-amber-300"
-              onClick={() => setLocation("/viral-studio")}
+              onClick={() => window.location.assign(getHubPublicHref("/viral-studio"))}
             >
               <TrendingUp className="w-3.5 h-3.5" />
               Generate Today's Viral Topic
@@ -3233,7 +3234,7 @@ export default function CommandCenter() {
             {/* Repurpose this book shortcut */}
             <button
               className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-border/40 bg-muted/20 hover:bg-amber-500/10 hover:border-amber-500/30 transition-colors text-xs font-medium text-muted-foreground hover:text-amber-400"
-              onClick={() => setLocation("/viral-studio?tab=repurpose")}
+              onClick={() => window.location.assign(getHubPublicHref("/viral-studio", "?tab=repurpose"))}
             >
               <BookOpen className="w-3.5 h-3.5" />
               {(viralSummary as any)?.lastRepurposeBook

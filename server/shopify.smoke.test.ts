@@ -17,11 +17,56 @@
  */
 
 import { describe, expect, it } from "vitest";
+import type { TrpcContext } from "./_core/context";
 import { isShopifyConfigured, listProducts } from "./_core/shopify";
+import { appRouter } from "./routers";
 
 const configured = isShopifyConfigured();
 
 describe.skipIf(!configured)("shopify smoke (live)", () => {
+  it(
+    "serves real products through the public commerce tRPC route without creating a cart",
+    { timeout: 30_000 },
+    async () => {
+      const caller = appRouter.createCaller({} as TrpcContext);
+      const products = await caller.commerce.products.list({ first: 3 });
+
+      expect(products.length).toBeGreaterThanOrEqual(1);
+      expect(products.every(product => product.handle.length > 0)).toBe(true);
+    }
+  );
+
+  it(
+    "creates and clears a disposable public cart without opening checkout",
+    { timeout: 30_000 },
+    async () => {
+      const caller = appRouter.createCaller({} as TrpcContext);
+      const products = await caller.commerce.products.list({ first: 10 });
+      const purchasable = products
+        .flatMap(product => product.variants)
+        .find(variant => variant.availableForSale);
+
+      expect(purchasable, "No purchasable Shopify variant was available for the cart smoke test").toBeTruthy();
+
+      const cart = await caller.commerce.cart.create({
+        lines: [{ variantId: purchasable!.id, quantity: 1 }],
+      });
+
+      expect(cart.id).toBeTruthy();
+      expect(cart.itemCount).toBe(1);
+      expect(cart.checkoutUrl).toMatch(/^https:\/\//);
+      expect(cart.items).toHaveLength(1);
+
+      const cleared = await caller.commerce.cart.removeLines({
+        cartId: cart.id,
+        lineIds: cart.items.map(item => item.lineId),
+      });
+
+      expect(cleared.itemCount).toBe(0);
+      expect(cleared.items).toHaveLength(0);
+    }
+  );
+
   it(
     "returns at least one product with title, image, and non-zero price",
     { timeout: 30_000 },

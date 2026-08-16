@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { Link } from "wouter";
+import { getHubPublicHref } from "@/lib/hubRouteResolver";
 import {
   Upload, Film, Scissors, Play, Download, Trash2,
   CheckCircle2, Clock, AlertCircle, Loader2, Plus,
@@ -1251,11 +1252,11 @@ export default function VideoVariantFactory() {
                       </p>
                     </div>
                   </div>
-                  <Link href="/viral-studio?tab=testing">
+                  <a href={getHubPublicHref("/viral-studio", "?tab=testing")}>
                     <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-white text-xs">
                       <FlaskConical className="w-3 h-3 mr-1" /> View in A/B Test Lab →
                     </Button>
-                  </Link>
+                  </a>
                 </div>
                 <div className="mt-3 space-y-1">
                   {abTestsQuery.data.tests.map((t: any) => (

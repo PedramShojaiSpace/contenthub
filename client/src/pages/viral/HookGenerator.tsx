@@ -22,6 +22,7 @@ import {
   Pencil, Check, SendHorizonal, RefreshCw, Users, History,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { getHubPublicHref } from "@/lib/hubRouteResolver";
 import { useState, useCallback, useEffect, useRef } from "react";
 
 const PLATFORMS = [
@@ -81,7 +82,7 @@ function SendToABLabDialog({ open, onClose, hookText, framework, topic, platform
           <span className="font-semibold">Sent to A/B Test Lab ✓</span>
           <button
             className="text-xs text-left underline text-violet-600"
-            onClick={() => setLocation("/viral-studio?tab=ab")}
+            onClick={() => window.location.assign(getHubPublicHref("/viral-studio", "?tab=ab"))}
           >
             Open A/B Test Lab →
           </button>

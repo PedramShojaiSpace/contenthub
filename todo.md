@@ -5,6 +5,7 @@
 - [x] Run database migrations
 
 ## Read-Only Content Hub Audit — 2026-08-13
+- [x] Conduct a read-only Script Generator audit covering prompts, book/voice retrieval, persona guidance, output controls, and sample behavior; provide an evidence-based approval-gated plan to make scripts sound more like Dr. Pedram without changing any generator component — independently verified in `docs/script-generator-voice-audit-2026-08-16.md`.
 - [x] Prepare an execution-ready, approval-gated Shopify and Kajabi pixel migration checklist with preflight ownership confirmation, cutover steps, real-order validation, rollback points, and no-change boundaries — independently verified in `docs/urban-monk-pixel-migration-checklist-2026-08-16.md`.
 - [x] Design a unified Urban Monk Purchase measurement architecture that migrates Shopify from Mega MEGA’s pixel while retaining the correct Shopify checkout behavior, resolves Kajabi/CAPI duplication, preserves historical continuity, and requires explicit approval before any pixel assignment changes — independently verified in `docs/unified-urban-monk-meta-purchase-architecture-2026-08-16.md`.
 - [x] Propose a single-source-of-truth Interconnected Purchase measurement architecture that resolves Kajabi-native pixel and Content Hub CAPI duplication, preserves necessary funnel-event visibility, and defines a reversible cutover without changing any tracking behavior before approval — independently verified in `docs/interconnected-single-source-purchase-architecture-2026-08-16.md`.

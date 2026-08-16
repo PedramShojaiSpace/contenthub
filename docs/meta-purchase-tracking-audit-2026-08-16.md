@@ -47,3 +47,21 @@ A second production-browser check after the subsequent publication checkpoint ag
 The route was also re-opened with the publication checkpoint as a cache-busting query string (`?v=f06eeb75`), with the same older four-card result. This rules out a simple browser route-cache explanation and reinforces that the public analytics artifact itself remains stale.
 
 Direct public-asset inspection captured the stale deployment evidence: production currently serves Hub Analytics entry `index-C4c9eWoD.js`, which imports `Reconciliation-PBYyOGqz.js`; that deployed Reconciliation chunk does **not** contain the `Purchase Evidence` marker. The bounded local rebuild produced `Reconciliation-By3vgI5V.js`, which does contain that marker. This is a specific production artifact publication discrepancy, not a browser cache issue or a local compilation failure.
+
+## First Live Purchase Evidence Read
+
+After the fresh production bundle became visible, one user-approved manual Meta refresh completed successfully and persisted a single snapshot. The resulting same-day evidence is:
+
+| Source | Purchase count | Purchase value | Interpretation |
+| --- | ---: | ---: | --- |
+| Meta-reported | 24 | $1,137.00 | Current account-insights action/action-value result for the scoped Agora campaign set. |
+| CAPI accepted receipts | 0 | $0.00 | Expected for historical orders because durable receipt logging began with this repair; it is not evidence that prior CAPI requests failed. |
+| First-party paid Kajabi orders | 13 | $1,003.00 | 12 × $67 entry orders plus 1 × $199 OCU, directly visible in the reconciliation transaction log. |
+
+Meta therefore exceeds the first-party paid-order count by 11 Purchase actions and exceeds first-party paid revenue by $134.00. The mismatch is real. The count and value deltas do not move in lockstep, which means this snapshot alone cannot identify a single duplicate order pattern. The next diagnostic step is to audit every browser-pixel and server-side Purchase emission path for the Interconnected/Kajabi journey, then collect CAPI delivery receipts prospectively from the next real Kajabi purchase. No campaign optimization, pixel selection, checkout, or event firing behavior has been changed as part of this read.
+
+### Emission-path inventory
+
+The Content Hub’s public Interconnected offer page emits only `PageView` and `InitiateCheckout`; a source-wide search found no browser `fbq('track', 'Purchase')` call in the Content Hub client or server templates. The Content Hub’s only confirmed Interconnected Purchase emitter is the Kajabi purchase webhook’s server-side CAPI call, which sends the resolved paid amount and one deterministic event ID per Kajabi order.
+
+The current $67 offer checkout itself is served by the external Kajabi Academy domain and was accessible for visual inspection without submitting a purchase. Its Meta Pixel or Kajabi native conversion configuration cannot be established from the Content Hub source. That is now the principal external configuration question: an independently configured Kajabi browser Purchase event could coexist with the Content Hub CAPI event and would not deduplicate unless both paths share the same event ID. The current data does not prove that this is occurring, so no event path has been disabled.

@@ -33,3 +33,9 @@ Kajabi’s two-offer report (`Interconnected $67 Bundle OTO` plus `Gut Permeabil
 | Current $199 attachment rate | **20.0%** | 3 ÷ 15 paid $67 entries |
 
 This is the final current-day Kajabi-funnel read. It intentionally excludes KO/Klaviyo/Shopify revenue and unrelated Kajabi offers. The Content Hub Command Center remains inaccurate at $0.00 revenue / ROAS N/A for this date and is not the source of truth until its Kajabi transaction sync is repaired.
+
+## Reporting Repair Implemented
+
+The Command Center previously read only the local `kajabi_purchases` webhook ledger. A 2026-08-16 database check found **zero same-day rows**, with the latest non-email-list Interconnected ledger row at **2026-08-13T18:28:14Z**, explaining its stale $0.00 revenue display.
+
+The Command Center now reads the direct Kajabi site-transaction feed and accepts only the two active offer IDs: `2151314475` for the $67 entry offer and `2151333044` for the current $199 OCUS. It validates each transaction’s offer relationship, amount, date, and non-refunded status before calculating revenue. This excludes KO/Klaviyo/Shopify revenue, unrelated Kajabi offers, and the historical $299 OCUS offer. Focused regression coverage passes, including exclusions for historical, unrelated, refunded, prior-day, and incorrect-price transactions; the complete suite also passes at **157 files / 1,544 tests / 2 intentional skips**.

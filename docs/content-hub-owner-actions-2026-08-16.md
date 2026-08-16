@@ -58,6 +58,10 @@ The isolated KO/Klaviyo collector is registered for **15:15 UTC** each day as `i
 
 Once the first successful collection is persisted, the Content Hub will send a one-time owner confirmation that states the completed reporting window and saved message-row count. The confirmation explicitly preserves the KO/Klaviyo-only boundary: Kajabi remains excluded and no Meta API call is made.
 
+### Execution update — first run verified
+
+The collector completed successfully at 15:20:56 UTC on 2026-08-16, shortly after the initial 15:15 UTC observation window. Its managed result was HTTP 200 in 1.6 seconds and saved 7 KO/Klaviyo-only Klaviyo message rows for the completed reporting window. The collector now returns to its normal 15:15 UTC daily cadence. Do not create test orders, artificial purchase events, or a second collector job as a workaround.
+
 After the scheduled time, open the Email → Revenue dashboard and inspect the current collector status. Confirm a successful managed-job result, a saved snapshot timestamp, and a nonzero/expected row count for the completed reporting day. Ensure that the stored path identifiers and displayed data remain entirely in the KO/Klaviyo column; Kajabi should continue to use its distinct native-import workflow.
 
 If the job does not run or produces no snapshot, preserve the execution time and visible error. Do not trigger repeated Meta refreshes while troubleshooting, because the reconciliation page is intentionally designed to make only an explicit single Meta API call per manual refresh.

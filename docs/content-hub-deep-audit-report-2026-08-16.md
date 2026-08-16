@@ -111,6 +111,8 @@ The audit found that the implemented `commerceRouter` was absent from the main `
 
 The internal System Health page now also renders an operator-triggered **Disposable Commerce Cart Smoke Test** control in the development preview. Its visible safeguard text states that it creates and clears a separate one-item cart, never opens checkout, and never touches an existing visitor cart. The browser-level control was executed and returned: **“Passed: an isolated cart was created and cleared. Checkout was never opened.”** The same live page continues to report the Shopify Storefront API as connected and the paid-order webhook as degraded because its most recent attributed event is 41 days old.
 
+**Production check.** The protected production System Health route at `/hub/growth/system-health` loads and renders the same Disposable Commerce Cart Smoke Test control with its no-checkout/no-existing-cart safeguards after the latest repair deployment.
+
 ### 7. Commerce and stale-test cleanup — **Remediated**
 
 The audit’s initial full Vitest suite showed seven failures total:
@@ -178,3 +180,7 @@ The important business decision is to preserve the now-proven route and deployme
 ## Follow-Through Build Verification — 2026-08-16
 
 The complete regression suite passes **153 test files / 1,534 tests** with **2 intentional skips** after the commerce, webhook, navigation, and collector-hardening changes. The public funnel production bundle also builds successfully. The Hub-core Vite bundle is still externally terminated during chunk rendering after transforming 6,383 modules: low heap limits exhaust V8, while higher safe limits receive `SIGTERM`. The development server was restored and reports no language-service errors. This is a build-resource blocker requiring platform support or a future build-architecture change; it is not a test or type-check regression introduced by the repairs.
+
+## Scheduled Collector Execution Evidence — 2026-08-16
+
+The enabled `interconnected-email-performance-daily` job (`PN4tSqosxNU94dEpREqYAN`) completed its first successful managed run at **15:20:56 UTC** after the initial 15:15 UTC observation window. The run returned HTTP 200 in 1,626 ms with `messageRows: 7`, persisted its completed-day 14-day reporting window, and advanced the normal daily cadence to 2026-08-17 15:15 UTC. Database evidence confirms the saved rows are exclusively `funnel_path = ko_klaviyo` and `platform = klaviyo`: 7 message rows, 28 recipients, and 12 clicks, with no Kajabi records, no platform conversions, and no platform revenue injected. No Meta API call was made. The earlier empty log at 15:18 reflected a short scheduling delay, not a permanent scheduler failure; the normal cadence has been restored.

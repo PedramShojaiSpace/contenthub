@@ -5,6 +5,7 @@
 - [x] Run database migrations
 
 ## Read-Only Content Hub Audit — 2026-08-13
+- [x] Verify the saved corrected Meta inventory audit distinguishes the existing direct-to-quiz campaign families from the unbuilt seven video-page packages and the incomplete King and Queen draft before marking the audit complete — independently verified in `docs/tantra-meta-actual-inventory-audit-2026-08-16.md`.
 - [x] Produce an exact Curt-ready map of the six paused Tantra Meta campaign records to their intended seven-video landing-page paths, including direct Meta review links and a no-reactivation review checklist — independently verified in `docs/curt-paused-tantra-campaign-video-map-2026-08-16.md`.
 - [ ] Correct the Interconnected Command Center OCUS reporting so the current $199 offer is labeled and measured separately from the verified historical $299 baseline, without changing any offer, checkout, CRM, or funnel behavior.
 - [x] Verify the saved corrected historical OCUS analysis states 16 paid $67 entries, 4 historical $299 OCUS purchases, a 25.0% $299 attachment rate, no mature $199 direct-transaction sample, and the webhook-only 0/15 result as a capture gap before marking the reconstruction complete — independently verified in `docs/interconnected-ocus-take-rate-entity-card-2026-08-16.md`.

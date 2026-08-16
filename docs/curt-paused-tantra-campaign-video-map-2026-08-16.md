@@ -1,6 +1,8 @@
 # Curt Review Map — Paused Tantra Campaigns and Video Landing Pages
 
-**Current status:** All six listed campaign records are **PAUSED**. This document is for review and destination planning only. Do not reactivate or edit campaign settings during the review call unless the owner explicitly approves the exact next change.
+> **Superseded as an inventory record:** this is a destination-planning map, not proof that seven video-specific Meta packages exist. The corrected source of truth is [`tantra-meta-actual-inventory-audit-2026-08-16.md`](./tantra-meta-actual-inventory-audit-2026-08-16.md). The existing paused Tantra Quiz records point directly to `/quiz/tantra`; they are not built content-first packages.
+
+**Planning status:** The links and destinations below remain useful for a future approved build, but no campaign should be described as a completed video-page package until the campaign, ad set, ad, creative, and destination are created and verified in Meta. Do not reactivate or edit campaign settings during the review call unless the owner explicitly approves the exact next change.
 
 ## The Six Existing Paused Campaigns
 

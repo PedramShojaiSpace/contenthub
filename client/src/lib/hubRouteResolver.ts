@@ -19,6 +19,10 @@ const growthPaths = new Set([
   "/script-factory", "/performance-loop", "/funnel-economics", "/funnel-advisor", "/mof-content",
 ]);
 
+const legacyToolAliases: Record<string, string> = {
+  "/youtube-to-blog": "/video-to-blog",
+};
+
 function pathMatches(path: string, candidates: Set<string>) {
   return [...candidates].some((candidate) => path === candidate || path.startsWith(`${candidate}/`));
 }
@@ -26,9 +30,10 @@ function pathMatches(path: string, candidates: Set<string>) {
 function normalizeHubToolPath(path: string) {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   const match = /^\/hub(?:\/(?:core|content|growth|analytics))?(\/.*)?$/.exec(normalized);
-  if (match) return match[1] || "/";
+  if (match) return legacyToolAliases[match[1] || "/"] || match[1] || "/";
   const nestedBundleMatch = /^\/(?:core|content|growth|analytics)(\/.*)$/.exec(normalized);
-  return nestedBundleMatch ? nestedBundleMatch[1] : normalized;
+  const toolPath = nestedBundleMatch ? nestedBundleMatch[1] : normalized;
+  return legacyToolAliases[toolPath] || toolPath;
 }
 
 export function getHubBundleForPath(path: string): HubBundle {

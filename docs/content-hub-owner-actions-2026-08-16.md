@@ -9,14 +9,14 @@
 
 | Priority | Owner | Action | Completion evidence |
 |---|---|---|---|
-| 1 | Operator with Hub access | Verify the current production deployment and deep links. | Representative Core, Content, Growth, and Analytics routes load or redirect without blank shells. |
+| 1 | Operator with Hub access | Monitor future production deployments and re-run the deep-link checklist if a blank shell recurs. | Representative Core, Content, Growth, and Analytics routes loaded correctly after the current deployment. |
 | 2 | Shopify administrator | Validate the paid-order webhook with a controlled recent paid order. | The same order is visible in Shopify Admin, the Content Hub webhook recorder, and the correct isolated attribution view. |
 | 3 | Curt / Meta app administrator | Apply for Meta `ads_management` production access. | Meta approves production access; the permission no longer reads “Ready for testing.” |
 | 4 | Content Hub operator | Verify the first daily KO/Klaviyo Email → Revenue collector run after 15:15 UTC. | A managed-job success record and saved completed-day snapshot exist; Kajabi data remains absent from this collector. |
 
-## 1. Production Deployment and Deep-Link Verification
+## 1. Production Deployment and Deep-Link Verification — **Current smoke suite passed**
 
-The platform has now reported a successful deployment, after earlier evidence of stale public bundle assets. Use an authenticated browser session to open the routes below directly; do not rely only on sidebar navigation. Each route should either render its tool or redirect to its owner bundle without a blank shell.
+The platform reported a successful deployment after earlier evidence of stale public bundle assets. An authenticated production-browser smoke suite subsequently confirmed the legacy YouTube-to-Blog redirect, Email → Revenue, Creation Studio, Reconciliation, YouTube Analytics, and Video Production routes. The checklist below is now a recurrence-monitoring procedure for future multi-bundle releases rather than a blocker on the current deployment.
 
 | Check | Expected result |
 |---|---|

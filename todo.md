@@ -5,6 +5,7 @@
 - [x] Run database migrations
 
 ## Read-Only Content Hub Audit — 2026-08-13
+- [x] Verify the saved early $199 take-rate analysis documents the 15 unique $67 Kajabi buyers, 0 recorded $199 downstream purchases, 0 matching Shopify $199 orders, and the exclusion of historical $299 OCUS records before marking the baseline complete — independently verified in `docs/interconnected-ocus-take-rate-entity-card-2026-08-16.md`.
 - [x] Verify the saved staged Interconnected experiment plan documents CRM-path-first sequencing, sticky assignment, path-specific checkout preservation, separate winner metrics, and an unchanged $199 one-click offer before marking the planning task complete — independently verified at `docs/interconnected-crm-price-test-plan-2026-08-16.md`.
 - [x] Verify campaign-to-date Tantra qualified leads, relevant Shopify paid orders, and Meta delivery strictly within the Tantra campaign — first-party evidence confirms one paid $185 Tantra Him unit across 484 starts, 296 completions, and 181 captured emails; the single current Meta snapshot showed $23.89 spend, 10 leads, $2.39 CPL, and $0.00 same-day Tantra revenue.
 - [x] With explicit approval, pause the six identified Tantra delivery records (T-A through T-F) until the video-first landing-page path is ready; each approved Tantra record now displays PAUSED in the Ads Manager.

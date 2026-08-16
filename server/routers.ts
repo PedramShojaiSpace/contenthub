@@ -141,6 +141,7 @@ import { advertorialRouter } from "./advertorialRouter";
 import { attributionRouter } from "./attributionRouter";
 import { interconnectedEmailRevenueRouter } from "./interconnectedEmailRevenueRouter";
 import { shopifyRouter } from "./shopifyRouter";
+import { commerceRouter } from "./routers/commerce";
 import { attributionPanelRouter } from "./attributionPanelRouter";
 import { funnelCommandRouter } from "./funnelCommandRouter";
 import { adsMonitorRouter } from "./adsMonitorRouter";
@@ -544,6 +545,7 @@ export const appRouter = router({
   advertorial: advertorialRouter,
   attribution: attributionRouter,
   emailRevenue: interconnectedEmailRevenueRouter,
+  commerce: commerceRouter,
   shopify: shopifyRouter,
   attributionPanel: attributionPanelRouter,
   adsMonitor: adsMonitorRouter,

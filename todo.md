@@ -19,7 +19,7 @@
 - [ ] Support legacy `/hub/{tool}` paths in the Core bundle’s client router base so cross-bundle fallbacks run even when a static host serves the Core entry without the current server alias middleware.
 - [ ] Repair the reproduced Email → Revenue blank Hub route by registering its existing page in the Core bundle and adding the shared wrong-bundle fallback to Growth so `/hub/growth/interconnected-email-revenue` resolves to its true owner.
 - [x] Document confirmed defects, regressions, performance/build risks, and operational blockers with severity, evidence, user impact, and recommended next action.
-- [ ] Investigate and repair the audit-confirmed missing `commerce.products.list` and `commerce.cart.create` tRPC registration so the existing Hub commerce contract and its Shopify-backed test coverage are restored without changing storefront behavior.
+- [x] Investigate and repair the audit-confirmed missing `commerce.products.list` and `commerce.cart.create` tRPC registration so the existing Hub commerce contract and its Shopify-backed test coverage are restored without changing storefront behavior — the existing commerce router is now composed into the public app router and focused contract coverage passes 1/1.
 - [x] Deliver a prioritized Content Hub audit report suitable for morning review, including a concise health summary, verified routes/tools, open defects, and a repair order.
 
 ## Deferred Generated Blog Quality Remediation

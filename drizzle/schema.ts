@@ -2311,10 +2311,32 @@ export const reconciliationMetaSnapshots = mysqlTable("reconciliation_meta_snaps
   spendCents: int("spend_cents").notNull().default(0),
   leads: int("leads").notNull().default(0),
   checkouts: int("checkouts").notNull().default(0),
+  purchases: int("purchases").notNull().default(0),
+  purchaseValueCents: int("purchase_value_cents").notNull().default(0),
   campaigns: json("campaigns"),
   error: text("error"),
   collectedAt: bigint("collected_at", { mode: "number" }).notNull(),
 });
+
+// ─── Meta CAPI Purchase Delivery Audit ───────────────────────────────────────
+// Stores no raw buyer data. One row per deterministic Meta event ID, updated on
+// retries so owner reporting can compare CAPI acceptance to Meta and paid orders.
+export const metaCapiDeliveryAudits = mysqlTable("meta_capi_delivery_audits", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: varchar("event_id", { length: 64 }).notNull().unique(),
+  funnelSource: varchar("funnel_source", { length: 64 }).notNull(),
+  externalOrderId: varchar("external_order_id", { length: 128 }).notNull(),
+  buyerReference: varchar("buyer_reference", { length: 64 }).notNull(),
+  eventName: varchar("event_name", { length: 32 }).notNull().default("Purchase"),
+  amountCents: int("amount_cents").notNull(),
+  accepted: tinyint("accepted").notNull().default(0),
+  metaHttpStatus: int("meta_http_status"),
+  responseSummary: text("response_summary"),
+  errorMessage: text("error_message"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+export type MetaCapiDeliveryAudit = typeof metaCapiDeliveryAudits.$inferSelect;
 
 // ─── Per-SKU CPA Targets ─────────────────────────────────────────────────────
 // One row per product SKU; editable in-app from the Optimizer tab

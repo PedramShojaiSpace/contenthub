@@ -31,3 +31,7 @@ The Kajabi purchase handler does attempt a server-side Purchase event after savi
 4. Run one explicit on-demand verification after deployment and compare a short shared date range. If CAPI accepted events and Meta Purchase counts still diverge, inspect the Kajabi webhook signature/raw-body treatment and Meta Events Manager diagnostics before changing campaign optimization.
 
 No changes should be made to campaign delivery or optimization until that evidence exists.
+
+## Implementation Verification Note
+
+The development reconciliation route was opened after the observability implementation began, but the preview rendered only its loading shell and no authenticated data contract. No additional Meta refresh was triggered. Focused server and parser tests remain the verification source until the repaired route is deployed to the authenticated production bundle.

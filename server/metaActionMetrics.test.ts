@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { canonicalMetaCheckoutCount, canonicalMetaLeadCount } from "./metaActionMetrics";
+import {
+  canonicalMetaCheckoutCount,
+  canonicalMetaLeadCount,
+  canonicalMetaPurchaseCount,
+  canonicalMetaPurchaseValue,
+} from "./metaActionMetrics";
 
 describe("canonical Meta action metrics", () => {
   it("does not add overlapping Lead representations together", () => {
@@ -22,5 +27,19 @@ describe("canonical Meta action metrics", () => {
       { action_type: "initiate_checkout", value: "9" },
       { action_type: "add_to_cart", value: "15" },
     ])).toBe(9);
+  });
+
+  it("uses one canonical Purchase representation rather than double-counting", () => {
+    expect(canonicalMetaPurchaseCount([
+      { action_type: "purchase", value: "4" },
+      { action_type: "omni_purchase", value: "3" },
+    ])).toBe(3);
+  });
+
+  it("reads Purchase revenue from action_values using the same canonical priority", () => {
+    expect(canonicalMetaPurchaseValue([
+      { action_type: "purchase", value: "268.00" },
+      { action_type: "omni_purchase", value: "201.00" },
+    ])).toBe(201);
   });
 });

@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import { createHash } from "crypto";
 import { ENV } from "./env";
 import { createServer } from "http";
 import { renderInterconnectedPage } from "../interconnectedStaticPage";
@@ -1809,7 +1810,7 @@ async function startServer() {
       const { getDb } = await import("../db");
       const { interconnectedLeads } = await import("../../drizzle/schema");
       const { eq } = await import("drizzle-orm");
-      const { sendCapiEvent, generateEventId } = await import("../capiHelper");
+      const { sendCapiEventWithReceipt, generateEventId } = await import("../capiHelper");
       const db = await getDb();
       let lead: typeof interconnectedLeads.$inferSelect | undefined;
       if (db) {
@@ -1878,7 +1879,7 @@ async function startServer() {
       const eventSourceUrl = eventSourceUrls[funnelSource] ?? "https://theacademy.theurbanmonk.com/checkout";
 
       const purchaseEventId = generateEventId(email, "Purchase", orderId);
-      const capiSent = await sendCapiEvent({
+      const capiReceipt = await sendCapiEventWithReceipt({
         eventName: "Purchase",
         eventId: purchaseEventId,
         eventSourceUrl,
@@ -1896,8 +1897,39 @@ async function startServer() {
         utmCampaign: lead?.utmCampaign ?? null,
         utmSource: lead?.utmSource ?? null,
       });
-      console.log(`[kajabi/purchase] CAPI Purchase sent for ${email} — funnel: ${funnelSource}, amount: $${amount}, event_id: ${purchaseEventId}, ok: ${capiSent}`);
-      res.json({ ok: true, capiSent, purchaseEventId, email, amount, funnelSource, isMetaAttributed });
+      if (db) {
+        try {
+          const { metaCapiDeliveryAudits } = await import("../../drizzle/schema");
+          const now = Date.now();
+          const buyerReference = createHash("sha256").update(email.toLowerCase().trim()).digest("hex").slice(0, 32);
+          await db.insert(metaCapiDeliveryAudits).values({
+            eventId: purchaseEventId,
+            funnelSource,
+            externalOrderId: orderId,
+            buyerReference,
+            eventName: "Purchase",
+            amountCents: Math.round(amount * 100),
+            accepted: capiReceipt.accepted ? 1 : 0,
+            metaHttpStatus: capiReceipt.httpStatus,
+            responseSummary: capiReceipt.responseSummary,
+            errorMessage: capiReceipt.errorMessage,
+            createdAt: now,
+            updatedAt: now,
+          }).onDuplicateKeyUpdate({
+            set: {
+              accepted: capiReceipt.accepted ? 1 : 0,
+              metaHttpStatus: capiReceipt.httpStatus,
+              responseSummary: capiReceipt.responseSummary,
+              errorMessage: capiReceipt.errorMessage,
+              updatedAt: now,
+            },
+          });
+        } catch (auditErr: any) {
+          console.warn("[kajabi/purchase] CAPI delivery audit write failed:", auditErr?.message);
+        }
+      }
+      console.log(`[kajabi/purchase] CAPI Purchase sent for ${email} — funnel: ${funnelSource}, amount: $${amount}, event_id: ${purchaseEventId}, accepted: ${capiReceipt.accepted}`);
+      res.json({ ok: true, capiSent: capiReceipt.accepted, purchaseEventId, email, amount, funnelSource, isMetaAttributed });
     } catch (err: any) {
       console.error("[kajabi/purchase] Error:", err);
       res.status(500).json({ error: err?.message });

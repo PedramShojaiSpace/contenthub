@@ -104,7 +104,7 @@ export default function Reconciliation() {
 
   const loading = isLoading || isRefetching || refreshMeta.isPending;
   const activeFunnel = funnels.find(f => f.id === funnelId);
-  const { summary, meta, kajabi, shopify, individualSales, cohortAnalytics } = data ?? {};
+  const { summary, meta, kajabi, shopify, individualSales, cohortAnalytics, capiPurchases } = data ?? {};
   const cohortDay0Revenue = cohortAnalytics?.cohorts.reduce((sum, cohort) => sum + cohort.day0RevenueCents, 0) ?? 0;
   const cohortDownstreamRevenue = cohortAnalytics?.cohorts.reduce((sum, cohort) => sum + cohort.day1to14RevenueCents, 0) ?? 0;
   const cohortTotalRevenue = cohortAnalytics?.cohorts.reduce((sum, cohort) => sum + cohort.total14DayRevenueCents, 0) ?? 0;
@@ -355,7 +355,7 @@ export default function Reconciliation() {
 
         {/* KPI Row */}
         {data && !loading && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
 
             {/* Meta Spend */}
             <Card>
@@ -438,6 +438,27 @@ export default function Reconciliation() {
                   </>
                 ) : (
                   <div className="text-2xl font-bold text-muted-foreground">—</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Purchase Observability */}
+            <Card className="border-primary/30">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                  <Target className="h-3.5 w-3.5" /> Purchase Evidence
+                </div>
+                <div className="text-sm font-semibold text-foreground">
+                  Meta: {(meta?.purchases ?? 0).toLocaleString()} / {fmtD(meta?.purchaseValue ?? 0)}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  CAPI accepted: {(capiPurchases?.accepted ?? 0).toLocaleString()} / {fmt(capiPurchases?.acceptedValueCents ?? 0)}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Paid orders: {(summary?.totalPurchases ?? 0).toLocaleString()} / {fmtD(summary?.totalRevenue ?? 0)}
+                </div>
+                {(capiPurchases?.failed ?? 0) > 0 && (
+                  <div className="text-xs text-red-600 mt-1">{capiPurchases.failed} CAPI delivery failure(s)</div>
                 )}
               </CardContent>
             </Card>

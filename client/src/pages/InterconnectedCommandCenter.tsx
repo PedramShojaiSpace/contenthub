@@ -317,16 +317,21 @@ export default function InterconnectedCommandCenter() {
     refetchFunnel();
   }
 
-  // ── Upsell KPI: $299 Gut Permeability + Food Sensitivity Test (primary funnel metric) ──
-  const upsellTier = funnelData?.tiers?.find(t => t.tier === '299');
-  const upsellCount = upsellTier?.count ?? 0;
-  const upsellRevenue = (upsellTier?.revenueCents ?? 0) / 100;
+  // ── Current $199 OCUS and separate historical $299 benchmark ────────────────
+  // $199 reflects the current OCU. $299 remains a historical comparison only.
+  const currentUpsellTier = funnelData?.tiers?.find(t => t.tier === '199');
+  const upsellCount = currentUpsellTier?.count ?? 0;
+  const upsellRevenue = (currentUpsellTier?.revenueCents ?? 0) / 100;
+  const historical299Tier = funnelData?.tiers?.find(t => t.tier === '299');
+  const historical299Count = historical299Tier?.count ?? 0;
+  const historical299Revenue = (historical299Tier?.revenueCents ?? 0) / 100;
   const otoTier = funnelData?.tiers?.find(t => t.tier === '67');
   const otoCount = otoTier?.count ?? 0;
-  // Upsell take rate = upsell purchases / $67 OTO purchases
+  // Current $199 take rate = current $199 purchases / $67 OTO purchases.
   const upsellTakeRate = otoCount > 0 ? (upsellCount / otoCount) * 100 : null;
-  // Cost per upsell = Meta spend / upsell purchases
+  // Cost per current $199 upsell = Meta spend / current $199 upsell purchases.
   const costPerUpsell = upsellCount > 0 ? spend / upsellCount : null;
+  const historical299TakeRate = otoCount > 0 ? (historical299Count / otoCount) * 100 : null;
 
   // Tier breakdown — from funnel-only DB source
   const tiers = funnelData?.tiers ?? [];
@@ -374,15 +379,15 @@ export default function InterconnectedCommandCenter() {
           </span>
         </div>
 
-        {/* ★ UPSELL SPOTLIGHT: $299 Gut Permeability + Food Sensitivity Test */}
+        {/* ★ CURRENT OCUS SPOTLIGHT: $199 Gut Permeability + Food Sensitivity Test */}
         <Card className="border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20">
           <CardContent className="pt-4 pb-3 px-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <FlaskConical className="h-5 w-5 text-amber-600" />
-                <span className="font-bold text-sm text-amber-800 dark:text-amber-300">PRIMARY KPI — $299 Upsell: Gut Permeability + Food Sensitivity Test w/ Coach</span>
+                <span className="font-bold text-sm text-amber-800 dark:text-amber-300">CURRENT KPI — $199 OCUS: Gut Permeability + Food Sensitivity Test w/ Coach</span>
               </div>
-              <Badge className="bg-amber-500 text-white text-xs">Day-Zero Upsell</Badge>
+              <Badge className="bg-amber-500 text-white text-xs">Webhook-confirmed</Badge>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="text-center">
@@ -404,10 +409,15 @@ export default function InterconnectedCommandCenter() {
             </div>
             {otoCount > 0 && (
               <p className="text-xs text-muted-foreground mt-3 text-center">
-                {otoCount} people bought the $67 OTO → {upsellCount} took the $299 upsell
+                {otoCount} people bought the $67 OTO → {upsellCount} took the current $199 OCUS
                 {upsellTakeRate !== null && ` (${upsellTakeRate.toFixed(1)}% take rate)`}
               </p>
             )}
+            <div className="mt-3 border-t border-amber-200/70 dark:border-amber-800/60 pt-2 text-center text-xs text-muted-foreground">
+              Historical $299 reference: {historical299Count} recorded purchases
+              {historical299TakeRate !== null && ` (${historical299TakeRate.toFixed(1)}% of recorded $67 OTOs)`}
+              {historical299Revenue > 0 && ` · ${fmtDollars(historical299Revenue)} revenue`}. This is a legacy benchmark, not the current $199 result.
+            </div>
             {otoCount === 0 && funnelLoading && (
               <div className="flex justify-center mt-2"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
             )}

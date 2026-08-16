@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildLiveRunBrief, getWebinarBasePreset, makeIntelligenceDigest, resolveWebinarDeckProfile } from "../client/src/lib/webinarLiveRunConfig";
 
@@ -40,5 +42,21 @@ describe("reusable webinar live-run configuration", () => {
       cta: "Join the Deep Sleep program and begin your restorative-sleep protocol",
     });
     expect(getWebinarBasePreset("upstream").topic).toContain("Upstream Health");
+  });
+
+  it("keeps live-run profile selection draft-only even when a webinar session is active", () => {
+    const builder = readFileSync(
+      path.resolve(process.cwd(), "client/src/pages/WebinarBuilder.tsx"),
+      "utf-8"
+    );
+    const profileHandlerStart = builder.indexOf("onUseProfile={(profile) => {");
+    const profileHandler = builder.slice(profileHandlerStart, profileHandlerStart + 420);
+
+    expect(profileHandlerStart).toBeGreaterThan(-1);
+    expect(profileHandler).toContain("const preset = getWebinarBasePreset(profile)");
+    expect(profileHandler).toContain("setTopic(preset.topic)");
+    expect(profileHandler).toContain("setCta(preset.cta)");
+    expect(profileHandler).not.toContain("updateMutation.mutate");
+    expect(profileHandler).not.toContain("createMutation.mutate");
   });
 });

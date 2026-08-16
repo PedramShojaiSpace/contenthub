@@ -80,6 +80,21 @@ async function validateBundleOutput(bundle) {
     }
   }
 
+  if (bundle.mode === "hub-content") {
+    const assetsDir = path.join(path.dirname(entryPath), "assets");
+    const webinarChunks = (await readdir(assetsDir)).filter((file) =>
+      /^WebinarBuilder-.*\.js$/.test(file)
+    );
+    const hasWebinarStudio = (await Promise.all(
+      webinarChunks.map((file) => readFile(path.join(assetsDir, file), "utf-8"))
+    )).some((source) =>
+      source.includes("repeat the deck, refresh the room") && source.includes("The Deep Sleep Solution")
+    );
+    if (!hasWebinarStudio) {
+      throw new Error("Hub Content build is missing the verified Webinar Studio chunk");
+    }
+  }
+
   console.log(`[build] Verified ${bundle.label} output: ${entryPath}`);
 }
 

@@ -16,7 +16,7 @@ import { adClicks, attributedSales, interconnectedEmailCheckoutTouches } from ".
 import { eq, desc, gte, sql, and, isNotNull } from "drizzle-orm";
 import { ENV } from "./_core/env";
 import { isAuthorizedShopifyWebhook } from "./shopifyWebhookAuth";
-import { parseShopifyWebhookPayload } from "./shopifyWebhookPayload";
+import { getShopifyWebhookRawBody, parseShopifyWebhookPayload } from "./shopifyWebhookPayload";
 import { buildTrackedCheckoutDestination } from "./emailCheckoutTracking";
 import { isIsolatedEmailAttribution } from "./interconnectedEmailAttributionHygiene";
 
@@ -472,7 +472,7 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
     // Verify Shopify HMAC signature
     const hmacHeader = req.headers["x-shopify-hmac-sha256"] as string | undefined;
     const ingestKey = typeof req.query.ingest_key === "string" ? req.query.ingest_key : undefined;
-    const { rawBody, order } = parseShopifyWebhookPayload(req.body);
+    const rawBody = getShopifyWebhookRawBody(req.body);
     if (!isAuthorizedShopifyWebhook({
       hmacHeader,
       rawBody,
@@ -484,6 +484,7 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
+    const { order } = parseShopifyWebhookPayload(req.body);
     const shopifyOrder = order as any;
     const shopifyOrderId = String(shopifyOrder.id);
     const shopifyOrderNumber = String(shopifyOrder.order_number || shopifyOrder.name || "");

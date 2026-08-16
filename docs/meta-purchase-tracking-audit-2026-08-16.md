@@ -39,3 +39,5 @@ The development reconciliation route was opened after the observability implemen
 ### Post-checkpoint production check
 
 The authenticated production reconciliation page was then opened for the same 2026-08-16 Interconnected range. It loaded the pre-existing four KPI cards and the correct first-party transaction log (11 × $67 and 1 × $199; $936.00 total), but it did **not** display the newly implemented fifth **Purchase Evidence** card. No manual Meta refresh was clicked. This establishes that the live page was still serving a pre-repair client bundle at that check, so a fresh production bundle publication and one explicit manual refresh remain required before presenting Meta Purchase count/value as verified live evidence.
+
+The Hub Analytics bundle was rebuilt independently with a bounded 900 MB heap after temporarily stopping the development watcher. The resulting `Reconciliation-By3vgI5V.js` bundle contains the literal `Purchase Evidence` UI marker, and the development server was restarted successfully. This confirms the code compiles into the analytics artifact; only production asset freshness remains to be verified.

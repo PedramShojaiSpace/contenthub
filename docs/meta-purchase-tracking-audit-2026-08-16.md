@@ -35,3 +35,7 @@ No changes should be made to campaign delivery or optimization until that eviden
 ## Implementation Verification Note
 
 The development reconciliation route was opened after the observability implementation began, but the preview rendered only its loading shell and no authenticated data contract. No additional Meta refresh was triggered. Focused server and parser tests remain the verification source until the repaired route is deployed to the authenticated production bundle.
+
+### Post-checkpoint production check
+
+The authenticated production reconciliation page was then opened for the same 2026-08-16 Interconnected range. It loaded the pre-existing four KPI cards and the correct first-party transaction log (11 × $67 and 1 × $199; $936.00 total), but it did **not** display the newly implemented fifth **Purchase Evidence** card. No manual Meta refresh was clicked. This establishes that the live page was still serving a pre-repair client bundle at that check, so a fresh production bundle publication and one explicit manual refresh remain required before presenting Meta Purchase count/value as verified live evidence.

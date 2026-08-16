@@ -5,6 +5,8 @@
 - [x] Run database migrations
 
 ## Read-Only Content Hub Audit — 2026-08-13
+- [x] Produce an exact Curt-ready map of the six paused Tantra Meta campaign records to their intended seven-video landing-page paths, including direct Meta review links and a no-reactivation review checklist — independently verified in `docs/curt-paused-tantra-campaign-video-map-2026-08-16.md`.
+- [ ] Correct the Interconnected Command Center OCUS reporting so the current $199 offer is labeled and measured separately from the verified historical $299 baseline, without changing any offer, checkout, CRM, or funnel behavior.
 - [x] Verify the saved corrected historical OCUS analysis states 16 paid $67 entries, 4 historical $299 OCUS purchases, a 25.0% $299 attachment rate, no mature $199 direct-transaction sample, and the webhook-only 0/15 result as a capture gap before marking the reconstruction complete — independently verified in `docs/interconnected-ocus-take-rate-entity-card-2026-08-16.md`.
 - [x] Verify the saved early $199 take-rate analysis documents the 15 unique $67 Kajabi buyers, 0 recorded $199 downstream purchases, 0 matching Shopify $199 orders, and the exclusion of historical $299 OCUS records before marking the baseline complete — independently verified in `docs/interconnected-ocus-take-rate-entity-card-2026-08-16.md`.
 - [x] Verify the saved staged Interconnected experiment plan documents CRM-path-first sequencing, sticky assignment, path-specific checkout preservation, separate winner metrics, and an unchanged $199 one-click offer before marking the planning task complete — independently verified at `docs/interconnected-crm-price-test-plan-2026-08-16.md`.

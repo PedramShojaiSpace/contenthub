@@ -5,6 +5,7 @@
 - [x] Run database migrations
 
 ## Read-Only Content Hub Audit — 2026-08-13
+- [x] Verify the saved staged Interconnected experiment plan documents CRM-path-first sequencing, sticky assignment, path-specific checkout preservation, separate winner metrics, and an unchanged $199 one-click offer before marking the planning task complete — independently verified at `docs/interconnected-crm-price-test-plan-2026-08-16.md`.
 - [x] Verify campaign-to-date Tantra qualified leads, relevant Shopify paid orders, and Meta delivery strictly within the Tantra campaign — first-party evidence confirms one paid $185 Tantra Him unit across 484 starts, 296 completions, and 181 captured emails; the single current Meta snapshot showed $23.89 spend, 10 leads, $2.39 CPL, and $0.00 same-day Tantra revenue.
 - [x] With explicit approval, pause the six identified Tantra delivery records (T-A through T-F) until the video-first landing-page path is ready; each approved Tantra record now displays PAUSED in the Ads Manager.
 - [x] Re-verify final Meta object statuses for the six paused Tantra records and a non-Tantra Agora/VIBE/DSS control set, documenting exact identifiers — all six exact Tantra objects return PAUSED; the read-only control check establishes the current non-Tantra statuses without issuing any non-Tantra write.

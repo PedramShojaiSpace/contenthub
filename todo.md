@@ -5,6 +5,9 @@
 - [x] Run database migrations
 
 ## Read-Only Content Hub Audit — 2026-08-13
+- [x] Verify campaign-to-date Tantra qualified leads, relevant Shopify paid orders, and Meta delivery strictly within the Tantra campaign — first-party evidence confirms one paid $185 Tantra Him unit across 484 starts, 296 completions, and 181 captured emails; the single current Meta snapshot showed $23.89 spend, 10 leads, $2.39 CPL, and $0.00 same-day Tantra revenue.
+- [x] With explicit approval, pause the six identified Tantra delivery records (T-A through T-F) until the video-first landing-page path is ready; each approved Tantra record now displays PAUSED in the Ads Manager.
+- [x] Re-verify final Meta object statuses for the six paused Tantra records and a non-Tantra Agora/VIBE/DSS control set, documenting exact identifiers — all six exact Tantra objects return PAUSED; the read-only control check establishes the current non-Tantra statuses without issuing any non-Tantra write.
 - [x] Perform a non-destructive browser smoke test of the restored commerce cart path without changing storefront navigation, checkout URLs, product visibility, cart contents, or payment behavior — the System Health browser control passed after creating and clearing an isolated cart; checkout was never opened and no existing visitor cart was touched.
 - [ ] Investigate and repair Shopify paid-order webhook attribution evidence, preserving separate Kajabi and KO/Klaviyo paths and avoiding any Shopify URL swap unless explicitly approved.
 - [x] Repair Shopify paid-order webhook transport integrity by preserving the original raw payload for HMAC authorization before JSON parsing — the active `ORDERS_PAID` subscription is confirmed, focused HMAC payload/route tests pass, and no fake order or Meta Purchase event was created.

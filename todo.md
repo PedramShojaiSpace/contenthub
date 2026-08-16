@@ -790,6 +790,8 @@
 
 ## Shopify and Content Hub Meta Pixel Architecture
 
+- [x] Complete the read-only Kajabi checkout and post-purchase Purchase-path audit: verify any offer-level browser conversion controls or document their absence, then retain the next-real-purchase CAPI/Meta comparison as the only authoritative event-emission validation — the $67 offer’s post-purchase redirect, default email, first $199 upsell, and checkout-template Custom Code were inspected read-only; no separate Pixel, browser Purchase, conversion, or event-ID deduplication control was exposed. Evidence: `docs/kajabi-checkout-tracking-audit-2026-08-16.md`.
+
 - [x] Verify Shopify’s current primary Meta pixel limitations and the impact of changing it on the other agency’s Shopify cart attribution.
 - [x] Audit the Content Hub’s browser and server-side Meta event coverage for the Klaviyo $67 and $199 Shopify checkout paths.
 - [ ] Recommend the lowest-risk parallel-tracking plan and a test protocol before changing any Shopify pixel configuration.

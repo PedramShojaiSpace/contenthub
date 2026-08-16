@@ -5,6 +5,7 @@
 - [x] Run database migrations
 
 ## Read-Only Content Hub Audit — 2026-08-13
+- [x] Propose a single-source-of-truth Interconnected Purchase measurement architecture that resolves Kajabi-native pixel and Content Hub CAPI duplication, preserves necessary funnel-event visibility, and defines a reversible cutover without changing any tracking behavior before approval — independently verified in `docs/interconnected-single-source-purchase-architecture-2026-08-16.md`.
 - [x] Convert the seven Tantra Meta copy packages, shared build standard, and review index into DOCX files and deliver one ZIP bundle for Curt without changing any Meta object — delivered as `Tantra_Meta_Copy_Package_DOCX_2026-08-16.zip` with nine DOCX files.
 - [x] Audit the reported Meta Purchase-conversion discrepancy against source-separated paid Kajabi and Shopify order evidence — diagnosed a reconciliation and CAPI-delivery observability gap; no pixel, checkout, campaign, or optimization behavior changed without approval.
 - [x] With explicit approval, add Purchase observability to the one-call Meta reconciliation snapshot and durable Kajabi CAPI delivery auditing, then compare Meta-reported Purchases, CAPI accepted events, and first-party paid orders without altering campaign optimization — deployed and verified live with exactly one manual Meta refresh.

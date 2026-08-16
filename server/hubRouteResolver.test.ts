@@ -7,6 +7,12 @@ describe("Hub cross-bundle route resolver", () => {
     expect(getHubPublicHref("/yt-analytics")).toBe("/hub/growth/yt-analytics");
   });
 
+  it("canonicalizes the legacy YouTube-to-Blog path to the active Content tool", () => {
+    expect(getHubBundleForPath("/youtube-to-blog")).toBe("content");
+    expect(getHubPublicHref("/hub/youtube-to-blog", "?source=legacy"))
+      .toBe("/hub/content/video-to-blog?source=legacy");
+  });
+
   it("routes heavyweight creative-production tools to the content bundle", () => {
     expect(getHubBundleForPath("/video-production")).toBe("content");
     expect(getHubPublicHref("/ebook-generator")).toBe("/hub/content/ebook-generator");

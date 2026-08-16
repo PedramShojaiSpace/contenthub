@@ -13,6 +13,11 @@
 - [x] Extend System Health to remaining non-core services: Gmail, YouTube, Apollo, and Buffer — Gmail OAuth, YouTube Data API/runtime upload token, and Buffer channels now perform live read-only checks; Apollo explicitly reports its configured but quota-unsafe validation limitation.
 - [x] Add protected live health checks for the next safely verifiable non-core integration services, with explicit unavailable states when a provider lacks a non-mutating validation endpoint — all checks remain behind the protected integration-health procedure.
 - [x] Add regression coverage that proves protected management procedures reject unauthenticated access while public funnel paths remain available — caller tests now cover UTM, Typeform, integration health, YouTube pipeline, and YouTube analytics; public funnel behavior was not changed.
+- [ ] Perform a deep Content Hub audit covering production route/bundle ownership, shared app shell, server health, logs, tRPC/API behavior, database connectivity, scheduled jobs, authentication boundaries, and representative tools across Core, Content, Growth, and Analytics.
+- [ ] Verify representative high-value workflows for analytics, YouTube, content generation, SEO/blog, funnel reconciliation, Interconnected, Tantra, email attribution, and commerce tooling; distinguish verified working behavior from untested or blocked external integrations.
+- [x] Repair the reproduced `/hub/youtube-to-blog` blank route by mapping the legacy path to the Content bundle’s canonical `/video-to-blog` tool route and add route-regression coverage.
+- [ ] Document confirmed defects, regressions, performance/build risks, and operational blockers with severity, evidence, user impact, and recommended next action.
+- [ ] Deliver a prioritized Content Hub audit report suitable for morning review, including a concise health summary, verified routes/tools, open defects, and a repair order.
 
 ## Deferred Generated Blog Quality Remediation
 - [x] Apply the approved post 11154 Draft corrections: focus phrase, Yoast title and meta description, draft slug, one in-content reuse of the featured image with descriptive alt text, and one internal plus one educational external body link; then verify Yoast without publishing — authenticated WordPress readback confirmed every approved field and the post remains Draft.

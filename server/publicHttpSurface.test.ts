@@ -19,6 +19,15 @@ describe("intentional public HTTP surface", () => {
     expect(serverEntry).toContain('app.post("/api/kajabi/purchase", async (req, res) =>');
   });
 
+  it("keeps every scheduled callback behind the shared cron-only boundary", () => {
+    const guard = 'app.use("/api/scheduled", createCronOnlyMiddleware((req) => sdk.authenticateRequest(req)))';
+    const firstScheduledRoute = serverEntry.indexOf('app.post("/api/scheduled/newsfeed-refresh"');
+
+    expect(serverEntry).toContain(guard);
+    expect(serverEntry.indexOf(guard)).toBeGreaterThan(-1);
+    expect(serverEntry.indexOf(guard)).toBeLessThan(firstScheduledRoute);
+  });
+
   it("keeps representative operator management routes authenticated", () => {
     const stitchStart = serverEntry.indexOf('app.post("/api/stitch-job/:jobId"');
     const stitchSection = serverEntry.slice(stitchStart, stitchStart + 900);

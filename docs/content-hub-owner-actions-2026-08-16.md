@@ -32,11 +32,11 @@ If one of these opens as a blank shell, capture the complete URL, approximate ti
 
 ## 2. Shopify Paid-Order Webhook Validation
 
-The Shopify storefront and authenticated order reader are functioning, but the attribution-specific paid-order webhook last had first-party evidence 41 days before the audit. This is an evidence gap rather than proof that the store is offline.
+The Shopify storefront and authenticated order reader are functioning, but the attribution-specific paid-order webhook last had first-party evidence 41 days before the audit. This is an evidence gap rather than proof that the store is offline. The current `ORDERS_PAID` subscription and the Content Hub’s raw-payload HMAC handling have now been verified and repaired; a real paid event is still required to close the evidence gap without introducing a false Purchase event.
 
 First, in **Shopify Admin**, open **Settings → Notifications → Webhooks** and locate the Content Hub paid-order subscription. Confirm that the endpoint is the current production endpoint, the event is the paid-order event expected by the Hub, and recent delivery responses are successful.
 
-Second, create or identify one recent real paid order. Record the Shopify order number and paid timestamp. In the Content Hub, verify that its webhook recorder has ingested the same order and that the order appears only in its proper revenue/attribution path. Do not pool Kajabi and KO/Klaviyo revenue when making this check.
+Second, create or identify one recent real paid order. Record the Shopify order number and paid timestamp. In the Content Hub, verify that its webhook recorder has ingested the same order and that the order appears only in its proper revenue/attribution path. Do not pool Kajabi and KO/Klaviyo revenue when making this check. Do not create a fake order merely to populate reporting or Meta Purchase data.
 
 | Result | Next action |
 |---|---|

@@ -16,6 +16,7 @@ import { adClicks, attributedSales, interconnectedEmailCheckoutTouches } from ".
 import { eq, desc, gte, sql, and, isNotNull } from "drizzle-orm";
 import { ENV } from "./_core/env";
 import { isAuthorizedShopifyWebhook } from "./shopifyWebhookAuth";
+import { parseShopifyWebhookPayload } from "./shopifyWebhookPayload";
 import { buildTrackedCheckoutDestination } from "./emailCheckoutTracking";
 import { isIsolatedEmailAttribution } from "./interconnectedEmailAttributionHygiene";
 
@@ -471,7 +472,7 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
     // Verify Shopify HMAC signature
     const hmacHeader = req.headers["x-shopify-hmac-sha256"] as string | undefined;
     const ingestKey = typeof req.query.ingest_key === "string" ? req.query.ingest_key : undefined;
-    const rawBody: string = req.rawBody || JSON.stringify(req.body);
+    const { rawBody, order } = parseShopifyWebhookPayload(req.body);
     if (!isAuthorizedShopifyWebhook({
       hmacHeader,
       rawBody,
@@ -483,22 +484,22 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const order = req.body as any;
-    const shopifyOrderId = String(order.id);
-    const shopifyOrderNumber = String(order.order_number || order.name || "");
-    const orderTotal = Math.round(parseFloat(order.total_price || "0") * 100);
-    const currency = (order.currency as string) || "USD";
-    const customerEmail: string | null = order.email || order.customer?.email || null;
-    const customerName: string | null = [order.customer?.first_name, order.customer?.last_name].filter(Boolean).join(" ") || null;
+    const shopifyOrder = order as any;
+    const shopifyOrderId = String(shopifyOrder.id);
+    const shopifyOrderNumber = String(shopifyOrder.order_number || shopifyOrder.name || "");
+    const orderTotal = Math.round(parseFloat(shopifyOrder.total_price || "0") * 100);
+    const currency = (shopifyOrder.currency as string) || "USD";
+    const customerEmail: string | null = shopifyOrder.email || shopifyOrder.customer?.email || null;
+    const customerName: string | null = [shopifyOrder.customer?.first_name, shopifyOrder.customer?.last_name].filter(Boolean).join(" ") || null;
     const lineItems = JSON.stringify(
-      (order.line_items || []).map((li: any) => ({
+      (shopifyOrder.line_items || []).map((li: any) => ({
         title: li.title,
         quantity: li.quantity,
         price: li.price,
         sku: li.sku,
       }))
     );
-    const orderCreatedAt = order.created_at ? new Date(order.created_at).getTime() : Date.now();
+    const orderCreatedAt = shopifyOrder.created_at ? new Date(shopifyOrder.created_at).getTime() : Date.now();
 
     const db = await getDb();
     if (!db) return res.status(503).json({ error: "DB unavailable" });
@@ -512,7 +513,7 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
 
     // Try to find click token from order note_attributes
     let clickToken: string | null = null;
-    const noteAttrs: any[] = order.note_attributes || [];
+    const noteAttrs: any[] = shopifyOrder.note_attributes || [];
     for (const attr of noteAttrs) {
       if (attr.name === "_um_click_token" && attr.value) {
         clickToken = attr.value as string;
@@ -520,8 +521,8 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
       }
     }
     // Also check order tags
-    if (!clickToken && order.tags) {
-      const tagMatch = String(order.tags).match(/um_ct_([a-f0-9]{48})/);
+    if (!clickToken && shopifyOrder.tags) {
+      const tagMatch = String(shopifyOrder.tags).match(/um_ct_([a-f0-9]{48})/);
       if (tagMatch) clickToken = tagMatch[1];
     }
 
@@ -641,7 +642,7 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
     // ── Klaviyo post-purchase tagging + "Placed Order" event ─────────────────────
     try {
       const { tagKlaviyoPurchaser, detectFunnelProduct } = await import("../shopify");
-      const orderLineItems: any[] = order.line_items || [];
+      const orderLineItems: any[] = shopifyOrder.line_items || [];
       const purchaseTags: string[] = ["shopify_buyer"];
       for (const li of orderLineItems) {
         const detected = detectFunnelProduct(li);
@@ -659,7 +660,7 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
       if (customerEmail) {
         await tagKlaviyoPurchaser({
           email: customerEmail,
-          firstName: order.customer?.first_name ?? undefined,
+          firstName: shopifyOrder.customer?.first_name ?? undefined,
           phone: customerPhone,
           tags: purchaseTags,
           orderTotal,

@@ -21,7 +21,7 @@ import {
   CheckCircle2, Circle, Copy, ExternalLink, Zap, MessageSquare,
   Link2, Settings, ChevronDown, ChevronUp, AlertCircle, ArrowLeft
 } from "lucide-react";
-import { Link } from "wouter";
+import { getHubPublicHref } from "@/lib/hubRouteResolver";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -216,11 +216,11 @@ export default function ManyChatWizard() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Link href="/viral-studio">
+            <a href={getHubPublicHref("/viral-studio")}>
               <button className="text-muted-foreground hover:text-foreground transition-colors">
                 <ArrowLeft className="w-4 h-4" />
               </button>
-            </Link>
+            </a>
             <h1 className="text-xl font-bold flex items-center gap-2">
               <Zap className="w-5 h-5 text-violet-500" />
               ManyChat Setup Wizard
@@ -451,12 +451,12 @@ export default function ManyChatWizard() {
 
       {/* Back to DM Playbook */}
       <div className="text-center pt-2">
-        <Link href="/viral-studio">
+        <a href={getHubPublicHref("/viral-studio")}>
           <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
             <ArrowLeft className="w-3 h-3 mr-1" />
             Back to Viral Studio
           </Button>
-        </Link>
+        </a>
       </div>
     </div>
     </DashboardLayout>

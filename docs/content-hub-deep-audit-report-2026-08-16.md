@@ -83,7 +83,7 @@ The source audit found **49** internal usages of `Link`, `setLocation`, or `wind
 
 **Impact.** The current fallback architecture reduces blank screens, but these direct navigations are a continuing regression surface.
 
-**Recommended action.** Inventory and migrate these calls in batches to the shared Hub route resolver. Add a static test that rejects newly introduced direct Hub routes outside approved resolver utilities.
+**Follow-up completed for the highest-risk paths.** The audited direct links into Studio and Viral Studio were converted to canonical resolver-owned full-document destinations in Command Center, Intelligence Dashboard, ManyChat Wizard, Video Variant Factory, and Hook Generator. New static coverage asserts those cross-bundle paths remain resolver-owned; targeted resolver and direct-navigation tests pass 8/8. Lower-risk same-bundle and root/navigation links remain an inventory item rather than a current blank-page blocker.
 
 ### 4. Shopify paid-order webhook evidence is stale — **Priority 1**
 
@@ -91,7 +91,9 @@ System Health marked the Shopify Paid-Order Webhook degraded because the last fi
 
 **Impact.** First-party order attribution should not be treated as current real-time proof until the inbound webhook path is validated with a new controlled paid-order event or an equivalent confirmed production event.
 
-**Recommended action.** Audit the Shopify webhook subscription, endpoint response history, and order-to-attribution recorder. Reconcile a recent real order against Shopify Admin and the Content Hub before using this signal to decide media spend.
+**Repair completed during follow-through.** Shopify Admin currently has one `ORDERS_PAID` subscription pointing to the expected Content Hub endpoint. The route previously sat after the global JSON parser, which meant HMAC validation could fall back to a re-serialized payload instead of Shopify’s original signed bytes. The endpoint now uses `express.raw()` before global JSON parsing, retains the exact signed body, and parses only after authorization. Payload parsing and route-order coverage pass alongside the live storefront/cart smoke suite (6 passing tests; 1 configuration-only skip).
+
+**Remaining live proof.** The connected Admin API returned no accessible current orders, and the recorder table contains only historic synthetic test records. A genuine paid order must still be observed in Shopify Admin, the webhook recorder, and the correct isolated attribution view. No fake order or Meta Purchase event was generated during this repair.
 
 ### 5. Reconciliation lacks Shopify revenue for the current Agora view — **Priority 1**
 
@@ -105,7 +107,9 @@ The Reconciliation page is behaving as designed: it uses saved Meta data by defa
 
 The audit found that the implemented `commerceRouter` was absent from the main `appRouter`, leaving `commerce.products.list` and `commerce.cart.create` unavailable despite the underlying Shopify storefront working. The router is now composed under `commerce`, and focused contract coverage confirms that the product, collection, and cart procedures are present.
 
-**Follow-up.** Run a browser cart smoke test after the next verified fresh bundle publication. The repair does not change storefront navigation or payment behavior.
+**Follow-up completed.** A live read-only tRPC smoke test confirms `commerce.products.list` returns real Shopify catalog products through the restored public app router. A separate isolated smoke test then created, verified, and cleared a disposable cart through the public `commerce.cart.create` and `commerce.cart.removeLines` procedures. It did not open checkout, alter storefront navigation or checkout URLs, or interact with an existing visitor cart. The focused live suite passed 3 tests with one configuration-only skip.
+
+The internal System Health page now also renders an operator-triggered **Disposable Commerce Cart Smoke Test** control in the development preview. Its visible safeguard text states that it creates and clears a separate one-item cart, never opens checkout, and never touches an existing visitor cart. The browser-level control was executed and returned: **“Passed: an isolated cart was created and cleared. Checkout was never opened.”** The same live page continues to report the Shopify Storefront API as connected and the paid-order webhook as degraded because its most recent attributed event is 41 days old.
 
 ### 7. Commerce and stale-test cleanup — **Remediated**
 
@@ -170,3 +174,7 @@ This report distinguishes direct verification from source-level analysis. Canoni
 The Content Hub has a healthy core: major integrations authenticate, canonical tools across the Core, Content, Growth, and Analytics bundles work, and the server/database are not showing a broad outage. The user’s blank-page experience is real, but it has a specific architectural cause: multi-bundle ownership and stale production asset publication.
 
 The important business decision is to preserve the now-proven route and deployment discipline while closing the remaining attribution dependencies. The current route protections and restored commerce contract have passed automated coverage; the representative production smoke suite also passed. The next operational work is the cart-flow check, Shopify webhook evidence, direct-navigation hardening, and the scheduled KO/Klaviyo report before using the Hub as the single source of truth for revenue allocation and scaling.
+
+## Follow-Through Build Verification — 2026-08-16
+
+The complete regression suite passes **153 test files / 1,532 tests** with **2 intentional skips** after the commerce, webhook, navigation, and collector-hardening changes. The public funnel production bundle also builds successfully. The Hub-core Vite bundle is still externally terminated during chunk rendering after transforming 6,383 modules: low heap limits exhaust V8, while higher safe limits receive `SIGTERM`. The development server was restored and reports no language-service errors. This is a build-resource blocker requiring platform support or a future build-architecture change; it is not a test or type-check regression introduced by the repairs.

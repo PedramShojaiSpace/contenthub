@@ -33,6 +33,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { Link , useLocation } from "wouter";
+import { getHubPublicHref } from "@/lib/hubRouteResolver";
 import IntentIdeasPanel from "@/components/IntentIdeasPanel";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -359,12 +360,12 @@ export default function IntelligenceDashboard() {
                   <CheckCircle2 className="w-3 h-3" /> Inform Script
                 </span>
               </div>
-              <Link href="/studio">
+              <a href={getHubPublicHref("/studio")}>
                 <Button variant="outline" size="sm" className="w-full mt-1 gap-1.5 text-xs h-7">
                   <ExternalLink className="w-3 h-3" />
                   Open Creation Studio
                 </Button>
-              </Link>
+              </a>
             </CardContent>
           </Card>
 

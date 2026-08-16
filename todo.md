@@ -5,6 +5,7 @@
 - [x] Run database migrations
 
 ## Read-Only Content Hub Audit — 2026-08-13
+- [x] Reconcile and report today’s Interconnected Kajabi-path ROAS from paid Kajabi revenue and Agora-only Meta spend, keeping KO/Klaviyo excluded and documenting exact source timestamps — 2026-08-16 direct Kajabi offer report confirms 15 $67 entries ($1,005), 3 current $199 OCUS purchases ($597), $1,602 total revenue, $627.48 Agora-only spend, 1.60x entry ROAS, and 2.55x full-funnel ROAS; source record: `docs/kajabi-roas-verification-2026-08-16.md`.
 - [x] Create a comprehensive Keith-ready DOCX handoff report for the Script Generator voice audit, including verified evidence, safe architecture proposal, shadow-mode implementation sequence, test plan, rollback, and explicit no-change boundaries — delivered as `Keith_Script_Generator_Voice_Audit_2026-08-16.docx`.
 - [x] Conduct a read-only Script Generator audit covering prompts, book/voice retrieval, persona guidance, output controls, and sample behavior; provide an evidence-based approval-gated plan to make scripts sound more like Dr. Pedram without changing any generator component — independently verified in `docs/script-generator-voice-audit-2026-08-16.md`.
 - [x] Prepare an execution-ready, approval-gated Shopify and Kajabi pixel migration checklist with preflight ownership confirmation, cutover steps, real-order validation, rollback points, and no-change boundaries — independently verified in `docs/urban-monk-pixel-migration-checklist-2026-08-16.md`.

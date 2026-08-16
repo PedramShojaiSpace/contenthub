@@ -1,0 +1,35 @@
+# Kajabi Interconnected ROAS Verification — 2026-08-16
+
+## Current Direct Dashboard Read
+
+At the same-day 2026-08-16 view, the authenticated Interconnected Command Center showed **$627.48** of Agora-only Meta spend, **334 leads**, and **45 checkout starts**. Its Kajabi transaction section showed **0 purchases** and **$0.00 revenue**, producing a same-day ledger ROAS of **0.00x** (`$0.00 / $627.48`).
+
+The local `kajabi_purchases` ledger is not a contradiction to that same-day view: its latest stored Interconnected purchases are dated 2026-08-13, with no row dated 2026-08-16. However, this conflicts with the owner’s observation of sales coming in. The current $0.00 / 0.00 read must therefore be treated as a **provisional zero from the presently available sources**, not a final assertion that Kajabi has taken no sales.
+
+## Required Cross-Check
+
+Before reporting a final daily ROAS, refresh the Command Center’s direct Kajabi transaction source and compare its offer-level transaction count with the current Kajabi admin order view. If either source shows current paid transactions, recompute ROAS as paid Kajabi revenue ÷ the same $627.48 Agora-only spend. KO/Klaviyo/Shopify revenue remains excluded.
+
+## Direct Kajabi Admin Reconciliation
+
+The authenticated Kajabi **Offer purchases over time** report for August 16, 2026 corrects the Content Hub same-day display. With the `Interconnected $67 Bundle OTO` offer selected, Kajabi reports **15 paid purchases and $1,005.00 gross revenue** for August 16. The all-offer report shows 19 purchases and $1,971.00, so the remaining four purchases must be filtered by current and historical OCUS offer names before they can be included in the Kajabi Interconnected funnel numerator.
+
+The current confirmed entry-only ROAS floor is therefore **1.6017x** (`$1,005.00 / $627.48`). This is a floor, not the final Kajabi funnel ROAS, because it excludes the current-period $199 OCUS offer until that distinct offer is isolated. The Command Center’s $0 revenue display is stale or disconnected from the Kajabi admin transaction report and must not be used for spend decisions.
+
+## Final Same-Day Calculation
+
+**Verification timestamp:** 2026-08-16T21:09:27Z. The spend/lead/checkout read was taken from the authenticated Interconnected Command Center after an explicit manual refresh. The offer and revenue reads were taken from the authenticated Kajabi `Offer purchases over time` report in the same verification session, filtered first to the $67 offer and then to the $67 offer plus the current $199 OCUS offer.
+
+Kajabi’s two-offer report (`Interconnected $67 Bundle OTO` plus `Gut Permeability and Food Sensitivity Testing w/ Coach Consultation [OCUS DISCOUNT] New`) shows **18 purchases and $1,602.00 gross revenue** for August 16. Against the entry-only report, this identifies **three current $199 OCUS purchases, contributing $597.00**.
+
+| Metric | Verified amount | Calculation |
+|---|---:|---|
+| Agora-only Meta spend | $627.48 | Command Center, explicitly refreshed |
+| $67 entry sales | 15 purchases / $1,005.00 | Kajabi selected-offer report |
+| Entry-only ROAS | **1.60x** | $1,005.00 ÷ $627.48 |
+| Current $199 OCUS sales | 3 purchases / $597.00 | Two-offer report less $67-only report |
+| Total Kajabi Interconnected revenue | $1,602.00 | $1,005.00 + $597.00 |
+| Full-funnel ROAS | **2.55x** | $1,602.00 ÷ $627.48 |
+| Current $199 attachment rate | **20.0%** | 3 ÷ 15 paid $67 entries |
+
+This is the final current-day Kajabi-funnel read. It intentionally excludes KO/Klaviyo/Shopify revenue and unrelated Kajabi offers. The Content Hub Command Center remains inaccurate at $0.00 revenue / ROAS N/A for this date and is not the source of truth until its Kajabi transaction sync is repaired.

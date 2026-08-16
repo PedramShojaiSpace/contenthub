@@ -55,3 +55,31 @@ The final local Studio render displayed the verified Upstream base with its 37-s
 ## Content-Bundle Publication Evidence
 
 The initial published checkpoint continued to serve the old Content entry (`index-Be3H2vCS.js`) and the pre-Studio Webinar Funnel Builder screen, while the local rebuilt Content artifact contains `WebinarBuilder-6yoVxaLi.js` with the Webinar Studio marker. The staged build pipeline now explicitly fails if a Hub Content deployment lacks a `WebinarBuilder` chunk containing both **“repeat the deck, refresh the room”** and **“The Deep Sleep Solution.”** The fresh local Content build passed this check, focused pipeline and Studio tests passed **3 files / 7 tests**, and the full suite passed **168 files / 1,570 tests / 2 intentional skips**. The pending task is live artifact publication, not UI code, source-deck metadata, or data persistence.
+
+## Live Release Verification
+
+The production route now serves the Webinar Studio rather than the legacy-only Funnel Builder. The verified **Upstream** base rendered its 37-slide masterclass metadata and the **Deep Sleep** base rendered its 57-slide source-deck metadata, managed **Open source deck** link, stable teaching architecture, and four Typeform-informed refresh moments. Selecting Deep Sleep made only unsaved setup defaults (topic and offer) and visibly confirmed that a session still needs to be completed below; it did not persist an update. Selecting an existing Upstream session rendered the explicit no-data state when that session contained zero attached Typeform responses and zero analyzed imports, directing the operator to Webinar Intelligence rather than fabricating audience insights.
+
+The repeatable preparation process is now: select **Upstream** or **Sleep**, select the saved webinar session, review the attached Typeform signals where present, revise only the four named live moments, copy the live-run brief, and deliver the unchanged foundation deck over Zoom. The first actual webinar session with imported/attached Typeform intelligence remains the needed production proof of the populated-signal state.
+
+## Populated Typeform and Preservation Validation
+
+The production Studio was then opened on the existing **Upstream Health: How to Find and Fix Your Root Cause** session with real imported intelligence. It rendered a populated Typeform summary, including four themes, repeated audience questions, and exact audience language, then mapped those signals only into the four marked refresh zones. The UI’s session roll-up displayed **584 responses / 6 analyzed imports** and gave concrete examples such as *Gut Health & Digestion*, *Chronic Fatigue & Low Energy*, *“How to fix my leaky gut?”*, and *“weight loss.”* No audience language, question, or theme was fabricated.
+
+The session selection was read-only. A post-interaction database check on the selected session confirms it remains at its pre-existing `updatedAt` timestamp of **2026-05-27 15:33:10**, with its original persisted webinar record intact; no deck, outline, landing-page copy, or intelligence record was written during base switching, session loading, or brief review. The stored intelligence relationship continues to exist and the Studio’s visible roll-up is used solely as an operational summary.
+
+## Final Preservation Check
+
+The production **Copy live-run brief** control was explicitly exercised and returned the expected confirmation. After the action, the selected intelligence-backed webinar still held the same pre-existing `updatedAt` timestamp of **2026-05-27 15:33:10**. The verified Deep Sleep PowerPoint source deck also retained the identical SHA-256 checksum before and after the workflow: `40a084128931a91395889e172543acb521cd42b3e26af1ae20785b051c68ba41`. This completes a read-only validation of base switching, session loading, populated intelligence display, brief copying, and source-deck preservation.
+
+### Combined-flow validation in progress
+
+The live Studio has been reopened for a single-session combined preservation pass. Before any selection, the Upstream presentation project state was recorded as `slide_state.json` SHA-256 `70e8d16545ed5903468282dfe03498a712ec951fbd11275d412e749763e161e3` and `explorer_tier.html` SHA-256 `c014c2d91249c194553f82051d7240b2272d3c12311993c86edaace0a7ea86aa`. The next steps are intentionally read-only: select the known intelligence-backed Upstream session, copy the live-run brief in the same browser flow, then compare the session timestamp and project checksums.
+
+### Combined-flow validation complete
+
+The same production browser session selected the real intelligence-backed Upstream webinar, rendered its **584-response / 6-import** Typeform summary, and then executed **Copy live-run brief** with the visible success confirmation. After that exact sequence, the selected webinar still reported `updatedAt` **2026-05-27 15:33:10**. The linked Upstream presentation project assets were unchanged: `slide_state.json` remained `70e8d16545ed5903468282dfe03498a712ec951fbd11275d412e749763e161e3` and `explorer_tier.html` remained `c014c2d91249c194553f82051d7240b2272d3c12311993c86edaace0a7ea86aa`. This completes the combined populated-session and linked-deck preservation check without any database, deck, or asset mutation.
+
+### Final base-switch preservation state
+
+For the stricter pass, the selected webinar’s persisted outputs were recorded before interaction: `outline` MD5 `ca3501305737b8d3c05b73f36601c964`, landing-page copy MD5 `600197092096a11c3fd16f9e82ed435c`, thank-you copy MD5 `f4794582810b80cb41e06dfbfd62338f`, with existing Gamma IDs/URLs retained. In production, the **Deep Sleep** base was selected without a save action; the editor showed the session-default Deep Sleep topic and offer while the saved webinar list remained intact. The next read-only steps are to load the same intelligence-backed Upstream session, copy the brief, and compare this persisted-output metadata afterward.

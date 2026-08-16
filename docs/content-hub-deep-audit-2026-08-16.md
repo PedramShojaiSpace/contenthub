@@ -55,6 +55,40 @@ The Analytics reconciliation route loaded successfully, displayed saved-data-onl
 
 The path `/hub/growth/interconnected-email-revenue` rendered a blank shell. Source audit confirmed that the page had been registered only in the monolithic `App.tsx`, not in any Hub bundle, while the Growth bundle had no fallback component at all. The repair registers the dashboard in its Core owner bundle, classifies it explicitly as Core in the shared resolver, and adds the shared fallback to Growth. The resolver regression suite passes 6/6 after the change. Deployment validation remains pending a fresh full Hub build.
 
+### Confirmed Stale-Deployment Blocker
+
+After a successful **local** full staged build and checkpoint, production still served `/hub/growth/assets/index-90q2WrOi.js` with `last-modified: Sun, 16 Aug 2026 05:27:56 GMT`, predating the fresh 05:38 build/checkpoint. The repaired `/hub/growth/interconnected-email-revenue` route consequently still rendered blank. This confirms a deployment publication/build synchronization blocker rather than an unresolved local source or build failure. Canonical tools that exist in the old asset set continue to work; newly registered routes and aliases cannot be verified until the hosting layer advances to the current generated Hub assets.
+
+### Core Creation Studio Check
+
+The canonical Core route `/hub/core/studio` loaded successfully in production and rendered the full Creation Studio interface, including research-intelligence opportunities, platform/content controls, image-generation selection, and YouTube competitive-intelligence controls. This confirms the deployed Core bundle and a representative Core data surface are healthy; the blank pages found in the audit are tied to legacy/misowned routes and stale asset publication rather than universal Core failure.
+
+### Regression Suite Audit
+
+The full Vitest suite contains **seven failures** while the large majority of the suite passes, including live credential checks for Shopify, Meta, Kajabi, Klaviyo, Gmail, Pexels, DataForSEO, and the new Hub route resolver. The failing tests are grouped as follows:
+
+| Failure group | Count | Audit interpretation | Priority |
+|---|---:|---|---|
+| Missing `commerce` tRPC procedures expected by `commerce.router.test.ts` | 4 | A real code/test contract mismatch. The current storefront-facing commerce router is not registered at the procedure paths the test expects. Live Shopify Storefront smoke tests still pass, so this is a constrained application-contract gap rather than evidence the store is down. | High for future on-Hub commerce work; medium for current live funnel operations. |
+| Stale Meta creative catalog assumptions in `metaAdPush.test.ts` | 2 | Test fixtures expect old image naming and six variants, while the catalog now contains current Tantra assets and seven variants. This is regression-test drift, not a confirmed Meta API outage. | Medium. |
+| Day 0 HTML layout expectation in `klaviyoDay0Draft.test.ts` | 1 | The test expects an obsolete beige background declaration after the live Day 0 copy/layout treatment changed. This is a stale assertion; the current live Day 0 mail path was separately verified in the earlier funnel work. | Low. |
+
+No test failure was found in the Hub resolver, funnel reconciliation manual-refresh control, Interconnected checkout tracking, Shopify authenticated order reader, or the new email-attribution isolation suite.
+
+### Browser Audit Limitation
+
+During the attempted live cross-bundle sidebar click verification, the connected browser returned a browser-extension connection error before dispatching the click. This is an audit-environment limitation, not evidence that the Content Hub navigation failed. Direct production route checks and route-resolver regression tests remain the evidence base for the bundle-navigation conclusion.
+
+### Tantra Funnel Check
+
+The public `https://content.theurbanmonk.com/tantra-funnel` URL resolved to the Analytics-owned Tantra Quiz Funnel dashboard and completed its live data request after the initial loading state. The tool displayed 452 quiz starts, 272 quiz completions (60.2%), 170 email captures (37.6%), a verified $185 Shopify Tantra sale, and a mapped product-level sales record. This confirms the dashboard, database query, and Shopify sales reader are operating.
+
+The same dashboard displayed **zero “Kajabi tagged (in sequence)”** events and zero matched Meta Tantra campaign spend. The Kajabi label may be a legacy metric now that Klaviyo is the intended CRM path, but it creates a misleading zero-conversion stage in the dashboard and should be renamed or replaced with the current Klaviyo enrollment signal. The zero Meta spend is a reporting-mapping limitation rather than a confirmed sales failure: the dashboard only includes campaigns/ad sets named “Tantra.”
+
+### Interconnected Day 0 Offer Check
+
+The live KO/Klaviyo contextual offer page at `/interconnected/offer-ko` rendered successfully and clearly described the free daily event, the optional nature of the Day 0 purchase, the $67 one-time price, permanent access to the nine-episode bundle, and the Shopify checkout handoff. This confirms the public KO/Klaviyo offer route is operational and presents the intended context before checkout.
+
 ## Audit Method
 
 The next stages will inspect server fallback rules and entrypoint integrity; search all navigation code for cross-bundle escapes; exercise representative Core, Content, Growth, and Analytics tools; test protected backend surfaces; and record any broken behavior with reproducible URLs, observed errors, and remediation priority.

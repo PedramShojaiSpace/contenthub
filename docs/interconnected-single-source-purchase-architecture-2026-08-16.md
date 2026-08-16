@@ -77,6 +77,21 @@ Only the first layer decides actual revenue. A material discrepancy in the third
 
 The recommended action is a **controlled Kajabi-native Pixel cutover**: turn off only the Academy site’s native Facebook Pixel and Access Token path, then validate the next three real Kajabi paid orders against the Content Hub CAPI audit. This is a tracking-system change, not a campaign, checkout, or product change. It requires explicit approval before execution.
 
+## Shopify Migration Inventory — Read-Only
+
+The owner-provided Shopify Customer Events screen confirms two relevant current paths:
+
+| Shopify Customer Event | Delivery surface | Current data quality label | Migration implication |
+| --- | --- | --- | --- |
+| Facebook & Instagram | Server + Web | Optimized | This is the app-managed Shopify Meta integration and is the current primary checkout event pathway that must be deliberately reassigned to the Urban Monk Pixel. |
+| MEGA - Sleep Kit Purchase | Web | No optimization label shown | This is a separate custom Web pixel that should be explicitly inventoried and retired or scoped during the migration; it must not silently remain as a second Purchase emitter. |
+
+The screen does not display the connected Meta Pixel ID or connected business account in its list view, so the next read-only step is to open the Facebook & Instagram app configuration and the MEGA custom-pixel record to capture those exact ownership and event settings. No Shopify Customer Event, data access setting, checkout configuration, or pixel assignment has been changed.
+
+The Shopify Customer Events detail confirms the Facebook & Instagram integration is a dual **Server + Web** optimized customer-event integration. The MEGA - Sleep Kit Purchase record is separate and Web-only. Shopify’s list-level data-access control does not expose the Meta Pixel ID or connected business-account identity. Therefore the unified cutover cannot be safely executed from Customer Events alone: the exact Meta connection must be confirmed in the Facebook & Instagram sales-channel configuration, and the MEGA custom-pixel record must be inspected for its event script before any ownership or pixel change is approved.
+
+The Shopify Facebook & Instagram sales-channel route opens successfully in the connected owner browser, but its embedded configuration surface has not yet loaded any connection or pixel detail. No control has been clicked. Until Shopify renders that configuration or the owner provides its settings sub-route, the current exact connected Pixel ID remains unverified from the Shopify source.
+
 ## References
 
 [1] [Meta Purchase tracking audit and live evidence](meta-purchase-tracking-audit-2026-08-16.md)

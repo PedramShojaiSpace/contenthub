@@ -4097,6 +4097,8 @@ export const tantraQuizLeads = mysqlTable("tantra_quiz_leads", {
   utmSource: varchar("utm_source", { length: 128 }),
   utmCampaign: varchar("utm_campaign", { length: 128 }),
   utmMedium: varchar("utm_medium", { length: 128 }),
+  sourcePage: varchar("source_page", { length: 64 }),
+  sourceVisitorId: varchar("source_visitor_id", { length: 128 }),
   kajabiTagged: boolean("kajabi_tagged").notNull().default(false),
   kajabiTaggedAt: bigint("kajabi_tagged_at", { mode: "number" }),
   completedAt: bigint("completed_at", { mode: "number" }),
@@ -4105,6 +4107,28 @@ export const tantraQuizLeads = mysqlTable("tantra_quiz_leads", {
 
 export type TantraQuizLead = typeof tantraQuizLeads.$inferSelect;
 export type InsertTantraQuizLead = typeof tantraQuizLeads.$inferInsert;
+
+export const tantraContentEventTypeEnum = mysqlEnum("tantra_content_event_type", [
+  "page_view",
+  "video_play",
+  "video_25",
+  "video_50",
+  "video_75",
+  "video_complete",
+  "quiz_cta",
+]);
+
+export const tantraContentEvents = mysqlTable("tantra_content_events", {
+  id: int("id").autoincrement().primaryKey(),
+  sourcePage: varchar("source_page", { length: 64 }).notNull(),
+  visitorId: varchar("visitor_id", { length: 128 }).notNull(),
+  eventType: tantraContentEventTypeEnum.notNull(),
+  mediaId: varchar("media_id", { length: 32 }).notNull(),
+  eventAt: bigint("event_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+
+export type TantraContentEvent = typeof tantraContentEvents.$inferSelect;
+export type InsertTantraContentEvent = typeof tantraContentEvents.$inferInsert;
 
 
 // ─── Script Factory v2 — Phase 1: Persistent Idea Engine ─────────────────────

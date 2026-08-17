@@ -111,6 +111,7 @@ import { substackSequenceRouter } from "./substackSequenceRouter";
 import { substackInboxRouter } from "./substackInboxRouter";
 import { deepDiveRouter } from "./deepDiveRouter";
 import { tantraQuizRouter } from "./tantraQuizRouter";
+import { tantraContentAttributionRouter } from "./tantraContentAttributionRouter";
 import { interconnectedRouter } from "./interconnectedRouter";
 import { hostedLandingPagesRouter } from "./hostedLandingPagesRouter";
 import { testimonialsRouter } from "./testimonialsRouter";
@@ -517,6 +518,7 @@ export const appRouter = router({
   substackInbox: substackInboxRouter,
   deepDive: deepDiveRouter,
   tantraQuiz: tantraQuizRouter,
+  tantraContentAttribution: tantraContentAttributionRouter,
   interconnected: interconnectedRouter,
   hostedLp: hostedLandingPagesRouter,
   testimonials: testimonialsRouter,

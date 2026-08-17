@@ -505,7 +505,11 @@ function submitForm(e, id) {
     referrer: document.referrer || undefined,
     fbclid: fbclid || undefined,
     fbp: fbp || undefined,
-    fbc: fbc || undefined
+    fbc: fbc || undefined,
+    metaCampaignId: params.get('meta_campaign_id') || undefined,
+    metaAdsetId: params.get('meta_adset_id') || undefined,
+    metaAdId: params.get('meta_ad_id') || undefined,
+    metaCampaignKey: params.get('meta_campaign_key') || undefined
   };
 
   fetch('/api/trpc/interconnected.register?batch=1', {

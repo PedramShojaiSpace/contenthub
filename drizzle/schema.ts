@@ -4335,6 +4335,11 @@ export const interconnectedLeads = mysqlTable("interconnected_leads", {
   fbclid: varchar("fbclid", { length: 256 }),
   fbp: varchar("fbp", { length: 256 }),
   fbc: varchar("fbc", { length: 256 }),
+  // Invisible first-party Meta campaign identity captured from destination URL params.
+  metaCampaignId: varchar("meta_campaign_id", { length: 64 }),
+  metaAdsetId: varchar("meta_adset_id", { length: 64 }),
+  metaAdId: varchar("meta_ad_id", { length: 64 }),
+  metaCampaignKey: varchar("meta_campaign_key", { length: 128 }),
   clientIp: varchar("client_ip", { length: 64 }),
   userAgent: varchar("user_agent", { length: 512 }),
   createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),

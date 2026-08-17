@@ -42,3 +42,9 @@ The recommended business read is **66.7%** for the non-test strict Agora UTM rec
 Two explicitly approved, single-call Meta campaign-inventory requests were made for **August 1–16** and the supplemental historical window **August 1–9**. They returned 57 and 56 Agora-named campaigns respectively. Neither inventory could be joined exactly to the lead ledger because the Meta Insights campaign response contains campaign names and performance but no landing-page UTM value, while historical lead records store UTM labels rather than Meta campaign or ad-set IDs. No exact name-to-UTM equality match was present.
 
 Consequently, the 57.1% and 66.7% values remain clearly labeled **keyword/UTM proxies**, not campaign-ID-verified historical Agora rates. The broader 67.5% value is a valid Meta/Agora-evidence diagnostic only. No additional Meta API call is warranted or planned. Future exact measurement requires lead capture to persist `campaign_id`, `adset_id`, or a canonical campaign-key populated directly from the ad URL at opt-in time.
+
+## Klaviyo Phone-Sync Scope Check
+
+The four local-only phone records observed in the broad Meta/Agora-evidence diagnostic are **not** part of the strict seven-record Agora keyword cohort. In that strict cohort, all four local phone records are present in the matched Klaviyo profiles; there is no strict-Agora phone-sync discrepancy to repair. The existing `pushInterconnectedOptIn` contract already sends a provided phone as `phone_number` during profile creation and patches the existing profile after a duplicate-profile response. It also includes the E.164 phone in the SMS subscription payload when consent and the configured SMS list are present.
+
+The broad-cohort difference should therefore be investigated only if that broader data-quality diagnostic becomes an operating priority. It does not change the strict Agora proxy measurement or justify a backfill without a separately approved source-of-truth and consent review.

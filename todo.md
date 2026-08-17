@@ -17,6 +17,15 @@
 - [x] Establish the first Webinar Studio visual layer from the available Upstream masterclass deck and validate its Upstream/Sleep profile-switch interaction without saving a session mutation — documented in `docs/webinar-studio-redesign-2026-08-16.md`; focused suite passes 3 files / 16 tests.
 
 ## Core Infrastructure
+
+- [ ] Calculate the August 1-to-present unique Agora-lead mobile/SMS capture rate across all recorded funnel paths, with explicit source, de-duplication, numerator, denominator, and data-coverage caveats — keyword-based diagnostic is documented, but the final exact campaign/UTM mapping remains required.
+- [ ] Reconcile the identified August Agora/Meta lead cohort against read-only Klaviyo Interconnected profiles to distinguish usable phone capture from local SMS-consent flags and confirm all-path CRM coverage — rerun after the exact Agora campaign/UTM map is established.
+- [ ] Build and document an authoritative August Agora campaign map from stored Meta campaign inventory and exact qualifying UTM values before calculating the final all-path lead denominator.
+- [ ] Use the user-approved supplemental August 1–9 Meta historical inventory call to recover the missing early Agora campaign names for exact campaign-to-UTM mapping.
+- [x] Use the user-approved supplemental August 1–9 Meta historical inventory call to recover the missing early Agora campaign names for exact campaign-to-UTM mapping — one approved historical call completed; neither current nor historical Meta inventory includes a joinable landing-page UTM key, so exact retrospective mapping remains impossible without captured campaign/ad-set IDs.
+- [ ] Add first-party lead-capture fields for Meta campaign ID, ad-set ID, and a canonical campaign key from the landing URL so future Agora-only mobile/SMS measurement is exact rather than keyword-inferred; preserve the one-manual-Meta-call guardrail.
+- [ ] Recompute the August unique lead, usable-phone, and SMS-consent rates using the exact Agora campaign/UTM map rather than keyword matching alone.
+- [ ] Re-run the read-only Klaviyo profile reconciliation against the exact Agora-only cohort and update the documented numerator/denominator if it differs from the keyword-based diagnostic.
 - [x] Upgrade project to full-stack (db, server, user)
 - [x] Run database migrations
 

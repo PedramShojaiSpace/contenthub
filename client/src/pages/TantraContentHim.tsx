@@ -5,15 +5,17 @@
  * Video placeholder — swap WISTIA_ID when recording is ready.
  */
 
+import { useTantraContentAttribution } from "@/components/TantraContentAttribution";
+
 const URBAN_MONK_MARK = "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/The_Urban_Monk-Icon-Yin_90acff39.png";
 const WISTIA_ID = "kcvtkpe34a";
-const QUIZ_URL = "/quiz/tantra";
 
 const BG = "#0d0d0d";
 const GOLD = "#c9a84c";
 const GOLD_LIGHT = "#e8c97e";
 
 export default function TantraContentHim() {
+  const { quizUrl, onQuizCta } = useTantraContentAttribution({ sourcePage: "why-he-stopped", videoId: WISTIA_ID });
   return (
     <div className="min-h-screen text-white font-sans" style={{ background: BG }}>
 
@@ -91,7 +93,8 @@ export default function TantraContentHim() {
             The quiz below identifies exactly where the disruption is happening for you specifically — and gives you a personalized starting point.
           </p>
           <a
-            href={QUIZ_URL}
+            href={quizUrl}
+            onClick={onQuizCta}
             className="inline-block font-bold text-base px-10 py-4 rounded-full transition-all duration-200"
             style={{ background: GOLD, color: "#0d0d0d" }}
           >

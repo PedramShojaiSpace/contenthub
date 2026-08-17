@@ -2,7 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { useMemo, useState } from "react";
-import { ArrowDown, CreditCard, DollarSign, ShoppingCart, TrendingDown, Users } from "lucide-react";
+import { ArrowDown, CreditCard, DollarSign, ShoppingCart, TrendingDown, Users, Video } from "lucide-react";
 
 type FinancialRange = "since_launch" | "today" | "last_7_days" | "this_month";
 
@@ -120,6 +120,14 @@ export default function TantraFunnelDashboard() {
       staleTime: 45_000,
     }
   );
+  const {
+    data: contentAttribution,
+    isLoading: contentAttributionLoading,
+    refetch: refetchContentAttribution,
+  } = trpc.tantraContentAttribution.getReport.useQuery(
+    { startDate: dateRange.startDate, endDate: dateRange.endDate },
+    { enabled: isAuthenticated, refetchInterval: 60_000, staleTime: 45_000 }
+  );
 
   if (loading) return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center"><div className="text-white/40">Loading…</div></div>;
   if (!isAuthenticated) { window.location.href = getLoginUrl(); return null; }
@@ -151,6 +159,7 @@ export default function TantraFunnelDashboard() {
   const refreshAll = () => {
     void refetch();
     void refetchFinancials();
+    void refetchContentAttribution();
   };
 
   return (
@@ -312,6 +321,64 @@ export default function TantraFunnelDashboard() {
 
                 <p className="text-white/35 text-[11px] leading-relaxed mt-4">
                   Basis: paid Shopify orders containing only mapped Tantra SKUs; Meta spend is limited to campaigns or ad sets named “Tantra.” ROAS uses Shopify Tantra revenue ÷ that spend. Shopify revenue does not rely on the Meta pixel and excludes Kajabi sales.
+                </p>
+              </>
+            )}
+          </section>
+
+          <section className="bg-[#0e0e0e] border border-sky-400/20 rounded-xl p-5 mb-8">
+            <div className="flex items-start gap-3 mb-5">
+              <Video className="w-4 h-4 text-sky-300 mt-0.5" />
+              <div>
+                <h2 className="text-sky-300 text-sm font-semibold uppercase tracking-wider">Content Page → Quiz → Sale</h2>
+                <p className="text-white/40 text-xs mt-1">
+                  First-party page hits, unique video viewers, quiz sessions, and email-matched paid Shopify webhook line items by source video page.
+                </p>
+              </div>
+            </div>
+
+            {contentAttributionLoading ? (
+              <div className="text-white/40 text-sm text-center py-10">Loading content-page attribution…</div>
+            ) : (
+              <>
+                <div className="overflow-x-auto border border-white/10 rounded-lg">
+                  <table className="w-full min-w-[900px] text-sm">
+                    <thead className="bg-white/[0.03] text-white/45 text-xs uppercase tracking-wider">
+                      <tr>
+                        <th className="text-left font-medium px-4 py-3">Landing Page</th>
+                        <th className="text-right font-medium px-3 py-3">Page Hits</th>
+                        <th className="text-right font-medium px-3 py-3">Video Plays</th>
+                        <th className="text-right font-medium px-3 py-3">50% Watched</th>
+                        <th className="text-right font-medium px-3 py-3">Quiz Starts</th>
+                        <th className="text-right font-medium px-3 py-3">Completed</th>
+                        <th className="text-right font-medium px-3 py-3">Sales</th>
+                        <th className="text-right font-medium px-4 py-3">Attributed Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {contentAttribution?.rows.map((row) => {
+                        const quizRate = row.uniquePageVisitors ? (row.quizStarts / row.uniquePageVisitors) * 100 : 0;
+                        return (
+                          <tr key={row.sourcePage} className="text-white/75">
+                            <td className="px-4 py-3">
+                              <a href={row.path} target="_blank" rel="noreferrer" className="text-white hover:text-sky-200 transition-colors">{row.label}</a>
+                              <div className="text-white/35 text-[11px] mt-1">{row.uniquePageVisitors} unique visitors · {quizRate.toFixed(1)}% visitor → quiz start</div>
+                            </td>
+                            <td className="text-right px-3 py-3 text-white">{row.pageHits.toLocaleString()}</td>
+                            <td className="text-right px-3 py-3">{row.videoPlays.toLocaleString()}</td>
+                            <td className="text-right px-3 py-3">{row.video50.toLocaleString()}</td>
+                            <td className="text-right px-3 py-3 text-sky-200">{row.quizStarts.toLocaleString()}</td>
+                            <td className="text-right px-3 py-3">{row.quizCompleted.toLocaleString()}</td>
+                            <td className="text-right px-3 py-3 text-emerald-300">{row.paidUnits.toLocaleString()}</td>
+                            <td className="text-right px-4 py-3 text-emerald-300 font-semibold">{usd(row.attributedRevenueCents / 100)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-white/35 text-[11px] leading-relaxed mt-4">
+                  {contentAttribution?.attributionBasis ?? "Attribution details unavailable."}
                 </p>
               </>
             )}

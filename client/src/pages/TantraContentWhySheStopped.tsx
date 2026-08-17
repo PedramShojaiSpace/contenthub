@@ -4,15 +4,17 @@
  * Video placeholder — replace WISTIA_ID after recording is ready.
  */
 
+import { useTantraContentAttribution } from "@/components/TantraContentAttribution";
+
 const URBAN_MONK_MARK = "https://d2xsxph8kpxj0f.cloudfront.net/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ/The_Urban_Monk-Icon-Yin_90acff39.png";
 const WISTIA_ID = "zpqgfbnjp1";
-const QUIZ_URL = "/quiz/tantra";
 
 const BG = "#0d0d0d";
 const GOLD = "#c9a84c";
 const GOLD_LIGHT = "#e8c97e";
 
 export default function TantraContentWhySheStopped() {
+  const { quizUrl, onQuizCta } = useTantraContentAttribution({ sourcePage: "why-she-stopped", videoId: WISTIA_ID });
   return (
     <div className="min-h-screen text-white font-sans" style={{ background: BG }}>
       <header className="py-4 px-6 flex justify-center border-b border-white/5">
@@ -65,7 +67,7 @@ export default function TantraContentWhySheStopped() {
         <div className="w-12 h-px mx-auto mb-10" style={{ background: GOLD }} />
         <div className="text-center">
           <p className="text-gray-400 text-sm mb-4">This two-minute educational quiz offers a practical place to start exploring the connection between wellbeing, confidence, and relationship closeness.</p>
-          <a href={QUIZ_URL} className="inline-block font-bold text-base px-10 py-4 rounded-full transition-all duration-200" style={{ background: GOLD, color: "#0d0d0d" }}>Take the 2-Minute Quiz →</a>
+          <a href={quizUrl} onClick={onQuizCta} className="inline-block font-bold text-base px-10 py-4 rounded-full transition-all duration-200" style={{ background: GOLD, color: "#0d0d0d" }}>Take the 2-Minute Quiz →</a>
           <p className="text-gray-600 text-xs mt-4">No account required. Takes 2 minutes.</p>
         </div>
       </main>

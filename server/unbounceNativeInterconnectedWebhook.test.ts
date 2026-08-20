@@ -64,6 +64,11 @@ describe("native Unbounce Interconnected webhook secret", () => {
     })).toBe(true);
     expect(resolveNativeSmsConsent({
       phone: "3104208733",
+      sms_consent: "",
+      sms_consent_yes: "Yes",
+    })).toBe(true);
+    expect(resolveNativeSmsConsent({
+      phone: "3104208733",
       sms_consent_yes: "",
     })).toBe(false);
     expect(resolveNativeSmsConsent({

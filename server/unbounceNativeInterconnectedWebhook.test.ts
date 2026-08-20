@@ -2,6 +2,7 @@ import express from "express";
 import type { Server } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  isExplicitSmsConsent,
   registerUnbounceNativeInterconnectedWebhook,
   UNBOUNCE_NATIVE_INTERCONNECTED_PATH,
   UNBOUNCE_NATIVE_SECRET_HEADER,
@@ -43,5 +44,15 @@ describe("native Unbounce Interconnected webhook secret", () => {
 
     // 400 proves the supplied secret passed authentication; a bad/missing secret is 401.
     expect(response.status).toBe(400);
+  });
+
+  it("accepts only explicit checkbox-style values as SMS consent", () => {
+    expect(isExplicitSmsConsent(true)).toBe(true);
+    expect(isExplicitSmsConsent("checked")).toBe(true);
+    expect(isExplicitSmsConsent("YES")).toBe(true);
+    expect(isExplicitSmsConsent("1")).toBe(true);
+    expect(isExplicitSmsConsent(false)).toBe(false);
+    expect(isExplicitSmsConsent(undefined)).toBe(false);
+    expect(isExplicitSmsConsent("phone number provided")).toBe(false);
   });
 });

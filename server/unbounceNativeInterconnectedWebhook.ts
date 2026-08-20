@@ -14,6 +14,7 @@ export const UNBOUNCE_NATIVE_SECRET_HEADER = "x-urban-monk-webhook-secret";
 const unbounceWebhookPayload = z.object({
   email: z.unknown(),
   phone: z.unknown().optional(),
+  sms_consent: z.unknown().optional(),
   ip_address: z.unknown().optional(),
   page_uuid: z.unknown().optional(),
   variant: z.unknown().optional(),
@@ -28,6 +29,14 @@ function firstValue(value: unknown): string | null {
   if (typeof candidate !== "string") return null;
   const trimmed = candidate.trim();
   return trimmed || null;
+}
+
+export function isExplicitSmsConsent(value: unknown): boolean {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  if (candidate === true) return true;
+  if (typeof candidate !== "string") return false;
+
+  return ["1", "true", "yes", "on", "checked"].includes(candidate.trim().toLowerCase());
 }
 
 function parseUnbouncePayload(body: unknown): Record<string, unknown> | null {
@@ -106,6 +115,10 @@ export function registerUnbounceNativeInterconnectedWebhook(app: Express) {
 
     const email = firstValue(parsed.data.email)?.toLowerCase();
     const phone = firstValue(parsed.data.phone);
+    // Phone collection alone never creates SMS marketing consent. The native
+    // checkbox must be checked and a phone must be present before Klaviyo is
+    // asked to subscribe the profile to the dedicated SMS list.
+    const smsConsent = Boolean(phone) && isExplicitSmsConsent(parsed.data.sms_consent);
     const pageUrl = firstValue(parsed.data.page_url);
     const pageUuid = firstValue(parsed.data.page_uuid);
     const variant = firstValue(parsed.data.variant) ?? "E";
@@ -122,6 +135,7 @@ export function registerUnbounceNativeInterconnectedWebhook(app: Express) {
     const eventId = buildEventId({ email, pageUuid, submittedAt });
     let leadId: number | null = null;
     let eventAlreadySent = false;
+    let smsSubscribed = false;
 
     try {
       const db = await getDb();
@@ -150,7 +164,7 @@ export function registerUnbounceNativeInterconnectedWebhook(app: Express) {
               email,
               name: "Unbounce native Interconnected lead",
               phone,
-              smsConsent: false,
+              smsConsent,
               utmSource: tracking.utmSource,
               utmMedium: tracking.utmMedium,
               utmCampaign: tracking.utmCampaign,
@@ -174,23 +188,29 @@ export function registerUnbounceNativeInterconnectedWebhook(app: Express) {
     }
 
     try {
-      await pushInterconnectedEmailLead({ email, phone: phone ?? undefined, smsConsent: false });
+      const klaviyoResult = await pushInterconnectedEmailLead({
+        email,
+        phone: phone ?? undefined,
+        smsConsent,
+      });
+      smsSubscribed = klaviyoResult.smsSubscribed;
       if (leadId) {
         const db = await getDb();
         if (db) {
           await db
             .update(interconnectedLeads)
-            .set({ klaviyoSynced: true, klaviyoSyncedAt: Date.now() })
+            .set({ smsConsent, klaviyoSynced: true, klaviyoSyncedAt: Date.now() })
             .where(eq(interconnectedLeads.id, leadId));
         }
       }
+
     } catch (error) {
       console.error("[unbounce-native-interconnected] Klaviyo delivery error:", error);
       return res.status(502).json({ error: "Klaviyo delivery unavailable" });
     }
 
     if (eventAlreadySent) {
-      return res.json({ ok: true, deduplicated: true, eventId });
+      return res.json({ ok: true, deduplicated: true, eventId, smsSubscribed });
     }
 
     const capiSent = await sendCapiEvent({
@@ -218,6 +238,6 @@ export function registerUnbounceNativeInterconnectedWebhook(app: Express) {
       }
     }
 
-    return res.status(200).json({ ok: true, capiSent, eventId });
+    return res.status(200).json({ ok: true, capiSent, eventId, smsSubscribed });
   });
 }

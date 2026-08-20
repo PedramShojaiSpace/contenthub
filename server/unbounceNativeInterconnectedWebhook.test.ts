@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   isExplicitSmsConsent,
   registerUnbounceNativeInterconnectedWebhook,
+  resolveNativeSmsConsent,
   UNBOUNCE_NATIVE_INTERCONNECTED_PATH,
   UNBOUNCE_NATIVE_SECRET_HEADER,
 } from "./unbounceNativeInterconnectedWebhook";
@@ -54,5 +55,19 @@ describe("native Unbounce Interconnected webhook secret", () => {
     expect(isExplicitSmsConsent(false)).toBe(false);
     expect(isExplicitSmsConsent(undefined)).toBe(false);
     expect(isExplicitSmsConsent("phone number provided")).toBe(false);
+  });
+
+  it("accepts the concrete Checkbox Select choice ID only with a phone and affirmative choice", () => {
+    expect(resolveNativeSmsConsent({
+      phone: "3104208733",
+      sms_consent_yes: "Yes",
+    })).toBe(true);
+    expect(resolveNativeSmsConsent({
+      phone: "3104208733",
+      sms_consent_yes: "",
+    })).toBe(false);
+    expect(resolveNativeSmsConsent({
+      sms_consent_yes: "Yes",
+    })).toBe(false);
   });
 });

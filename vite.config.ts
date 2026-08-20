@@ -177,9 +177,8 @@ export default defineConfig(({ mode }) => {
       : path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: !hubEntry,
     chunkSizeWarningLimit: 1000,
-    // Minification materially reduces Rollup's peak memory during the large
-    // Hub chunk-rendering phase. This keeps staged production builds from
-    // being terminated before fresh Hub assets can be deployed.
+    // Use standard minification for all shipped bundles. Peak build memory is
+    // controlled by retaining Vite's default dynamic-import chunk graph below.
     minify: "esbuild",
     sourcemap: false,
     reportCompressedSize: !hubEntry,
@@ -191,14 +190,10 @@ export default defineConfig(({ mode }) => {
           ? path.resolve(clientRoot, `${hubEntry}-index.html`)
           : path.resolve(clientRoot, "public-index.html"),
       },
-      output: hubEntry === "hub-core"
-        ? {
-            manualChunks(id) {
-              if (id.includes("node_modules")) return "hub-core-vendor";
-              return undefined;
-            },
-          }
-        : {},
+      // Let Vite retain its default dynamic-import chunk graph. The prior
+      // Hub-core vendor override forced a large shared chunk during rendering
+      // and repeatedly exceeded the constrained deployment build limit.
+      output: {},
     },
   },
   server: {

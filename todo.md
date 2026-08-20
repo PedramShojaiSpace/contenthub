@@ -1,5 +1,7 @@
 # Content Engine — Project TODO
 
+- [ ] Grant least-privilege authenticated Content Hub access to `yrmisb@gmail.com` and `cetel1.elvira@gmail.com`, verify both account records and roles, and preserve owner-only administrative controls.
+
 ## Core Infrastructure
 - [x] Upgrade project to full-stack (db, server, user)
 - [x] Run database migrations
@@ -4959,6 +4961,11 @@ Pricing model (corrected):
 - [ ] Configure the unpublished native Interconnected test form to redirect successful submissions to the Klaviyo-path `$67` thank-you page rather than Unbounce’s default confirmation dialog, preserving the separate Kajabi/KO offer context and no live-page change until controlled validation passes.
 - [ ] Repair the published `/interconnected-lp-3` native form’s visual presentation: restore visible field labels/placeholders, provide readable input contrast, and align the submit button with the page styling before resuming controlled submission or sending traffic.
 - [ ] Add an unticked, optional SMS-consent checkbox with clear disclosure to the published native `/interconnected-lp-3` test form, map it through the page-specific webhook, and ensure only explicit consent—not the presence of a phone number—can result in SMS subscription behavior.
+- [ ] Remove the legacy Klaviyo embedded form (`Custom HTML 2`) from the `/interconnected-lp-3` duplicate only, then replace the oversized native SMS-consent field label with a concise optional checkbox and a separately formatted disclosure text element; do not alter the original `/interconnected-lp/` page or its Klaviyo embed.
+- [ ] Reposition the single native Unbounce form within the `/interconnected-lp-3` registration panel and replace the current oversized SMS-consent field label with a short optional checkbox label plus a separate small disclosure element; preserve the `sms_consent` internal field ID and leave the checkbox unticked and non-required.
+- [ ] Align the native form fields and the independent `Form Submit Button` as one vertically centered registration unit in the `/interconnected-lp-3` black panel; resize the panel as needed so the submit control and disclosure remain fully contained on mobile without a large blank gap below the headline.
+- [ ] Add the `sms_consent` → `sms_consent` mapping to the `/interconnected-lp-3` page-specific native webhook, then complete controlled email-only and explicit-consent SMS validations before declaring the test page traffic-ready.
+- [ ] Diagnose and correct the native `/interconnected-lp-3` SMS-consent handoff: owner-authorized test lead `960012` retained the phone number and completed Klaviyo/CAPI delivery but recorded `sms_consent = false`; trace the exact Unbounce payload shape, apply the smallest consent-safe correction, and re-test before permitting traffic.
 - [ ] Provide the owner with an exact, ordered native Unbounce-to-Klaviyo test execution checklist, including the remaining publication dependency, Unbounce webhook configuration, email-only validation, and explicit no-go conditions.
 - [ ] Complete and publish only the validated native Interconnected Unbounce test page at `/interconnected-lp-3` after its page-specific receiver, `Rrx44Q` routing, and controlled email-only verification are confirmed. Do not alter `/interconnected-lp/`, the global Deep Sleep integration, or flow `YyFZPu`.
 - [ ] Continue preparing only the unpublished `/interconnected-lp-3` native form locally while the Content Hub project-history reset is pending; do not publish the test page, alter the original page, change global Deep Sleep routing, or modify flow `YyFZPu`.

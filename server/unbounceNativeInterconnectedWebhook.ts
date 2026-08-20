@@ -15,6 +15,11 @@ const unbounceWebhookPayload = z.object({
   email: z.unknown(),
   phone: z.unknown().optional(),
   sms_consent: z.unknown().optional(),
+  // Classic Builder renders the single Checkbox Select choice as
+  // `sms_consent_yes`, even when its parent field is mapped as
+  // `sms_consent`. Accept both explicit field names; neither can create
+  // consent without an affirmative value and a supplied phone number.
+  sms_consent_yes: z.unknown().optional(),
   ip_address: z.unknown().optional(),
   page_uuid: z.unknown().optional(),
   variant: z.unknown().optional(),
@@ -37,6 +42,16 @@ export function isExplicitSmsConsent(value: unknown): boolean {
   if (typeof candidate !== "string") return false;
 
   return ["1", "true", "yes", "on", "checked"].includes(candidate.trim().toLowerCase());
+}
+
+export function resolveNativeSmsConsent(input: {
+  phone?: unknown;
+  sms_consent?: unknown;
+  sms_consent_yes?: unknown;
+}): boolean {
+  const phone = firstValue(input.phone);
+  const consentValue = input.sms_consent ?? input.sms_consent_yes;
+  return Boolean(phone) && isExplicitSmsConsent(consentValue);
 }
 
 function parseUnbouncePayload(body: unknown): Record<string, unknown> | null {
@@ -118,7 +133,11 @@ export function registerUnbounceNativeInterconnectedWebhook(app: Express) {
     // Phone collection alone never creates SMS marketing consent. The native
     // checkbox must be checked and a phone must be present before Klaviyo is
     // asked to subscribe the profile to the dedicated SMS list.
-    const smsConsent = Boolean(phone) && isExplicitSmsConsent(parsed.data.sms_consent);
+    const smsConsent = resolveNativeSmsConsent({
+      phone,
+      sms_consent: parsed.data.sms_consent,
+      sms_consent_yes: parsed.data.sms_consent_yes,
+    });
     const pageUrl = firstValue(parsed.data.page_url);
     const pageUuid = firstValue(parsed.data.page_uuid);
     const variant = firstValue(parsed.data.variant) ?? "E";

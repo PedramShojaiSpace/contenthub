@@ -50,8 +50,10 @@ export function resolveNativeSmsConsent(input: {
   sms_consent_yes?: unknown;
 }): boolean {
   const phone = firstValue(input.phone);
-  const consentValue = input.sms_consent ?? input.sms_consent_yes;
-  return Boolean(phone) && isExplicitSmsConsent(consentValue);
+  return Boolean(phone) && (
+    isExplicitSmsConsent(input.sms_consent)
+    || isExplicitSmsConsent(input.sms_consent_yes)
+  );
 }
 
 function parseUnbouncePayload(body: unknown): Record<string, unknown> | null {

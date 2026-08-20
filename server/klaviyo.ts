@@ -13,6 +13,9 @@ const REVISION = "2024-10-15"; // Latest stable Klaviyo API revision
 // Create a list in Klaviyo named "Interconnected SMS Subscribers" and paste its ID here.
 // Found at: Klaviyo → Lists & Segments → [list name] → Settings → List ID
 export const INTERCONNECTED_SMS_LIST_ID = process.env.KLAVIYO_INTERCONNECTED_SMS_LIST_ID ?? "";
+// The email list is the authoritative trigger for the KO Interconnected flow.
+// Keep this distinct from the optional SMS-consent list above.
+export const INTERCONNECTED_EMAIL_LIST_ID = "Rrx44Q";
 
 interface KlaviyoProfile {
   email: string;
@@ -246,6 +249,20 @@ export async function pushInterconnectedOptIn(opts: {
   phone?: string;
   smsConsent?: boolean;
 }): Promise<{ profileId: string; smsSubscribed: boolean }> {
+  return pushInterconnectedEmailLead(opts);
+}
+
+/**
+ * Adds an Interconnected lead to the email list that triggers the KO automation.
+ * Phone may be collected for later contact context, but SMS marketing consent is
+ * never inferred and must be explicitly true before the SMS list is subscribed.
+ */
+export async function pushInterconnectedEmailLead(opts: {
+  email: string;
+  firstName?: string;
+  phone?: string;
+  smsConsent?: boolean;
+}): Promise<{ profileId: string; smsSubscribed: boolean }> {
   if (!ENV.klaviyoPrivateKey) {
     console.warn("[Klaviyo] KLAVIYO_PRIVATE_KEY not set — skipping push");
     return { profileId: "", smsSubscribed: false };
@@ -258,6 +275,8 @@ export async function pushInterconnectedOptIn(opts: {
     smsConsent: opts.smsConsent,
     source: "interconnected-optin",
   });
+
+  await addProfileToList(profileId, INTERCONNECTED_EMAIL_LIST_ID);
 
   let smsSubscribed = false;
 

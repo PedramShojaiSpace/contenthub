@@ -20,9 +20,12 @@ import { kajabiPurchases, interconnectedLeads, leadPurchaseAttributions, reconci
 import { and, gte, lte, eq, inArray, sql } from "drizzle-orm";
 import { canonicalMetaCheckoutCount, canonicalMetaLeadCount } from "./metaActionMetrics";
 import {
+  classifyFacebookAgoraAttributionTier,
   classifyInterconnectedCohortPath,
   dayOffsetFromLead,
+  getFacebookAgoraCampaignLabel,
   isWithinFourteenDayWindow,
+  type FacebookAgoraAttributionTier,
   toUtcDateKey,
   type InterconnectedCohortPath,
 } from "./interconnectedCohorts";
@@ -311,12 +314,198 @@ type CohortRevenueSummary = {
   total14DayRevenueCents: number;
 };
 
+type FacebookAgoraDownstreamSummary = {
+  definition: string;
+  uniqueLeads: number;
+  uniqueBuyers: number;
+  purchaseCount: number;
+  within14DayRevenueCents: number;
+  downstreamRevenueCents: number;
+  totalRevenueCents: number;
+  certaintyTiers: Array<{
+    tier: FacebookAgoraAttributionTier;
+    label: string;
+    uniqueLeads: number;
+    uniqueBuyers: number;
+    purchases: number;
+    revenueCents: number;
+  }>;
+  campaigns: Array<{
+    label: string;
+    certaintyTier: FacebookAgoraAttributionTier;
+    uniqueLeads: number;
+    uniqueBuyers: number;
+    purchases: number;
+    revenueCents: number;
+  }>;
+};
+
+const FACEBOOK_AGORA_TIER_LABELS: Record<FacebookAgoraAttributionTier, string> = {
+  ad_id_confirmed: "Ad-ID confirmed",
+  campaign_id_confirmed: "Campaign-ID confirmed",
+  campaign_key_confirmed: "Campaign-key confirmed",
+  cohort_confirmed: "Facebook / Agora cohort confirmed",
+};
+
 const COHORT_LABELS: Record<InterconnectedCohortPath, string> = {
   kajabi_page: "Kajabi Page Cohort",
   klaviyo_sms: "Klaviyo / SMS Cohort",
   meta_paid: "Meta-Paid Cohort",
   other: "Other / Untagged Cohort",
 };
+
+async function getFacebookAgoraDownstreamAnalytics(
+  startDate: string,
+  endDate: string
+): Promise<FacebookAgoraDownstreamSummary> {
+  const empty: FacebookAgoraDownstreamSummary = {
+    definition: "Direct Kajabi revenue joined by normalized email to Facebook/Agora Interconnected lead cohorts acquired in the selected date range. Revenue is credited once to the original acquisition cohort; this table is not additive with closing-touch attribution.",
+    uniqueLeads: 0,
+    uniqueBuyers: 0,
+    purchaseCount: 0,
+    within14DayRevenueCents: 0,
+    downstreamRevenueCents: 0,
+    totalRevenueCents: 0,
+    certaintyTiers: [],
+    campaigns: [],
+  };
+  const db = await getDb();
+  if (!db) return empty;
+
+  const { startMs, endExclusiveMs } = getChicagoDayBounds(startDate);
+  const leadRows = await db.select({
+    email: interconnectedLeads.email,
+    createdAt: interconnectedLeads.createdAt,
+    utmSource: interconnectedLeads.utmSource,
+    utmMedium: interconnectedLeads.utmMedium,
+    utmCampaign: interconnectedLeads.utmCampaign,
+    fbclid: interconnectedLeads.fbclid,
+    metaCampaignId: interconnectedLeads.metaCampaignId,
+    metaAdsetId: interconnectedLeads.metaAdsetId,
+    metaAdId: interconnectedLeads.metaAdId,
+    metaCampaignKey: interconnectedLeads.metaCampaignKey,
+  }).from(interconnectedLeads).where(and(
+    gte(interconnectedLeads.createdAt, startMs),
+    sql`${interconnectedLeads.createdAt} < ${endExclusiveMs}`
+  ));
+
+  const leads = new Map<string, {
+    email: string;
+    createdAt: number;
+    tier: FacebookAgoraAttributionTier;
+    campaignLabel: string;
+  }>();
+  for (const lead of leadRows) {
+    const tier = classifyFacebookAgoraAttributionTier(lead);
+    if (!tier) continue;
+    const email = lead.email.toLowerCase().trim();
+    const existing = leads.get(email);
+    if (!existing || lead.createdAt < existing.createdAt) {
+      leads.set(email, {
+        email,
+        createdAt: lead.createdAt,
+        tier,
+        campaignLabel: getFacebookAgoraCampaignLabel(lead),
+      });
+    }
+  }
+  if (leads.size === 0) return empty;
+
+  const tierMap = new Map<FacebookAgoraAttributionTier, {
+    tier: FacebookAgoraAttributionTier;
+    label: string;
+    uniqueLeads: Set<string>;
+    uniqueBuyers: Set<string>;
+    purchases: number;
+    revenueCents: number;
+  }>();
+  const campaignMap = new Map<string, {
+    label: string;
+    certaintyTier: FacebookAgoraAttributionTier;
+    uniqueLeads: Set<string>;
+    uniqueBuyers: Set<string>;
+    purchases: number;
+    revenueCents: number;
+  }>();
+  for (const lead of leads.values()) {
+    const tierRow = tierMap.get(lead.tier) ?? {
+      tier: lead.tier,
+      label: FACEBOOK_AGORA_TIER_LABELS[lead.tier],
+      uniqueLeads: new Set<string>(),
+      uniqueBuyers: new Set<string>(),
+      purchases: 0,
+      revenueCents: 0,
+    };
+    tierRow.uniqueLeads.add(lead.email);
+    tierMap.set(lead.tier, tierRow);
+    const key = `${lead.tier}:${lead.campaignLabel}`;
+    const campaignRow = campaignMap.get(key) ?? {
+      label: lead.campaignLabel,
+      certaintyTier: lead.tier,
+      uniqueLeads: new Set<string>(),
+      uniqueBuyers: new Set<string>(),
+      purchases: 0,
+      revenueCents: 0,
+    };
+    campaignRow.uniqueLeads.add(lead.email);
+    campaignMap.set(key, campaignRow);
+  }
+
+  const purchaseRows = await db.select({
+    email: kajabiPurchases.email,
+    amountCents: kajabiPurchases.amountCents,
+    purchasedAt: kajabiPurchases.purchasedAt,
+    kajabiOrderId: kajabiPurchases.kajabiOrderId,
+  }).from(kajabiPurchases).where(and(
+    inArray(kajabiPurchases.email, [...leads.keys()]),
+    gte(kajabiPurchases.purchasedAt, startMs),
+    lte(kajabiPurchases.purchasedAt, Date.now())
+  ));
+
+  const processed = new Set<string>();
+  const uniqueBuyers = new Set<string>();
+  let within14DayRevenueCents = 0;
+  let downstreamRevenueCents = 0;
+  for (const purchase of purchaseRows) {
+    if (!purchase.email || !purchase.purchasedAt || !purchase.amountCents || purchase.amountCents <= 0) continue;
+    const email = purchase.email.toLowerCase().trim();
+    const lead = leads.get(email);
+    if (!lead || purchase.purchasedAt < lead.createdAt) continue;
+    const dedupeKey = purchase.kajabiOrderId || `${email}:${purchase.amountCents}:${Math.round(purchase.purchasedAt / 60_000)}`;
+    if (processed.has(dedupeKey)) continue;
+    processed.add(dedupeKey);
+    uniqueBuyers.add(email);
+    const tierRow = tierMap.get(lead.tier)!;
+    const campaignRow = campaignMap.get(`${lead.tier}:${lead.campaignLabel}`)!;
+    tierRow.uniqueBuyers.add(email);
+    tierRow.purchases++;
+    tierRow.revenueCents += purchase.amountCents;
+    campaignRow.uniqueBuyers.add(email);
+    campaignRow.purchases++;
+    campaignRow.revenueCents += purchase.amountCents;
+    if (isWithinFourteenDayWindow(lead.createdAt, purchase.purchasedAt)) {
+      within14DayRevenueCents += purchase.amountCents;
+    } else {
+      downstreamRevenueCents += purchase.amountCents;
+    }
+  }
+
+  return {
+    ...empty,
+    uniqueLeads: leads.size,
+    uniqueBuyers: uniqueBuyers.size,
+    purchaseCount: [...tierMap.values()].reduce((sum, row) => sum + row.purchases, 0),
+    within14DayRevenueCents,
+    downstreamRevenueCents,
+    totalRevenueCents: within14DayRevenueCents + downstreamRevenueCents,
+    certaintyTiers: [...tierMap.values()]
+      .map((row) => ({ tier: row.tier, label: row.label, uniqueLeads: row.uniqueLeads.size, uniqueBuyers: row.uniqueBuyers.size, purchases: row.purchases, revenueCents: row.revenueCents }))
+      .sort((a, b) => b.revenueCents - a.revenueCents),
+    campaigns: [...campaignMap.values()]
+      .map((row) => ({ label: row.label, certaintyTier: row.certaintyTier, uniqueLeads: row.uniqueLeads.size, uniqueBuyers: row.uniqueBuyers.size, purchases: row.purchases, revenueCents: row.revenueCents }))
+      .sort((a, b) => b.revenueCents - a.revenueCents),
+  };
+}
 
 /**
  * Cohort economics are lead-acquisition based: leads are included by their
@@ -970,12 +1159,15 @@ export const funnelReconciliationRouter = router({
       // Build DB lookup for attribution cross-reference
       const dbLookup = await buildKajabiPurchasesLookup(input.startDate, input.endDate);
 
-      const [kajabi, shopify, meta, cohortAnalytics] = await Promise.all([
+      const [kajabi, shopify, meta, cohortAnalytics, facebookAgoraDownstream] = await Promise.all([
         fetchKajabiForFunnel(funnel, input.startDate, input.endDate, dbLookup),
         fetchShopifyForFunnel(funnel, input.startDate, input.endDate),
         getSavedMetaForFunnel(funnel, input.startDate, input.endDate),
         funnel.id === "interconnected_agora"
           ? getInterconnectedCohortAnalytics(input.startDate, input.endDate)
+          : Promise.resolve(null),
+        funnel.id === "interconnected_agora"
+          ? getFacebookAgoraDownstreamAnalytics(input.startDate, input.endDate)
           : Promise.resolve(null),
       ]);
 
@@ -1094,7 +1286,9 @@ export const funnelReconciliationRouter = router({
           metaActive: funnel.metaActive,
         },
         dateRange: { startDate: input.startDate, endDate: input.endDate },
-        cohortAnalytics,
+        cohortAnalytics: cohortAnalytics
+          ? { ...cohortAnalytics, facebookAgoraDownstream }
+          : null,
         meta: {
           spend: meta.spend,
           leads: meta.leads,

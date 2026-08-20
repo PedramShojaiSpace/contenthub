@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isAllowedUnbounceOrigin,
   isAllowedUnbouncePageUrl,
+  parseUnbounceBridgeBody,
   UNBOUNCE_INTERCONNECTED_FORM_ID,
   UNBOUNCE_LEAD_BRIDGE_PATH,
 } from "./unbounceKlaviyoLeadBridge";
@@ -22,5 +23,11 @@ describe("Unbounce/Klaviyo Lead bridge boundaries", () => {
   it("uses the one intended form and public bridge path", () => {
     expect(UNBOUNCE_INTERCONNECTED_FORM_ID).toBe("SJAKDW");
     expect(UNBOUNCE_LEAD_BRIDGE_PATH).toBe("/api/interconnected/unbounce-lead");
+  });
+
+  it("accepts a redirect-safe text/plain beacon payload without weakening validation", () => {
+    expect(parseUnbounceBridgeBody('{"formId":"SJAKDW"}')).toEqual({ formId: "SJAKDW" });
+    expect(parseUnbounceBridgeBody("not-json")).toBeUndefined();
+    expect(parseUnbounceBridgeBody({ formId: "SJAKDW" })).toEqual({ formId: "SJAKDW" });
   });
 });

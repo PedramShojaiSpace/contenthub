@@ -1,0 +1,85 @@
+<!-- Replace the entire existing "Javascript 1" content with this script. -->
+<!-- Placement: Before Body End Tag. Do not change the separate Klaviyo Global Loader. -->
+<script>
+(function () {
+  var FORM_ID = 'SJAKDW';
+  var PIXEL_ID = '1498608757116877';
+  var BRIDGE_URL = 'https://content.theurbanmonk.com/api/interconnected/unbounce-lead';
+  var fired = false;
+
+  function getCookie(name) {
+    var prefix = name + '=';
+    return document.cookie.split(';').map(function (part) { return part.trim(); })
+      .filter(function (part) { return part.indexOf(prefix) === 0; })
+      .map(function (part) { return decodeURIComponent(part.slice(prefix.length)); })[0] || '';
+  }
+
+  function getParam(name) {
+    return new URLSearchParams(window.location.search).get(name) || '';
+  }
+
+  function makeEventId() {
+    if (window.crypto && window.crypto.randomUUID) {
+      return 'ub_ic_' + window.crypto.randomUUID().replace(/-/g, '');
+    }
+    return 'ub_ic_' + Date.now() + '_' + Math.random().toString(36).slice(2, 14);
+  }
+
+  function sendBridge(payload) {
+    var body = JSON.stringify(payload);
+    if (navigator.sendBeacon) {
+      var queued = navigator.sendBeacon(
+        BRIDGE_URL,
+        new Blob([body], { type: 'text/plain;charset=UTF-8' })
+      );
+      if (queued) return;
+    }
+
+    fetch(BRIDGE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body,
+      keepalive: true
+    }).catch(function () {
+      // A Klaviyo registration remains successful if the optional first-party bridge is unavailable.
+    });
+  }
+
+  window.addEventListener('klaviyoForms', function (event) {
+    var detail = event.detail || {};
+    var formId = detail.formId || detail.formID;
+    var meta = detail.metaData || {};
+    var email = meta.email || meta.Email || '';
+
+    if (
+      fired ||
+      (detail.type !== 'submit' && detail.type !== 'stepSubmit') ||
+      formId !== FORM_ID ||
+      !email
+    ) return;
+
+    fired = true;
+    var eventId = makeEventId();
+    var fbclid = getParam('fbclid');
+    var payload = {
+      eventId: eventId,
+      formId: FORM_ID,
+      email: email,
+      pageUrl: window.location.href,
+      fbp: getCookie('_fbp') || undefined,
+      fbc: getCookie('_fbc') || undefined,
+      fbclid: fbclid || undefined,
+      utmSource: getParam('utm_source') || undefined,
+      utmMedium: getParam('utm_medium') || undefined,
+      utmCampaign: getParam('utm_campaign') || undefined,
+      utmContent: getParam('utm_content') || undefined
+    };
+
+    if (typeof window.fbq === 'function') {
+      window.fbq('trackSingle', PIXEL_ID, 'Lead', {}, { eventID: eventId });
+    }
+
+    sendBridge(payload);
+  });
+})();
+</script>

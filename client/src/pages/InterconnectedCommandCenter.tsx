@@ -85,6 +85,15 @@ function RoasBadge({ roas }: { roas: number | null }) {
   );
 }
 
+function EntryPriceBenchmark() {
+  const [entryPrice, setEntryPrice] = useState(67);
+  const [ocusRate, setOcusRate] = useState(15);
+  const [cpl, setCpl] = useState(2.4);
+  const revenue = entryPrice + (ocusRate / 100) * 199;
+  const target = (roas: number) => (100 * roas * cpl) / revenue;
+  return <Card className="border-2 border-emerald-400"><CardHeader className="pb-2"><CardTitle className="text-sm">Team Benchmarks — Entry Price + $199 OCUS</CardTitle></CardHeader><CardContent className="space-y-3"><div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><label className="text-xs font-medium">Entry price<select value={entryPrice} onChange={e => setEntryPrice(Number(e.target.value))} className="mt-1 w-full rounded-md border bg-background px-2 py-1.5"><option value={49}>$49 test</option><option value={67}>$67 current</option><option value={99}>$99 test</option></select></label><label className="text-xs font-medium">$199 OCUS rate<input type="number" value={ocusRate} onChange={e => setOcusRate(Number(e.target.value) || 0)} className="mt-1 w-full rounded-md border bg-background px-2 py-1.5" /></label><label className="text-xs font-medium">Verified CPL<input type="number" step="0.01" value={cpl} onChange={e => setCpl(Number(e.target.value) || 0)} className="mt-1 w-full rounded-md border bg-background px-2 py-1.5" /></label></div><div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center"><div><p className="font-black">{fmtDollars(revenue)}</p><p className="text-xs text-muted-foreground">Revenue / buyer</p></div><div><p className="font-black">{target(1).toFixed(2)}%</p><p className="text-xs text-muted-foreground">Break-even</p></div><div><p className="font-black text-blue-600">{target(1.5).toFixed(2)}%</p><p className="text-xs text-muted-foreground">1.5x ROAS</p></div><div><p className="font-black text-violet-600">{target(2).toFixed(2)}%</p><p className="text-xs text-muted-foreground">2.0x ROAS</p></div></div></CardContent></Card>;
+}
+
 // ── Landing Page Split Widget (Curt's external split) ───────────────────────
 function LandingPageSplitWidget({ startDate, endDate }: { startDate: string; endDate: string }) {
   const startTs = useMemo(() => new Date(startDate + "T00:00:00").getTime(), [startDate]);
@@ -378,6 +387,8 @@ export default function InterconnectedCommandCenter() {
             {startDate === endDate ? startDate : `${startDate} → ${endDate}`}
           </span>
         </div>
+
+        <EntryPriceBenchmark />
 
         {/* ★ CURRENT OCUS SPOTLIGHT: $199 Gut Permeability + Food Sensitivity Test */}
         <Card className="border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20">

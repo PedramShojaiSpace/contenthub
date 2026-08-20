@@ -717,6 +717,18 @@ export const webinarIntelligence = mysqlTable("webinar_intelligence", {
 export type WebinarIntelligence = typeof webinarIntelligence.$inferSelect;
 export type InsertWebinarIntelligence = typeof webinarIntelligence.$inferInsert;
 
+export const avatarSynthesisReviewStatusEnum = mysqlEnum("status", ["pending", "approved", "rejected"]);
+export const avatarSynthesisReviews = mysqlTable("avatar_synthesis_reviews", {
+  id: int("id").autoincrement().primaryKey(),
+  webinarIntelligenceId: int("webinarIntelligenceId").notNull().unique(),
+  sourceLabel: varchar("sourceLabel", { length: 255 }).notNull(),
+  synthesis: mediumtext("synthesis").notNull(),
+  status: avatarSynthesisReviewStatusEnum.notNull().default("pending"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AvatarSynthesisReview = typeof avatarSynthesisReviews.$inferSelect;
+
 // ─── LLM Projects ────────────────────────────────────────────────────────────
 // Each project is a topic cluster (e.g. "Sleep & Recovery", "Gut Health")
 // with a prioritized production queue of FAQ articles, YouTube videos, blogs, etc.
@@ -4313,6 +4325,12 @@ export const interconnectedLeads = mysqlTable("interconnected_leads", {
   fbclid: varchar("fbclid", { length: 256 }),
   fbp: varchar("fbp", { length: 256 }),
   fbc: varchar("fbc", { length: 256 }),
+  // Meta campaign identity is captured invisibly from approved ad URL macros.
+  // Nullable because historic leads predate this capture standard.
+  metaCampaignId: varchar("meta_campaign_id", { length: 128 }),
+  metaAdsetId: varchar("meta_adset_id", { length: 128 }),
+  metaAdId: varchar("meta_ad_id", { length: 128 }),
+  metaCampaignKey: varchar("meta_campaign_key", { length: 255 }),
   clientIp: varchar("client_ip", { length: 64 }),
   userAgent: varchar("user_agent", { length: 512 }),
   createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),

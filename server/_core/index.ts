@@ -1720,12 +1720,7 @@ async function startServer() {
         const sig = req.headers["x-kajabi-signature"] as string | undefined;
         if (sig) {
           const { createHmac } = await import("crypto");
-<<<<<<< HEAD
-          const signedBytes = (req as express.Request & { rawBody?: Buffer }).rawBody ?? Buffer.from(JSON.stringify(req.body));
-          const expected = createHmac("sha256", secret).update(signedBytes).digest("hex");
-=======
           const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
->>>>>>> user_github/main
           if (sig !== expected) {
             console.warn("[kajabi/purchase] Invalid signature — ignoring");
             return res.status(401).json({ error: "Invalid signature" });

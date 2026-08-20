@@ -33,6 +33,61 @@ const KAJABI_SEQUENCE_FORM_ID = "2149563926";
 const KAJABI_MAX_RETRIES = 3;
 const KAJABI_RETRY_DELAY_MS = 2000;
 
+export const interconnectedRegistrationInput = z.object({
+  name: z.string().min(1).max(100),
+  email: z.string().email(),
+  phone: z.string().max(30).optional(),
+  smsConsent: z.boolean().optional(),
+  utmSource: z.string().max(128).optional(),
+  utmMedium: z.string().max(128).optional(),
+  utmCampaign: z.string().max(128).optional(),
+  utmContent: z.string().max(128).optional(),
+  referrer: z.string().max(512).optional(),
+  pageVariant: z.enum(['A', 'B']).optional().default('A'),
+  // Client-side signals for CAPI matching
+  fbclid: z.string().max(256).optional(),
+  fbp: z.string().max(256).optional(),
+  fbc: z.string().max(256).optional(),
+  // Invisible first-party Meta campaign identity from approved destination URL params.
+  metaCampaignId: z.string().max(64).optional(),
+  metaAdsetId: z.string().max(64).optional(),
+  metaAdId: z.string().max(64).optional(),
+  metaCampaignKey: z.string().max(128).optional(),
+});
+
+type InterconnectedRegistrationInput = z.infer<typeof interconnectedRegistrationInput>;
+
+export function buildInterconnectedLeadInsertValues(
+  input: InterconnectedRegistrationInput,
+  clientIp: string | null,
+  userAgent: string | null,
+) {
+  return {
+    email: input.email.toLowerCase().trim(),
+    name: input.name.trim(),
+    phone: input.phone ?? null,
+    smsConsent: input.smsConsent ?? false,
+    utmSource: input.utmSource ?? null,
+    utmMedium: input.utmMedium ?? null,
+    utmCampaign: input.utmCampaign ?? null,
+    utmContent: input.utmContent ?? null,
+    referrer: input.referrer ?? null,
+    pageVariant: input.pageVariant ?? 'A',
+    fbclid: input.fbclid ?? null,
+    fbp: input.fbp ?? null,
+    fbc: input.fbc ?? null,
+    metaCampaignId: input.metaCampaignId ?? null,
+    metaAdsetId: input.metaAdsetId ?? null,
+    metaAdId: input.metaAdId ?? null,
+    metaCampaignKey: input.metaCampaignKey ?? null,
+    clientIp: clientIp ?? null,
+    userAgent: userAgent ? userAgent.substring(0, 512) : null,
+    kajabiTagged: false,
+    klaviyoSynced: false,
+    createdAt: Date.now(),
+  };
+}
+
 /** Sleep helper for retry backoff */
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -91,24 +146,7 @@ async function kajabiTagWithRetry(
 
 export const interconnectedRouter = router({
   register: publicProcedure
-    .input(
-      z.object({
-        name: z.string().min(1).max(100),
-        email: z.string().email(),
-        phone: z.string().max(30).optional(),
-        smsConsent: z.boolean().optional(),
-        utmSource: z.string().max(128).optional(),
-        utmMedium: z.string().max(128).optional(),
-        utmCampaign: z.string().max(128).optional(),
-        utmContent: z.string().max(128).optional(),
-        referrer: z.string().max(512).optional(),
-        pageVariant: z.enum(['A', 'B']).optional().default('A'),
-        // Client-side signals for CAPI matching
-        fbclid: z.string().max(256).optional(),
-        fbp: z.string().max(256).optional(),
-        fbc: z.string().max(256).optional(),
-      })
-    )
+    .input(interconnectedRegistrationInput)
     .mutation(async ({ input, ctx }) => {
       const { name, email, phone, smsConsent, utmSource, utmMedium, utmCampaign, utmContent, referrer, pageVariant, fbclid, fbp, fbc } = input;
       const clientIp = (ctx.req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || ctx.req.socket?.remoteAddress || null;
@@ -143,26 +181,9 @@ export const interconnectedRouter = router({
             localLeadId = existing.id;
             console.log(`[interconnectedRouter] Duplicate opt-in within 24h — skipping DB insert: ${email} (existing id: ${localLeadId})`);
           } else {
-          const result = await db.insert(interconnectedLeads).values({
-            email: email.toLowerCase().trim(),
-            name: name.trim(),
-            phone: phone ?? null,
-            smsConsent: smsConsent ?? false,
-            utmSource: utmSource ?? null,
-            utmMedium: utmMedium ?? null,
-            utmCampaign: utmCampaign ?? null,
-            utmContent: utmContent ?? null,
-            referrer: referrer ?? null,
-            pageVariant: pageVariant ?? 'A',
-            fbclid: fbclid ?? null,
-            fbp: fbp ?? null,
-            fbc: fbc ?? null,
-            clientIp: clientIp ?? null,
-            userAgent: userAgent ? userAgent.substring(0, 512) : null,
-            kajabiTagged: false,
-            klaviyoSynced: false,
-            createdAt: Date.now(),
-          });
+          const result = await db.insert(interconnectedLeads).values(
+            buildInterconnectedLeadInsertValues(input, clientIp, userAgent)
+          );
           // drizzle-orm mysql2 v0.44+: insert returns an array [ResultSetHeader, ...]
           // insertId lives on result[0] in newer versions, fallback to result directly for older
           localLeadId = (result as any)?.[0]?.insertId ?? (result as any)?.insertId ?? null;

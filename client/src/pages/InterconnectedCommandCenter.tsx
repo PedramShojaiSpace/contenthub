@@ -263,38 +263,47 @@ export default function InterconnectedCommandCenter() {
   const [startDate, setStartDate] = useState(todayStr());
   const [endDate, setEndDate] = useState(todayStr());
 
-  const {
-    data: metaData,
-    isLoading: metaLoading,
-    refetch: refetchMeta,
-  } = trpc.kajabiSales.getMetaSpend.useQuery(
-    { startDate, endDate },
-    { staleTime: 5 * 60_000, refetchInterval: 5 * 60_000 }
-  );
-
-  // getFunnelPurchases = local DB, funnel-only (webhook-confirmed, non-email-list)
-  // This is the source of truth for tier breakdown and ROAS.
+  // Direct Kajabi transaction data for exactly the current $67 entry offer and
+  // current $199 OCUS. This avoids the lagging webhook ledger and does not pool
+  // KO/Klaviyo, Shopify, historical $299, or unrelated Kajabi-offer revenue.
   const {
     data: funnelData,
     isLoading: funnelLoading,
     refetch: refetchFunnel,
-  } = trpc.kajabiSales.getFunnelPurchases.useQuery(
+  } = trpc.kajabiSales.getLiveInterconnectedPurchases.useQuery(
     { startDate, endDate },
     { staleTime: 2 * 60_000, refetchInterval: 2 * 60_000 }
   );
 
-  const isLoading = metaLoading || funnelLoading;
+  const { data: historical299Data } = trpc.kajabiSales.getHistorical299Benchmark.useQuery(
+    undefined,
+    { staleTime: Infinity }
+  );
 
   // ── Buyer Quality Scorecard: which opt goal produces actual customers? ────────
   const {
     data: optPerfData,
     isLoading: optPerfLoading,
+    refetch: refetchOptPerf,
   } = trpc.kajabiSales.getOptPathPerformance.useQuery(
     { startDate, endDate },
-    { staleTime: 5 * 60_000, refetchInterval: 5 * 60_000 }
+    {
+      enabled: false,
+      staleTime: Infinity,
+      refetchInterval: false,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+    }
   );
 
-  // Derived metrics — all revenue/purchase numbers come from funnel-only DB source
+  // The scorecard endpoint performs exactly one Meta request and returns the
+  // matching campaign snapshot. It stays disabled until the operator presses
+  // Refresh, preventing all page-load and polling calls to Meta.
+  const metaData = optPerfData?.meta;
+  const metaLoading = optPerfLoading;
+  const isLoading = metaLoading || funnelLoading;
+
+  // Derived metrics — all revenue/purchase numbers come from the direct, exact-offer Kajabi source.
   const spend = metaData?.spend ?? 0;
   const leads = metaData?.leads ?? 0;
   const checkouts = metaData?.checkouts ?? 0;
@@ -302,7 +311,7 @@ export default function InterconnectedCommandCenter() {
   const checkoutRate = leads > 0 ? (checkouts / leads) * 100 : null;
   const kajabiRevenue = funnelData ? funnelData.totalRevenueCents / 100 : 0;
   const kajabiPurchases = funnelData?.totalPurchases ?? 0;
-  // All purchases from getFunnelPurchases are already funnel-sourced and non-email-list
+  // The direct query returns only the two current Interconnected offers.
   const metaAttributedRevenue = kajabiRevenue;
   const metaAttributedPurchases = kajabiPurchases;
   const roas = spend > 0 && metaAttributedRevenue > 0 ? metaAttributedRevenue / spend : null;
@@ -322,8 +331,8 @@ export default function InterconnectedCommandCenter() {
   }
 
   function handleRefresh() {
-    refetchMeta();
-    refetchFunnel();
+    // One explicit Meta API call via getOptPathPerformance; the Kajabi read is separate.
+    void Promise.all([refetchOptPerf(), refetchFunnel()]);
   }
 
   // ── Current $199 OCUS and separate historical $299 benchmark ────────────────
@@ -331,16 +340,16 @@ export default function InterconnectedCommandCenter() {
   const currentUpsellTier = funnelData?.tiers?.find(t => t.tier === '199');
   const upsellCount = currentUpsellTier?.count ?? 0;
   const upsellRevenue = (currentUpsellTier?.revenueCents ?? 0) / 100;
-  const historical299Tier = funnelData?.tiers?.find(t => t.tier === '299');
-  const historical299Count = historical299Tier?.count ?? 0;
-  const historical299Revenue = (historical299Tier?.revenueCents ?? 0) / 100;
+  const historical299Count = historical299Data?.upsellPurchases ?? 0;
+  const historical299Revenue = (historical299Data?.upsellRevenueCents ?? 0) / 100;
+  const historical299EntryPurchases = historical299Data?.entryPurchases ?? 0;
   const otoTier = funnelData?.tiers?.find(t => t.tier === '67');
   const otoCount = otoTier?.count ?? 0;
   // Current $199 take rate = current $199 purchases / $67 OTO purchases.
   const upsellTakeRate = otoCount > 0 ? (upsellCount / otoCount) * 100 : null;
   // Cost per current $199 upsell = Meta spend / current $199 upsell purchases.
   const costPerUpsell = upsellCount > 0 ? spend / upsellCount : null;
-  const historical299TakeRate = otoCount > 0 ? (historical299Count / otoCount) * 100 : null;
+  const historical299TakeRate = historical299Data?.takeRatePct ?? null;
 
   // Tier breakdown — from funnel-only DB source
   const tiers = funnelData?.tiers ?? [];
@@ -398,7 +407,7 @@ export default function InterconnectedCommandCenter() {
                 <FlaskConical className="h-5 w-5 text-amber-600" />
                 <span className="font-bold text-sm text-amber-800 dark:text-amber-300">CURRENT KPI — $199 OCUS: Gut Permeability + Food Sensitivity Test w/ Coach</span>
               </div>
-              <Badge className="bg-amber-500 text-white text-xs">Webhook-confirmed</Badge>
+              <Badge className="bg-amber-500 text-white text-xs">Direct Kajabi source</Badge>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="text-center">
@@ -425,9 +434,9 @@ export default function InterconnectedCommandCenter() {
               </p>
             )}
             <div className="mt-3 border-t border-amber-200/70 dark:border-amber-800/60 pt-2 text-center text-xs text-muted-foreground">
-              Historical $299 reference: {historical299Count} recorded purchases
-              {historical299TakeRate !== null && ` (${historical299TakeRate.toFixed(1)}% of recorded $67 OTOs)`}
-              {historical299Revenue > 0 && ` · ${fmtDollars(historical299Revenue)} revenue`}. This is a legacy benchmark, not the current $199 result.
+              Historical $299 reference (all-time audited): {historical299Count} recorded purchases
+              {historical299TakeRate !== null && ` (${historical299TakeRate.toFixed(1)}% of ${historical299EntryPurchases} entry buyers)`}
+              {historical299Revenue > 0 && ` · ${fmtDollars(historical299Revenue)} revenue`}. This is a legacy benchmark, not the current $199 result or current-period ROAS.
             </div>
             {otoCount === 0 && funnelLoading && (
               <div className="flex justify-center mt-2"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
@@ -439,22 +448,22 @@ export default function InterconnectedCommandCenter() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <StatCard
             label="Meta Spend"
-            value={fmtDollars(spend)}
-            sub="Agora campaigns"
+            value={metaData ? fmtDollars(spend) : "—"}
+            sub={metaData ? "Agora campaigns" : "Press Refresh for one Meta snapshot"}
             icon={DollarSign}
             loading={metaLoading}
           />
           <StatCard
             label="Leads"
-            value={leads.toLocaleString()}
-            sub={cpl !== null ? `CPL: ${fmtDollars(cpl)}` : "—"}
+            value={metaData ? leads.toLocaleString() : "—"}
+            sub={metaData && cpl !== null ? `CPL: ${fmtDollars(cpl)}` : "—"}
             icon={Users}
             loading={metaLoading}
           />
           <StatCard
             label="Checkouts"
-            value={checkouts.toLocaleString()}
-            sub={checkoutRate !== null ? `${fmtPct(checkoutRate)} of leads` : "—"}
+            value={metaData ? checkouts.toLocaleString() : "—"}
+            sub={metaData && checkoutRate !== null ? `${fmtPct(checkoutRate)} of leads` : "—"}
             icon={ShoppingCart}
             loading={metaLoading}
           />
@@ -469,7 +478,7 @@ export default function InterconnectedCommandCenter() {
           <StatCard
             label="ROAS"
             value={roas !== null ? `${roas.toFixed(2)}x` : "—"}
-            sub={spend > 0 ? `$${kajabiRevenue.toFixed(0)} / $${spend.toFixed(0)}` : "—"}
+            sub={metaData && spend > 0 ? `$${kajabiRevenue.toFixed(0)} / $${spend.toFixed(0)}` : "Refresh Meta to calculate"}
             icon={BarChart3}
             color={roasColor}
             loading={isLoading}
@@ -578,8 +587,8 @@ export default function InterconnectedCommandCenter() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading attribution data...
               </div>
-            ) : !optPerfData?.scorecard ? (
-              <p className="text-sm text-muted-foreground">No data available for this period</p>
+              ) : !optPerfData?.scorecard ? (
+              <p className="text-sm text-muted-foreground">Press Refresh to pull one Meta snapshot and update this scorecard.</p>
             ) : (
               <div className="space-y-4">
                 {/* Column headers */}

@@ -16,9 +16,14 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { kajabiPurchases, interconnectedLeads, leadPurchaseAttributions, reconciliationMetaSnapshots } from "../drizzle/schema";
+import { kajabiPurchases, interconnectedLeads, leadPurchaseAttributions, metaCapiDeliveryAudits, reconciliationMetaSnapshots } from "../drizzle/schema";
 import { and, gte, lte, eq, inArray, sql } from "drizzle-orm";
-import { canonicalMetaCheckoutCount, canonicalMetaLeadCount } from "./metaActionMetrics";
+import {
+  canonicalMetaCheckoutCount,
+  canonicalMetaLeadCount,
+  canonicalMetaPurchaseCount,
+  canonicalMetaPurchaseValue,
+} from "./metaActionMetrics";
 import {
   classifyFacebookAgoraAttributionTier,
   classifyInterconnectedCohortPath,
@@ -973,6 +978,8 @@ export type ReconciliationMetaResult = {
   spend: number;
   leads: number;
   checkouts: number;
+  purchases: number;
+  purchaseValue: number;
   campaigns: Array<{ name: string; spend: number; leads: number; cpl: number | null }>;
   error: string | null;
   note?: string;
@@ -988,28 +995,28 @@ export async function fetchMetaForFunnel(
   endDate: string
 ): Promise<ReconciliationMetaResult> {
   if (!funnel.metaActive) {
-    return { spend: 0, leads: 0, checkouts: 0, campaigns: [], error: null, note: "placeholder" };
+    return { spend: 0, leads: 0, checkouts: 0, purchases: 0, purchaseValue: 0, campaigns: [], error: null, note: "placeholder" };
   }
 
   const accessToken = process.env.META_AD_ACCESS_TOKEN;
   const adAccountId = process.env.META_AD_ACCOUNT_ID;
   if (!accessToken || !adAccountId) {
-    return { spend: 0, leads: 0, checkouts: 0, campaigns: [], error: "Meta credentials not configured" };
+    return { spend: 0, leads: 0, checkouts: 0, purchases: 0, purchaseValue: 0, campaigns: [], error: "Meta credentials not configured" };
   }
 
-  const fields = ["campaign_name", "adset_name", "spend", "actions"].join(",");
+  const fields = ["campaign_name", "adset_name", "spend", "actions", "action_values"].join(",");
   const timeRange = JSON.stringify({ since: startDate, until: endDate });
   const url = `https://graph.facebook.com/v19.0/act_${adAccountId}/insights?fields=${fields}&time_range=${encodeURIComponent(timeRange)}&level=adset&limit=500&access_token=${accessToken}`;
 
   const resp = await fetch(url);
   if (!resp.ok) {
     const errText = await resp.text();
-    return { spend: 0, leads: 0, checkouts: 0, campaigns: [], error: `Meta API error: ${resp.status} ${errText.slice(0, 200)}` };
+    return { spend: 0, leads: 0, checkouts: 0, purchases: 0, purchaseValue: 0, campaigns: [], error: `Meta API error: ${resp.status} ${errText.slice(0, 200)}` };
   }
 
   const json = await resp.json() as { data?: any[]; error?: { message: string } };
   if (json.error) {
-    return { spend: 0, leads: 0, checkouts: 0, campaigns: [], error: json.error.message };
+    return { spend: 0, leads: 0, checkouts: 0, purchases: 0, purchaseValue: 0, campaigns: [], error: json.error.message };
   }
 
   const allRows: any[] = json.data || [];
@@ -1022,17 +1029,24 @@ export async function fetchMetaForFunnel(
   let totalSpend = 0;
   let totalLeads = 0;
   let totalCheckouts = 0;
+  let totalPurchases = 0;
+  let totalPurchaseValue = 0;
   const campaignMap: Record<string, { spend: number; leads: number }> = {};
 
   for (const row of filtered) {
     const spend = parseFloat(row.spend || "0");
     const actions: any[] = row.actions || [];
+    const actionValues: any[] = row.action_values || [];
     const leads = canonicalMetaLeadCount(actions);
     const checkouts = canonicalMetaCheckoutCount(actions);
+    const purchases = canonicalMetaPurchaseCount(actions);
+    const purchaseValue = canonicalMetaPurchaseValue(actionValues);
 
     totalSpend += spend;
     totalLeads += leads;
     totalCheckouts += checkouts;
+    totalPurchases += purchases;
+    totalPurchaseValue += purchaseValue;
 
     const name = row.campaign_name || "Unknown";
     if (!campaignMap[name]) campaignMap[name] = { spend: 0, leads: 0 };
@@ -1053,6 +1067,8 @@ export async function fetchMetaForFunnel(
     spend: Math.round(totalSpend * 100) / 100,
     leads: totalLeads,
     checkouts: totalCheckouts,
+    purchases: totalPurchases,
+    purchaseValue: Math.round(totalPurchaseValue * 100) / 100,
     campaigns,
     error: null,
   };
@@ -1063,22 +1079,46 @@ export async function oneCallManualMetaRefresh<T>(fetchOnce: () => Promise<T>): 
 }
 
 async function getSavedMetaForFunnel(funnel: FunnelDef, startDate: string, endDate: string): Promise<ReconciliationMetaResult & { collectedAt: number | null }> {
-  if (!funnel.metaActive) return { spend: 0, leads: 0, checkouts: 0, campaigns: [], error: null, note: "placeholder", collectedAt: null };
+  if (!funnel.metaActive) return { spend: 0, leads: 0, checkouts: 0, purchases: 0, purchaseValue: 0, campaigns: [], error: null, note: "placeholder", collectedAt: null };
   const db = await getDb();
-  if (!db) return { spend: 0, leads: 0, checkouts: 0, campaigns: [], error: "Database unavailable", collectedAt: null };
+  if (!db) return { spend: 0, leads: 0, checkouts: 0, purchases: 0, purchaseValue: 0, campaigns: [], error: "Database unavailable", collectedAt: null };
   const snapshotKey = reconciliationMetaSnapshotKey(funnel.id, startDate, endDate);
   const snapshot = (await db.select().from(reconciliationMetaSnapshots).where(eq(reconciliationMetaSnapshots.snapshotKey, snapshotKey)).limit(1))[0];
   if (!snapshot) {
-    return { spend: 0, leads: 0, checkouts: 0, campaigns: [], error: null, note: "No saved Meta snapshot for this range. Select Refresh Meta to make one on-demand API request.", collectedAt: null };
+    return { spend: 0, leads: 0, checkouts: 0, purchases: 0, purchaseValue: 0, campaigns: [], error: null, note: "No saved Meta snapshot for this range. Select Refresh Meta to make one on-demand API request.", collectedAt: null };
   }
   return {
     spend: snapshot.spendCents / 100,
     leads: snapshot.leads,
     checkouts: snapshot.checkouts,
+    purchases: snapshot.purchases,
+    purchaseValue: snapshot.purchaseValueCents / 100,
     campaigns: Array.isArray(snapshot.campaigns) ? snapshot.campaigns as ReconciliationMetaResult["campaigns"] : [],
     error: snapshot.error,
     note: "saved_snapshot",
     collectedAt: snapshot.collectedAt,
+  };
+}
+
+async function getCapiPurchaseEvidence(funnel: FunnelDef, startDate: string, endDate: string) {
+  const db = await getDb();
+  if (!db) return { accepted: 0, failed: 0, acceptedValueCents: 0, total: 0 };
+  const funnelSource = funnel.id === "interconnected_agora" ? "interconnected" : funnel.id;
+  const { startMs, endExclusiveMs } = getChicagoDayBounds(startDate);
+  const rows = await db.select({
+    accepted: metaCapiDeliveryAudits.accepted,
+    amountCents: metaCapiDeliveryAudits.amountCents,
+  }).from(metaCapiDeliveryAudits).where(and(
+    eq(metaCapiDeliveryAudits.funnelSource, funnelSource),
+    gte(metaCapiDeliveryAudits.createdAt, startMs),
+    sql`${metaCapiDeliveryAudits.createdAt} < ${endExclusiveMs}`,
+  ));
+  const accepted = rows.filter((row) => Boolean(row.accepted));
+  return {
+    accepted: accepted.length,
+    failed: rows.length - accepted.length,
+    acceptedValueCents: accepted.reduce((sum, row) => sum + row.amountCents, 0),
+    total: rows.length,
   };
 }
 
@@ -1123,6 +1163,8 @@ export const funnelReconciliationRouter = router({
           spendCents: Math.round(meta.spend * 100),
           leads: meta.leads,
           checkouts: meta.checkouts,
+          purchases: meta.purchases,
+          purchaseValueCents: Math.round(meta.purchaseValue * 100),
           campaigns: meta.campaigns,
           error: meta.error,
           collectedAt,
@@ -1131,6 +1173,8 @@ export const funnelReconciliationRouter = router({
             spendCents: Math.round(meta.spend * 100),
             leads: meta.leads,
             checkouts: meta.checkouts,
+            purchases: meta.purchases,
+            purchaseValueCents: Math.round(meta.purchaseValue * 100),
             campaigns: meta.campaigns,
             error: meta.error,
             collectedAt,
@@ -1159,7 +1203,7 @@ export const funnelReconciliationRouter = router({
       // Build DB lookup for attribution cross-reference
       const dbLookup = await buildKajabiPurchasesLookup(input.startDate, input.endDate);
 
-      const [kajabi, shopify, meta, cohortAnalytics, facebookAgoraDownstream] = await Promise.all([
+      const [kajabi, shopify, meta, cohortAnalytics, facebookAgoraDownstream, capiPurchases] = await Promise.all([
         fetchKajabiForFunnel(funnel, input.startDate, input.endDate, dbLookup),
         fetchShopifyForFunnel(funnel, input.startDate, input.endDate),
         getSavedMetaForFunnel(funnel, input.startDate, input.endDate),
@@ -1169,6 +1213,7 @@ export const funnelReconciliationRouter = router({
         funnel.id === "interconnected_agora"
           ? getFacebookAgoraDownstreamAnalytics(input.startDate, input.endDate)
           : Promise.resolve(null),
+        getCapiPurchaseEvidence(funnel, input.startDate, input.endDate),
       ]);
 
       // ── Cross-reference Kajabi sales with DB attribution data ──────────────
@@ -1293,10 +1338,13 @@ export const funnelReconciliationRouter = router({
           spend: meta.spend,
           leads: meta.leads,
           checkouts: meta.checkouts,
+          purchases: meta.purchases,
+          purchaseValue: meta.purchaseValue,
           campaigns: meta.campaigns,
           error: meta.error,
           note: (meta as any).note as string | undefined,
         },
+        capiPurchases,
         kajabi: {
           tiers: kajabi.tiers,
           totalRevenueCents: filteredKajabiRevenueCents,

@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { access, rename } from "node:fs/promises";
+import { access, readFile, readdir, rename, rm } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -49,10 +49,61 @@ async function renameIndex(bundle) {
   console.log(`[build] Finalized ${bundle.label} entry: ${bundle.to}`);
 }
 
+async function cleanBundleOutput(bundle) {
+  if (bundle.mode === "public") return;
+  const outputDir = path.dirname(path.join(projectRoot, bundle.to));
+  await rm(outputDir, { recursive: true, force: true });
+  console.log(`[build] Cleared stale ${bundle.label} output: ${outputDir}`);
+}
+
+async function validateBundleOutput(bundle) {
+  const entryPath = path.join(projectRoot, bundle.to);
+  const entryHtml = await readFile(entryPath, "utf-8");
+  const segment = bundle.mode === "public" ? "" : `/hub/${bundle.mode.replace("hub-", "")}`;
+  const expectedAssetPath = `${segment}/assets/`;
+  if (!entryHtml.includes(expectedAssetPath)) {
+    throw new Error(`${bundle.label} entry is missing expected asset base ${expectedAssetPath}`);
+  }
+
+  if (bundle.mode === "hub-analytics") {
+    const assetsDir = path.join(path.dirname(entryPath), "assets");
+    const commandCenterChunks = (await readdir(assetsDir)).filter((file) =>
+      /^InterconnectedCommandCenter-.*\.js$/.test(file)
+    );
+    const hasRepairedCommandCenter = (await Promise.all(
+      commandCenterChunks.map((file) => readFile(path.join(assetsDir, file), "utf-8"))
+    )).some((source) =>
+      source.includes("Direct Kajabi source") && source.includes("getLiveInterconnectedPurchases")
+    );
+    if (!hasRepairedCommandCenter) {
+      throw new Error("Hub Analytics build is missing the repaired Interconnected Command Center chunk");
+    }
+  }
+
+  if (bundle.mode === "hub-content") {
+    const assetsDir = path.join(path.dirname(entryPath), "assets");
+    const webinarChunks = (await readdir(assetsDir)).filter((file) =>
+      /^WebinarBuilder-.*\.js$/.test(file)
+    );
+    const hasWebinarStudio = (await Promise.all(
+      webinarChunks.map((file) => readFile(path.join(assetsDir, file), "utf-8"))
+    )).some((source) =>
+      source.includes("repeat the deck, refresh the room") && source.includes("The Deep Sleep Solution")
+    );
+    if (!hasWebinarStudio) {
+      throw new Error("Hub Content build is missing the verified Webinar Studio chunk");
+    }
+  }
+
+  console.log(`[build] Verified ${bundle.label} output: ${entryPath}`);
+}
+
 try {
   for (const bundle of bundles) {
+    await cleanBundleOutput(bundle);
     await run(process.execPath, [viteCli, "build", "--mode", bundle.mode], bundle.label);
     await renameIndex(bundle);
+    await validateBundleOutput(bundle);
   }
 
   await run(

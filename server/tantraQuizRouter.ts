@@ -38,6 +38,7 @@ import { notifyOwner } from "./_core/notification";
 import { count, sql } from "drizzle-orm";
 import { sendCapiEvent } from "./capiHelper";
 import { buildTantraQuizCapiEvents } from "./tantraQuizMeta";
+import { TANTRA_CONTENT_SOURCE_KEYS } from "../shared/tantraContentAttribution";
 
 // ─── Quiz Questions ───────────────────────────────────────────────────────────
 
@@ -369,6 +370,8 @@ export const tantraQuizRouter = router({
       utmSource: z.string().optional(),
       utmCampaign: z.string().optional(),
       utmMedium: z.string().optional(),
+      sourcePage: z.enum(TANTRA_CONTENT_SOURCE_KEYS).optional(),
+      sourceVisitorId: z.string().min(8).max(128).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -379,6 +382,8 @@ export const tantraQuizRouter = router({
         utmSource: input.utmSource,
         utmCampaign: input.utmCampaign,
         utmMedium: input.utmMedium,
+        sourcePage: input.sourcePage,
+        sourceVisitorId: input.sourceVisitorId,
         createdAt: Date.now(),
       });
       return { sessionId };

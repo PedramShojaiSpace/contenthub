@@ -42,7 +42,9 @@ describe("Tantra content landing pages", () => {
 
     expect(loveBankSource).toContain("The Love Bank:");
     expect(loveBankSource).toContain("WISTIA_ID");
-    expect(loveBankSource).toContain('const QUIZ_URL = "/quiz/tantra"');
+    expect(loveBankSource).toContain("useTantraContentAttribution");
+    expect(loveBankSource).toContain("href={quizUrl}");
+    expect(loveBankSource).toContain("onClick={onQuizCta}");
     expect(loveBankSource).toContain("Take the 2-Minute Quiz");
     expect(loveBankSource).toContain("regular, mutually wanted lovemaking");
   });
@@ -70,7 +72,9 @@ describe("Tantra content landing pages", () => {
     for (const [pageFile, mediaId] of Object.entries(expectedMedia)) {
       const source = readFileSync(resolve(projectRoot, "client/src/pages", pageFile), "utf8");
       expect(source).toContain(`const WISTIA_ID = "${mediaId}"`);
-      expect(source).toContain('const QUIZ_URL = "/quiz/tantra"');
+      expect(source).toContain("useTantraContentAttribution");
+      expect(source).toContain("href={quizUrl}");
+      expect(source).toContain("onClick={onQuizCta}");
       expect(source).toContain("Take the 2-Minute Quiz");
     }
   });

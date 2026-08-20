@@ -3,6 +3,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import {
   webinarIntelligence,
+  avatarSynthesisReviews,
   webinarSessions,
   avatarProfiles,
   WebinarIntelligence,
@@ -19,6 +20,15 @@ import { safeParseJson } from "./fetchUtils";
 // language that feeds into all content generation surfaces.
 
 export const webinarIntelligenceRouter = router({
+  listPendingAvatarReviews: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db
+      .select()
+      .from(avatarSynthesisReviews)
+      .where(eq(avatarSynthesisReviews.status, "pending"))
+      .orderBy(desc(avatarSynthesisReviews.createdAt));
+  }),
   // List all intelligence records for a webinar session
   listBySession: protectedProcedure
     .input(z.object({ webinarSessionId: z.number() }))

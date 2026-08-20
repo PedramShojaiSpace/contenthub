@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import { z } from "zod";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { sendCapiEvent } from "./capiHelper";
@@ -36,6 +36,27 @@ export function isAllowedUnbouncePageUrl(pageUrl: string): boolean {
   }
 }
 
+/**
+ * The bridge accepts normal JSON fetches and redirect-safe text/plain beacons.
+ * Text payloads avoid a CORS preflight when Klaviyo immediately redirects a
+ * successful form submit to the post-registration page.
+ */
+export function parseUnbounceBridgeBody(body: unknown): unknown {
+  if (typeof body === "string") {
+    try {
+      return JSON.parse(body);
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (Buffer.isBuffer(body)) {
+    return parseUnbounceBridgeBody(body.toString("utf8"));
+  }
+
+  return body;
+}
+
 function setBridgeCors(req: Request, res: Response) {
   if (!isAllowedUnbounceOrigin(req.headers.origin)) return false;
   res.setHeader("Access-Control-Allow-Origin", UNBOUNCE_INTERCONNECTED_ORIGIN);
@@ -57,10 +78,10 @@ export function registerUnbounceKlaviyoLeadBridge(app: Express) {
     return res.status(204).end();
   });
 
-  app.post(UNBOUNCE_LEAD_BRIDGE_PATH, async (req, res) => {
+  app.post(UNBOUNCE_LEAD_BRIDGE_PATH, express.text({ type: "text/plain", limit: "16kb" }), async (req, res) => {
     if (!setBridgeCors(req, res)) return res.status(403).json({ error: "Origin not allowed" });
 
-    const parsed = bridgePayload.safeParse(req.body);
+    const parsed = bridgePayload.safeParse(parseUnbounceBridgeBody(req.body));
     if (!parsed.success || !isAllowedUnbouncePageUrl(parsed.data?.pageUrl ?? "")) {
       return res.status(400).json({ error: "Invalid Interconnected form event" });
     }

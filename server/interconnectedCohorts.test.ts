@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyFacebookAgoraAttributionTier,
   classifyInterconnectedCohortPath,
   dayOffsetFromLead,
   isWithinFourteenDayWindow,
@@ -17,5 +18,13 @@ describe("Interconnected cohort attribution", () => {
     expect(dayOffsetFromLead(lead, lead + 86_400_000 * 5)).toBe(5);
     expect(isWithinFourteenDayWindow(lead, lead + 86_400_000 * 14)).toBe(true);
     expect(isWithinFourteenDayWindow(lead, lead + 86_400_000 * 15)).toBe(false);
+  });
+
+  it("separates Facebook/Agora cohort attribution from campaign and ad identity confirmation", () => {
+    expect(classifyFacebookAgoraAttributionTier({ utmCampaign: "IC META LEADS - SP 26 Test" })).toBe("cohort_confirmed");
+    expect(classifyFacebookAgoraAttributionTier({ utmSource: "facebook", metaCampaignKey: "agora_interconnected_aug" })).toBe("campaign_key_confirmed");
+    expect(classifyFacebookAgoraAttributionTier({ utmSource: "facebook", metaCampaignId: "120123" })).toBe("campaign_id_confirmed");
+    expect(classifyFacebookAgoraAttributionTier({ utmSource: "facebook", metaCampaignId: "120123", metaAdsetId: "120456", metaAdId: "120789" })).toBe("ad_id_confirmed");
+    expect(classifyFacebookAgoraAttributionTier({ utmSource: "klaviyo" })).toBeNull();
   });
 });

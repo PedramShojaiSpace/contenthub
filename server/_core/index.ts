@@ -48,6 +48,7 @@ import {
   resolveKajabiKnownPriceCents,
 } from "../interconnectedUpsellAttribution";
 import { registerUnbounceKlaviyoLeadBridge } from "../unbounceKlaviyoLeadBridge";
+import { registerUnbounceNativeInterconnectedWebhook } from "../unbounceNativeInterconnectedWebhook";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -108,6 +109,9 @@ async function startServer() {
     const { handleShopifyOrderPaid } = await import("../attributionRouter");
     return handleShopifyOrderPaid(req, res);
   });
+  app.use("/api/kajabi/purchase", express.json({ limit: "50mb", verify: (req, _res, buffer) => {
+    (req as express.Request & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
+  }}));
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // Storage proxy — serves /manus-storage/* paths via signed S3 URLs
@@ -121,6 +125,8 @@ async function startServer() {
   app.post("/api/ingest/research-report", handleIngestResearchReport);
   // Public Unbounce/Klaviyo bridge — origin and form scoped; preserves one browser/CAPI Lead event ID.
   registerUnbounceKlaviyoLeadBridge(app);
+  // Unpublished native Unbounce Interconnected test receiver — page and header-secret scoped.
+  registerUnbounceNativeInterconnectedWebhook(app);
   // Daily newsfeed refresh — called by Manus scheduled task at 7 AM
   app.post("/api/scheduled/newsfeed-refresh", handleNewsfeedRefresh);
   // Weekly GSC SEO digest — every Monday 09:00 UTC
@@ -1697,7 +1703,8 @@ async function startServer() {
         const sig = req.headers["x-kajabi-signature"] as string | undefined;
         if (sig) {
           const { createHmac } = await import("crypto");
-          const expected = createHmac("sha256", secret).update(JSON.stringify(req.body)).digest("hex");
+          const signedBytes = (req as express.Request & { rawBody?: Buffer }).rawBody ?? Buffer.from(JSON.stringify(req.body));
+          const expected = createHmac("sha256", secret).update(signedBytes).digest("hex");
           if (sig !== expected) {
             console.warn("[kajabi/purchase] Invalid signature — ignoring");
             return res.status(401).json({ error: "Invalid signature" });

@@ -586,6 +586,36 @@ export default function Reconciliation() {
                 </div>
               </div>
 
+              {cohortAnalytics.facebookAgoraDownstream && (
+                <div className="rounded-lg border border-green-500/25 bg-green-500/5 p-4 space-y-3">
+                  <div className="flex flex-wrap gap-2 justify-between items-center">
+                    <div className="flex items-center gap-2 text-sm font-medium"><Zap className="h-4 w-4 text-green-600" /> Facebook / Agora Downstream Revenue</div>
+                    <Badge variant="outline" className="font-normal">{cohortAnalytics.facebookAgoraDownstream.uniqueBuyers} matched buyers</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{cohortAnalytics.facebookAgoraDownstream.definition}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="rounded border border-border bg-background p-3"><span className="text-muted-foreground">Within 14 days:</span> <strong className="text-foreground">{fmt(cohortAnalytics.facebookAgoraDownstream.within14DayRevenueCents)}</strong></div>
+                    <div className="rounded border border-border bg-background p-3"><span className="text-muted-foreground">After day 14:</span> <strong className="text-primary">{fmt(cohortAnalytics.facebookAgoraDownstream.downstreamRevenueCents)}</strong></div>
+                    <div className="rounded border border-border bg-background p-3"><span className="text-muted-foreground">Total direct Kajabi revenue:</span> <strong className="text-green-600">{fmt(cohortAnalytics.facebookAgoraDownstream.totalRevenueCents)}</strong></div>
+                  </div>
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div className="rounded-md border border-border bg-background overflow-x-auto">
+                      <div className="px-3 py-2 border-b text-xs font-medium">Attribution Certainty</div>
+                      <table className="w-full text-xs"><thead className="bg-muted text-muted-foreground"><tr><th className="text-left p-2">Standard</th><th className="text-right p-2">Leads</th><th className="text-right p-2">Buyers</th><th className="text-right p-2">Revenue</th></tr></thead><tbody>
+                        {cohortAnalytics.facebookAgoraDownstream.certaintyTiers.length === 0 ? <tr><td colSpan={4} className="p-3 text-center text-muted-foreground">No Facebook / Agora cohort revenue in this lead window.</td></tr> : cohortAnalytics.facebookAgoraDownstream.certaintyTiers.map((row) => <tr key={row.tier} className="border-t border-border"><td className="p-2">{row.label}</td><td className="p-2 text-right">{row.uniqueLeads}</td><td className="p-2 text-right">{row.uniqueBuyers}</td><td className="p-2 text-right font-semibold text-green-600">{fmt(row.revenueCents)}</td></tr>)}
+                      </tbody></table>
+                    </div>
+                    <div className="rounded-md border border-border bg-background overflow-x-auto">
+                      <div className="px-3 py-2 border-b text-xs font-medium">Campaign / Cohort Revenue</div>
+                      <table className="w-full text-xs"><thead className="bg-muted text-muted-foreground"><tr><th className="text-left p-2">Campaign</th><th className="text-right p-2">Buyers</th><th className="text-right p-2">Purchases</th><th className="text-right p-2">Revenue</th></tr></thead><tbody>
+                        {cohortAnalytics.facebookAgoraDownstream.campaigns.length === 0 ? <tr><td colSpan={4} className="p-3 text-center text-muted-foreground">No campaign cohorts with direct Kajabi revenue in this lead window.</td></tr> : cohortAnalytics.facebookAgoraDownstream.campaigns.map((row) => <tr key={`${row.certaintyTier}-${row.label}`} className="border-t border-border"><td className="p-2 max-w-[220px] truncate" title={row.label}>{row.label}</td><td className="p-2 text-right">{row.uniqueBuyers}</td><td className="p-2 text-right">{row.purchases}</td><td className="p-2 text-right font-semibold text-green-600">{fmt(row.revenueCents)}</td></tr>)}
+                      </tbody></table>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground"><strong>Reading the tiers:</strong> Ad-ID confirmed means campaign, ad set, and ad IDs were stored at opt-in. Campaign-ID and campaign-key tiers retain progressively less Meta detail. Facebook / Agora cohort confirmed means the lead entered this Facebook-only funnel with a Meta/Agora signal, but historic click-level IDs were not captured.</p>
+                </div>
+              )}
+
               <p className="text-xs text-muted-foreground border-t pt-3">
                 <strong>Definitions:</strong> “Meta” means a lead with Meta/Agora UTM or fbclid; “Kajabi Page” means the Kajabi webhook path; “Klaviyo / SMS” means explicit Klaviyo or SMS UTM labeling. Kajabi webhook purchases receive original-lead credit and a clearly marked <em>modeled</em> sequence close because Kajabi does not return a click token. Klaviyo/SMS or Kajabi links routed through the tracked Shopify bridge receive <em>direct</em> closing-touch credit on payment.
               </p>

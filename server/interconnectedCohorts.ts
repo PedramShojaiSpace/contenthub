@@ -17,6 +17,43 @@ export function classifyInterconnectedCohortPath(params: {
   return "other";
 }
 
+export type FacebookAgoraAttributionTier =
+  | "ad_id_confirmed"
+  | "campaign_id_confirmed"
+  | "campaign_key_confirmed"
+  | "cohort_confirmed";
+
+export function classifyFacebookAgoraAttributionTier(params: {
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  fbclid?: string | null;
+  metaCampaignId?: string | null;
+  metaAdsetId?: string | null;
+  metaAdId?: string | null;
+  metaCampaignKey?: string | null;
+}): FacebookAgoraAttributionTier | null {
+  if (classifyInterconnectedCohortPath(params) !== "meta_paid") return null;
+  if (params.metaCampaignId && params.metaAdsetId && params.metaAdId) return "ad_id_confirmed";
+  if (params.metaCampaignId) return "campaign_id_confirmed";
+  if (params.metaCampaignKey) return "campaign_key_confirmed";
+  return "cohort_confirmed";
+}
+
+export function getFacebookAgoraCampaignLabel(params: {
+  metaCampaignId?: string | null;
+  metaCampaignKey?: string | null;
+  utmCampaign?: string | null;
+}): string {
+  if (params.metaCampaignId && params.metaCampaignKey) {
+    return `${params.metaCampaignKey} (${params.metaCampaignId})`;
+  }
+  if (params.metaCampaignId) return `Meta campaign ${params.metaCampaignId}`;
+  if (params.metaCampaignKey) return params.metaCampaignKey;
+  if (params.utmCampaign) return params.utmCampaign;
+  return "Facebook / Agora cohort — campaign ID unavailable";
+}
+
 export function dayOffsetFromLead(leadCreatedAt: number, purchasedAt: number): number | null {
   const delta = purchasedAt - leadCreatedAt;
   if (delta < 0) return null;

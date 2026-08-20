@@ -10,10 +10,12 @@ const source = readFileSync(
 describe("Interconnected Command Center OCUS reporting", () => {
   it("reports the current $199 OCUS separately from the historical $299 benchmark", () => {
     expect(source).toContain("t.tier === '199'");
-    expect(source).toContain("t.tier === '299'");
+    expect(source).toContain("getHistorical299Benchmark.useQuery");
+    expect(source).toContain("historical299Data?.upsellPurchases");
+    expect(source).toContain("historical299Data?.takeRatePct");
     expect(source).toContain("CURRENT KPI — $199 OCUS");
     expect(source).toContain("Historical $299 reference");
-    expect(source).toContain("legacy benchmark, not the current $199 result");
+    expect(source).toContain("legacy benchmark, not the current $199 result or current-period ROAS");
   });
 
   it("does not present the historical $299 tier as the current OCUS result", () => {

@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { CheckCircle2, ArrowRight, ChevronRight, Shield, Star, Leaf, Zap, Moon, Heart } from "lucide-react";
 import { buildTantraCheckoutParams, type TantraTrackableOffer } from "@shared/tantraMetaEvents";
+import { TANTRA_CONTENT_SOURCE_KEYS } from "@shared/tantraContentAttribution";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -219,6 +220,17 @@ export default function TantraQuiz() {
     };
   };
 
+  const getContentAttributionParams = () => {
+    const params = new URLSearchParams(window.location.search);
+    const sourcePage = params.get("tantra_source_page");
+    return {
+      sourcePage: sourcePage && TANTRA_CONTENT_SOURCE_KEYS.includes(sourcePage as typeof TANTRA_CONTENT_SOURCE_KEYS[number])
+        ? sourcePage as typeof TANTRA_CONTENT_SOURCE_KEYS[number]
+        : undefined,
+      sourceVisitorId: params.get("tantra_source_visitor") ?? undefined,
+    };
+  };
+
   // ── Navigation helpers ──────────────────────────────────────────────────────
 
   const goToScreen = (screen: QuizScreen) => {
@@ -262,7 +274,8 @@ export default function TantraQuiz() {
   const handleStart = async () => {
     try {
       const utms = getUtmParams();
-      const { sessionId } = await startSession.mutateAsync(utms);
+      const attribution = getContentAttributionParams();
+      const { sessionId } = await startSession.mutateAsync({ ...utms, ...attribution });
       setState(s => ({ ...s, sessionId }));
       goToScreen("age");
     } catch {

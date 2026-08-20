@@ -2323,10 +2323,32 @@ export const reconciliationMetaSnapshots = mysqlTable("reconciliation_meta_snaps
   spendCents: int("spend_cents").notNull().default(0),
   leads: int("leads").notNull().default(0),
   checkouts: int("checkouts").notNull().default(0),
+  purchases: int("purchases").notNull().default(0),
+  purchaseValueCents: int("purchase_value_cents").notNull().default(0),
   campaigns: json("campaigns"),
   error: text("error"),
   collectedAt: bigint("collected_at", { mode: "number" }).notNull(),
 });
+
+// ─── Meta CAPI Purchase Delivery Audit ───────────────────────────────────────
+// Stores no raw buyer data. One row per deterministic Meta event ID, updated on
+// retries so owner reporting can compare CAPI acceptance to Meta and paid orders.
+export const metaCapiDeliveryAudits = mysqlTable("meta_capi_delivery_audits", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: varchar("event_id", { length: 64 }).notNull().unique(),
+  funnelSource: varchar("funnel_source", { length: 64 }).notNull(),
+  externalOrderId: varchar("external_order_id", { length: 128 }).notNull(),
+  buyerReference: varchar("buyer_reference", { length: 64 }).notNull(),
+  eventName: varchar("event_name", { length: 32 }).notNull().default("Purchase"),
+  amountCents: int("amount_cents").notNull(),
+  accepted: tinyint("accepted").notNull().default(0),
+  metaHttpStatus: int("meta_http_status"),
+  responseSummary: text("response_summary"),
+  errorMessage: text("error_message"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+export type MetaCapiDeliveryAudit = typeof metaCapiDeliveryAudits.$inferSelect;
 
 // ─── Per-SKU CPA Targets ─────────────────────────────────────────────────────
 // One row per product SKU; editable in-app from the Optimizer tab
@@ -4087,6 +4109,8 @@ export const tantraQuizLeads = mysqlTable("tantra_quiz_leads", {
   utmSource: varchar("utm_source", { length: 128 }),
   utmCampaign: varchar("utm_campaign", { length: 128 }),
   utmMedium: varchar("utm_medium", { length: 128 }),
+  sourcePage: varchar("source_page", { length: 64 }),
+  sourceVisitorId: varchar("source_visitor_id", { length: 128 }),
   kajabiTagged: boolean("kajabi_tagged").notNull().default(false),
   kajabiTaggedAt: bigint("kajabi_tagged_at", { mode: "number" }),
   completedAt: bigint("completed_at", { mode: "number" }),
@@ -4095,6 +4119,28 @@ export const tantraQuizLeads = mysqlTable("tantra_quiz_leads", {
 
 export type TantraQuizLead = typeof tantraQuizLeads.$inferSelect;
 export type InsertTantraQuizLead = typeof tantraQuizLeads.$inferInsert;
+
+export const tantraContentEventTypeEnum = mysqlEnum("tantra_content_event_type", [
+  "page_view",
+  "video_play",
+  "video_25",
+  "video_50",
+  "video_75",
+  "video_complete",
+  "quiz_cta",
+]);
+
+export const tantraContentEvents = mysqlTable("tantra_content_events", {
+  id: int("id").autoincrement().primaryKey(),
+  sourcePage: varchar("source_page", { length: 64 }).notNull(),
+  visitorId: varchar("visitor_id", { length: 128 }).notNull(),
+  eventType: tantraContentEventTypeEnum.notNull(),
+  mediaId: varchar("media_id", { length: 32 }).notNull(),
+  eventAt: bigint("event_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+
+export type TantraContentEvent = typeof tantraContentEvents.$inferSelect;
+export type InsertTantraContentEvent = typeof tantraContentEvents.$inferInsert;
 
 
 // ─── Script Factory v2 — Phase 1: Persistent Idea Engine ─────────────────────
@@ -4325,12 +4371,12 @@ export const interconnectedLeads = mysqlTable("interconnected_leads", {
   fbclid: varchar("fbclid", { length: 256 }),
   fbp: varchar("fbp", { length: 256 }),
   fbc: varchar("fbc", { length: 256 }),
-  // Meta campaign identity is captured invisibly from approved ad URL macros.
+  // Invisible first-party Meta campaign identity captured from approved destination URL params.
   // Nullable because historic leads predate this capture standard.
-  metaCampaignId: varchar("meta_campaign_id", { length: 128 }),
-  metaAdsetId: varchar("meta_adset_id", { length: 128 }),
-  metaAdId: varchar("meta_ad_id", { length: 128 }),
-  metaCampaignKey: varchar("meta_campaign_key", { length: 255 }),
+  metaCampaignId: varchar("meta_campaign_id", { length: 64 }),
+  metaAdsetId: varchar("meta_adset_id", { length: 64 }),
+  metaAdId: varchar("meta_ad_id", { length: 64 }),
+  metaCampaignKey: varchar("meta_campaign_key", { length: 128 }),
   clientIp: varchar("client_ip", { length: 64 }),
   userAgent: varchar("user_agent", { length: 512 }),
   createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),

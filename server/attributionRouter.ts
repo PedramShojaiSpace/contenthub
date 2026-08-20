@@ -484,7 +484,12 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { order } = parseShopifyWebhookPayload(req.body);
+    let order: Record<string, unknown>;
+    try {
+      ({ order } = parseShopifyWebhookPayload(req.body));
+    } catch {
+      return res.status(400).json({ error: "Invalid Shopify webhook payload" });
+    }
     const shopifyOrder = order as any;
     const shopifyOrderId = String(shopifyOrder.id);
     const shopifyOrderNumber = String(shopifyOrder.order_number || shopifyOrder.name || "");

@@ -45,11 +45,18 @@ export interface CapiEventParams {
   utmSource?: string | null;
 }
 
-export async function sendCapiEvent(params: CapiEventParams): Promise<boolean> {
+export interface CapiDeliveryResult {
+  accepted: boolean;
+  httpStatus: number | null;
+  responseSummary: string | null;
+  errorMessage: string | null;
+}
+
+export async function sendCapiEventWithReceipt(params: CapiEventParams): Promise<CapiDeliveryResult> {
   const accessToken = process.env.META_AD_ACCESS_TOKEN;
   if (!accessToken) {
     console.warn("[CAPI] META_AD_ACCESS_TOKEN not set — skipping CAPI event");
-    return false;
+    return { accepted: false, httpStatus: null, responseSummary: null, errorMessage: "META_AD_ACCESS_TOKEN not set" };
   }
 
   // Build user_data
@@ -100,16 +107,36 @@ export async function sendCapiEvent(params: CapiEventParams): Promise<boolean> {
     const body = (await resp.json()) as { events_received?: number; error?: unknown };
     if (!resp.ok) {
       console.error(`[CAPI] ${params.eventName} error:`, body);
-      return false;
+      return {
+        accepted: false,
+        httpStatus: resp.status,
+        responseSummary: JSON.stringify(body).slice(0, 500),
+        errorMessage: `Meta CAPI HTTP ${resp.status}`,
+      };
     }
     console.log(
       `[CAPI] ${params.eventName} sent — event_id: ${params.eventId}, events_received: ${body.events_received}`
     );
-    return true;
+    return {
+      accepted: true,
+      httpStatus: resp.status,
+      responseSummary: JSON.stringify({ events_received: body.events_received ?? 0 }),
+      errorMessage: null,
+    };
   } catch (err) {
     console.error(`[CAPI] ${params.eventName} fetch failed:`, err);
-    return false;
+    return {
+      accepted: false,
+      httpStatus: null,
+      responseSummary: null,
+      errorMessage: err instanceof Error ? err.message.slice(0, 500) : "Meta CAPI request failed",
+    };
   }
+}
+
+/** Backward-compatible boolean API for existing event callers. */
+export async function sendCapiEvent(params: CapiEventParams): Promise<boolean> {
+  return (await sendCapiEventWithReceipt(params)).accepted;
 }
 
 /** Generate a stable, unique event_id for a given lead + event type.

@@ -7,6 +7,11 @@ describe("Hub cross-bundle route resolver", () => {
     expect(getHubPublicHref("/yt-analytics")).toBe("/hub/growth/yt-analytics");
   });
 
+  it("routes the Orobiome visibility dashboard to the analytics bundle", () => {
+    expect(getHubBundleForPath("/orobiome-funnel")).toBe("analytics");
+    expect(getHubPublicHref("/orobiome-funnel")).toBe("/hub/analytics/orobiome-funnel");
+  });
+
   it("canonicalizes the legacy YouTube-to-Blog path to the active Content tool", () => {
     expect(getHubBundleForPath("/youtube-to-blog")).toBe("content");
     expect(getHubPublicHref("/hub/youtube-to-blog", "?source=legacy"))

@@ -1,6 +1,6 @@
 export type HubBundle = "core" | "content" | "growth" | "analytics";
 
-const analyticsPaths = new Set(["/tantra-funnel", "/reconciliation", "/interconnected-command"]);
+const analyticsPaths = new Set(["/tantra-funnel", "/reconciliation", "/interconnected-command", "/orobiome-funnel"]);
 const contentPaths = new Set([
   "/content-pipeline", "/podcast-production", "/seo", "/scoreboard",
   "/competitive-intelligence", "/keyword-strategy", "/ch-pages", "/qr-generator",

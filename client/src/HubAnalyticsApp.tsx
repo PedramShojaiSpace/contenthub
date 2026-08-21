@@ -7,6 +7,7 @@ import { getHubPublicHref } from "./lib/hubRouteResolver";
 const TantraFunnelDashboard = lazy(() => import("./pages/TantraFunnelDashboard"));
 const Reconciliation = lazy(() => import("./pages/Reconciliation"));
 const InterconnectedCommandCenter = lazy(() => import("./pages/InterconnectedCommandCenter"));
+const OrobiomeFunnelDashboard = lazy(() => import("./pages/OrobiomeFunnelDashboard"));
 
 function CrossBundleRedirect() {
   const [path] = useLocation();
@@ -21,6 +22,7 @@ export default function HubAnalyticsApp() {
     <Route path="/tantra-funnel" component={TantraFunnelDashboard} />
     <Route path="/reconciliation" component={Reconciliation} />
     <Route path="/interconnected-command" component={InterconnectedCommandCenter} />
+    <Route path="/orobiome-funnel" component={OrobiomeFunnelDashboard} />
     <Route component={CrossBundleRedirect} />
   </HubShell>;
 }

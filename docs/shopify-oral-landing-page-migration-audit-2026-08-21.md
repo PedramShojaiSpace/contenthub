@@ -65,3 +65,13 @@ No further structural or shared-theme edit is recommended. If the owner wants a 
 ## Instagram-Origin Readability Pass
 
 Following owner direction, the page received a stronger all-text typography scale beyond the first readability adjustment. The body baseline, hero lead, CTA labels, trust details, section copy, card/FAQ copy, pricing explanation, footer text, and disclaimer were increased together with line-height. The live public route remains published and keeps the exact three native Shopify cart CTAs and Natalie Jill BixGrow `bg_ref=109Nl4h0Ds` attribution. A rendered 390 px mobile check confirms the hero, CTA, secondary link, and trust detail copy are readable without changing offer content, pricing, CTA copy, destinations, or affiliate behavior.
+
+## Redirect Readiness — Awaiting Explicit Activation Approval
+
+The authenticated Shopify URL Redirects screen was filtered for `/pages/orobiome-advertorial` and returned **No redirects**, confirming that the original customer-facing page currently has no URL-level redirect configuration. The proposed source-target pair is:
+
+| Redirect from | Redirect to |
+|---|---|
+| `/pages/orobiome-advertorial` | `/pages/oral?bg_ref=109Nl4h0Ds` |
+
+The target retains Natalie Jill’s approved BixGrow referral parameter. The redirect has **not** been created. Explicit owner approval of this exact source-target pair is still required before the original live URL is changed.

@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS `orobiome_funnel_events` (
   `utm_campaign` VARCHAR(256),
   `utm_content` VARCHAR(256),
   `fbclid` VARCHAR(256),
-  `shopify_checkout_token` VARCHAR(128),
   `shopify_order_id` VARCHAR(64),
   `order_total_cents` BIGINT,
   `currency` VARCHAR(3),

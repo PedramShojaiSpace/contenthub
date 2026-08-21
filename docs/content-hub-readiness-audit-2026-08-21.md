@@ -33,7 +33,7 @@ The project’s full test suite is broad and generally healthy. The Shopify sign
 | Apollo | Apollo is marked degraded because its key is configured but the dashboard intentionally does not execute a quota-consuming live validation. | **Known monitoring blind spot.** | Verify the first Apollo draw manually after restoration; no evidence currently shows a credential failure. |
 | Shopify paid-order evidence | The health dashboard reported an attributed Shopify paid-order webhook received today. | **Pass.** | Preserve the current paid-order subscription and verify its first post-restoration event against the Content Hub ledger. |
 | API fallback safety | A previous static-fallback risk was remediated and the current production probe confirms unknown API POSTs receive JSON 404 rather than HTML. | **Pass.** | Keep this behavior under regression coverage; it prevents a missed webhook route from appearing falsely successful. |
-| Crawler response | `/robots.txt` currently returns the public SPA HTML document rather than a robots policy. There is no `client/public/robots.txt` file. | **Low-severity SEO/readiness defect.** | Add a minimal dedicated robots policy in the targeted remediation phase; this is safe and isolated. |
+| Crawler response | The original SPA-HTML fallback was eliminated. Local application serving returns the committed policy (including `/hub/` exclusion), but the custom production domain currently applies a platform-generated plain-text policy that excludes `/api/*` and does not include the project’s `/hub/` directive. | **Low-severity platform-routing follow-up.** | Preserve the local policy, then have the custom-domain platform layer honor the project asset or add the Hub exclusion through its SEO/domain controls after restoration. |
 
 ### Integration Health Limitations
 
@@ -55,7 +55,7 @@ The System Health view is useful but intentionally partial. It verifies configur
 | Remediation | Validation | Customer-facing impact |
 |---|---|---|
 | Orobiome migration replay repair | Corrected the duplicate checkout-token definition across migrations `0123` and `0124`; file-contract safeguards and Orobiome regression coverage passed 4/4. The exact sequence also replayed successfully against an owner-approved empty scratch table, which was verified removed afterward. | None. No live business table or customer data was changed. |
-| Dedicated crawler policy | Added `client/public/robots.txt` so the route is no longer served by the SPA fallback. The policy permits public crawl paths and excludes `/api/` and `/hub/`. The crawler-policy and Orobiome safeguards passed 5/5. | No funnel, page, checkout, or logged-in Hub behavior changed. |
+| Dedicated crawler policy | Added `client/public/robots.txt`; local application serving returns the expected four directives, and focused crawler/Orobiome safeguards passed 5/5. The custom domain now returns plain text instead of SPA HTML, but currently substitutes a platform-generated policy that does not include the project’s `/hub/` exclusion. | No funnel, page, checkout, or logged-in Hub behavior changed. A custom-domain SEO routing follow-up remains. |
 | Final production build | A fresh staged build completed all public, Hub core, Hub content, Hub growth, Hub analytics, and server targets after the readiness remediations. | None. This is validation only until the checkpoint is saved. |
 
 ## Residual Risk Register
@@ -70,6 +70,7 @@ The System Health view is useful but intentionally partial. It verifies configur
 | **P2 — Automation continuity** | The single daily Content Hub schedule depends on the restored task environment and connector state. | It is active and ran today, but schedules/connectors need verification after restoration. | Check the schedule status, re-enable required connectors, and manually execute the endpoint sequence once after restoration. |
 | **P2 — Monitoring blind spots** | Apollo’s status is deliberately degraded because a live quota-safe check is unavailable. Orobiome's new first-party dashboard is at a truthful zero state until real traffic arrives. | System Health reflects the Apollo monitoring limitation; no synthetic funnel event was inserted. | Verify the first Apollo draw and first genuine Orobiome page/checkout event after restoration. |
 | **P3 — Performance observation** | Public curl probes were consistently near five seconds, and current generated entry bundles are substantial. | The fresh build emitted approximately 629 KB public and 911 KB Hub-core entry bundles before compression; Hub split bundles are operating correctly. | Establish an external synthetic monitor and schedule page-speed work after continuity is secured. Do not introduce cache changes on active opt-in pages during this freeze. |
+| **P3 — Crawler policy parity** | The custom domain serves a platform-generated `robots.txt` policy despite the project-level asset. | The custom route is now plain text, but does not reflect the desired `/hub/` exclusion. | Resolve at the custom-domain/platform SEO layer after restoration; do not modify funnel routing during the interruption freeze. |
 
 ## Final Backup Checklist
 

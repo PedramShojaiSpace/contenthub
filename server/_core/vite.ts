@@ -86,17 +86,26 @@ export function serveStatic(app: Express) {
     ["/hub", "core"],
   ];
   for (const [routePrefix, bundleName] of hubRoutes) {
-    app.use(routePrefix, (_req, res) => {
+    app.use(routePrefix, (req, res, next) => {
+      if (req.method !== "GET" && req.method !== "HEAD") return next();
+      res.set("Cache-Control", "no-cache, no-store, must-revalidate");
       res.sendFile(path.resolve(distPath, "hub", bundleName, "index.html"));
     });
   }
 
-  app.use("/hub", (_req, res) => {
+  app.use("/hub", (req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") return next();
+    res.set("Cache-Control", "no-cache, no-store, must-revalidate");
     res.sendFile(path.resolve(distPath, "hub", "core", "index.html"));
   });
 
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  // Never hand an API POST the SPA shell; only browser navigation should use
+  // the public fallback document.
+  app.use("*", (req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      return res.status(404).json({ error: "Not found" });
+    }
+    res.set("Cache-Control", "no-cache, no-store, must-revalidate");
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

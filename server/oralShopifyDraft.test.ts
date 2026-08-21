@@ -47,10 +47,11 @@ describe("Orobiome oral Shopify landing-page draft", () => {
     expect(draft).toContain(".content-for-layout");
     expect(draft).toContain("#MainContent > .shopify-section");
     expect(draft).toContain("#MainContent > .section");
-    expect(draft).toContain("font-size:1.25rem");
-    expect(draft).toContain("Global readability pass");
-    expect(draft).toContain("font-size:1.25rem; line-height:1.35");
-    expect(draft).toContain("font-size:1.3rem; line-height:1.38");
+    expect(draft).toContain("Instagram readability pass");
+    expect(draft).toContain(".oral-nj { font-size:1.5rem; line-height:1.82; }");
+    expect(draft).toContain(".oral-nj .oral-lead { font-size:clamp(1.55rem, 2.7vw, 1.85rem);");
+    expect(draft).toContain(".oral-nj .oral-button { min-height:64px; font-size:1.38rem;");
+    expect(draft).toContain(".oral-nj .oral-footer { font-size:1.12rem; line-height:1.72; }");
     expect(draft.match(new RegExp(NATIVE_CART_CTA.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"))).toHaveLength(3);
   });
 

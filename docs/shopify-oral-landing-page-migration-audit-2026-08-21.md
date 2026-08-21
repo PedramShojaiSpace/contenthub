@@ -1,0 +1,23 @@
+# Shopify Oral Landing Page Migration Audit — 2026-08-21
+
+## Approved Source and Commerce Configuration
+
+The supplied `Oral.tsx` file is the approved source for structure, pricing, CTA labels, visual direction, FAQs, and legal copy. It must not carry forward its artificial scroll-triggered `begin_checkout` or CTA-click `purchase` events. The existing Shopify product is **Orobiome Testing Package** (`gid://shopify/Product/8666586972314`), handle `orobiome-testing-package`, with one in-stock default variant (`gid://shopify/ProductVariant/46719608946842`) priced at **$399.00**. The product has a storefront URL at `https://shop.theurbanmonk.com/products/orobiome-testing-package` and a single Shopify-hosted product image.
+
+## Theme and Publication Safeguards
+
+The active Shopify theme is **Mediva**. A separate theme titled `shopify-advertorial-theme` is already listed as a draft. No active-theme file, live page route, product setting, navigation item, redirect, storefront analytics base tag, or checkout has been modified. The proposed safe implementation path is a dedicated draft theme and an unpublished page/template with a preview-only link.
+
+Shopify’s current Admin GraphQL documentation confirms that unpublished themes are inactive, theme duplication creates an isolated draft, and a theme’s templates/assets can be read through the `theme` query. Theme-file writes use `themeFilesUpsert` and require both `write_themes` and Shopify’s theme-file exemption; that permission will be verified before relying on the API for any draft-theme write. The complete draft-theme inventory includes the active **Mediva** theme (`gid://shopify/OnlineStoreTheme/147605192858`) and `shopify-advertorial-theme` (`gid://shopify/OnlineStoreTheme/154836861082`), along with historical unpublished themes. Sources: https://shopify.dev/docs/api/admin-graphql/latest/objects/OnlineStoreTheme and https://shopify.dev/docs/api/admin-graphql/latest/mutations/themeFilesUpsert.
+
+## Content Guardrails
+
+The final draft may reuse supplied non-testimonial education, pricing, benefit, FAQ, disclaimer, support, and partner-attribution content. Customer quotes, star ratings, “verified customer” labels, and other testimonial-style content from the supplied source will be excluded from the new landing page, pending a compliant verified-review workflow. CTA actions will carry `bg_ref=109Nl4h0Ds` and use native Shopify cart/product behavior; no synthetic purchase or checkout event will be added.
+
+## Draft Page Created
+
+Because the current Shopify connector does not have Shopify’s required theme-file exemption, it cannot duplicate or write a theme. A safe native Shopify **Page** draft was therefore created instead, which satisfies the requested “template or page” constraint without altering the active theme. The page is **Orobiome Oral Microbiome Test — Natalie Jill Draft** (`gid://shopify/Page/129449328794`), handle `oral`, and `isPublished: false` (Hidden). It uses the active Mediva default page template, embeds the scoped responsive landing-page CSS/HTML in the page body, preserves the supplied Natalie Jill visual hierarchy, keeps all CTAs on the existing Shopify product URL with `bg_ref=109Nl4h0Ds`, and does not add React, Tailwind, third-party libraries, duplicate base pixels, scroll-triggered checkout events, or CTA-click purchase events. An authenticated in-admin visual preview confirms the hero styling and hidden status.
+
+The authenticated Shopify editor preview confirms that the hidden page renders through the active Mediva shell while remaining invisible to the public: the direct public URL returns a Shopify 404, and the editor marks the page as Hidden. The initial preview exposed the default theme’s own page-title/hero gap above the scoped content. The page-body CSS was updated to suppress that generic page heading and its spacing only when `#oral-natalie-jill` is present. No live-theme file was changed. The CTA design is also being refined to use the current default Shopify variant (`gid://shopify/ProductVariant/46719608946842`) through a native `/cart/<variant>:1` path with `bg_ref=109Nl4h0Ds`, rather than a synthetic conversion event or cross-domain redirect.
+
+The owner’s authenticated preview route is `https://admin.shopify.com/store/theurbanmonkstore/themes/147605192858/editor?previewPath=/pages/oral?view=page`. The editor labels the selected resource as **Orobiome Oral Micro...** and **Hidden**, enabling review without publishing. The hero loaded within the Shopify editor’s preview canvas. The public store URL `https://shop.theurbanmonk.com/pages/oral` returned the store’s standard 404, confirming that no public route is live.

@@ -19,6 +19,7 @@ import { isAuthorizedShopifyWebhook } from "./shopifyWebhookAuth";
 import { getShopifyWebhookRawBody, parseShopifyWebhookPayload } from "./shopifyWebhookPayload";
 import { buildTrackedCheckoutDestination } from "./emailCheckoutTracking";
 import { isIsolatedEmailAttribution } from "./interconnectedEmailAttributionHygiene";
+import { recordOrobiomePaidPurchase } from "./orobiomeFunnelTracking";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -605,6 +606,20 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
       await db.update(attributedSales)
         .set({ capiEventSent: true, capiEventId: eventId, capiSentAt: Date.now() })
         .where(eq(attributedSales.shopifyOrderId, shopifyOrderId));
+    }
+
+    // Record the approved Orobiome funnel purchase only when the cart permalink
+    // supplied its anonymous visit/variant attributes. This does not alter the
+    // existing order record, attribution logic, or Meta CAPI behavior.
+    try {
+      await recordOrobiomePaidPurchase({
+        orderId: shopifyOrderId,
+        orderTotalCents: orderTotal,
+        currency,
+        noteAttributes: noteAttrs,
+      });
+    } catch (error) {
+      console.warn("[orobiome/purchase] Funnel correlation failed:", error);
     }
 
     // Credit an Interconnected lead cohort independently of the checkout touch.

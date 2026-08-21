@@ -52,6 +52,7 @@ import { normalizeKajabiPurchase, parseKajabiWebhookPayload } from "../kajabiWeb
 import { registerUnbounceKlaviyoLeadBridge } from "../unbounceKlaviyoLeadBridge";
 import { registerUnbounceNativeInterconnectedWebhook } from "../unbounceNativeInterconnectedWebhook";
 import { createCronOnlyMiddleware } from "../cronOnlyMiddleware";
+import { handleOrobiomeCheckoutStarted, handleOrobiomeFunnelEvent } from "../orobiomeFunnelTracking";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -112,6 +113,7 @@ async function startServer() {
     const { handleShopifyOrderPaid } = await import("../attributionRouter");
     return handleShopifyOrderPaid(req, res);
   });
+  app.post("/api/shopify/checkout-created", express.raw({ type: "application/json" }), handleOrobiomeCheckoutStarted);
   app.use(express.json({
     limit: "50mb",
     verify: (req, _res, buffer) => {
@@ -137,6 +139,9 @@ async function startServer() {
   registerUnbounceKlaviyoLeadBridge(app);
   // Unpublished native Unbounce Interconnected test receiver — page and header-secret scoped.
   registerUnbounceNativeInterconnectedWebhook(app);
+  // Public, origin-restricted, anonymous Orobiome page-funnel events.
+  app.options("/api/orobiome/funnel-event", handleOrobiomeFunnelEvent);
+  app.post("/api/orobiome/funnel-event", handleOrobiomeFunnelEvent);
   // Every scheduled callback is externally addressable, so enforce the Manus
   // cron identity at the shared route boundary. Handlers may additionally
   // verify their specific task UID before doing any work.

@@ -4142,6 +4142,42 @@ export const tantraContentEvents = mysqlTable("tantra_content_events", {
 export type TantraContentEvent = typeof tantraContentEvents.$inferSelect;
 export type InsertTantraContentEvent = typeof tantraContentEvents.$inferInsert;
 
+// ─── Orobiome Affiliate Funnel Visibility ─────────────────────────────────────
+// Stores anonymous page-level intent events only. It intentionally contains no
+// email, name, phone, address, or raw IP data.
+export const orobiomeFunnelEventTypeEnum = mysqlEnum("orobiome_funnel_event_type", [
+  "page_view",
+  "scroll_25",
+  "scroll_50",
+  "scroll_75",
+  "cta_click",
+  "cart_intent",
+  "checkout_start",
+  "purchase",
+]);
+
+export const orobiomeFunnelEvents = mysqlTable("orobiome_funnel_events", {
+  id: int("id").autoincrement().primaryKey(),
+  visitorId: varchar("visitor_id", { length: 64 }).notNull(),
+  variant: varchar("variant", { length: 32 }).notNull(),
+  eventType: orobiomeFunnelEventTypeEnum.notNull(),
+  pagePath: varchar("page_path", { length: 128 }).notNull(),
+  ctaPosition: varchar("cta_position", { length: 32 }),
+  utmSource: varchar("utm_source", { length: 128 }),
+  utmMedium: varchar("utm_medium", { length: 128 }),
+  utmCampaign: varchar("utm_campaign", { length: 256 }),
+  utmContent: varchar("utm_content", { length: 256 }),
+  fbclid: varchar("fbclid", { length: 256 }),
+  shopifyCheckoutToken: varchar("shopify_checkout_token", { length: 128 }),
+  shopifyOrderId: varchar("shopify_order_id", { length: 64 }),
+  orderTotalCents: bigint("order_total_cents", { mode: "number" }),
+  currency: varchar("currency", { length: 3 }),
+  eventAt: bigint("event_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+
+export type OrobiomeFunnelEvent = typeof orobiomeFunnelEvents.$inferSelect;
+export type InsertOrobiomeFunnelEvent = typeof orobiomeFunnelEvents.$inferInsert;
+
 
 // ─── Script Factory v2 — Phase 1: Persistent Idea Engine ─────────────────────
 /**

@@ -55,3 +55,9 @@ The published page accepted the visual update and remained public. Live browser 
 Read-only inspection of Mediva’s active layout identified the residual cause: the theme applies a four-row CSS grid to every body, including headerless `page.advertorial` pages. The oral page now includes a page-scoped `display:block` and `min-height:0` reset on that body only, allowing the post-footer region to collapse naturally without touching shared theme files.
 
 The first wrapper reset preserved the public page and its readable typography but did not fully collapse the post-footer area. The remaining space appears after the page footer and before the Shopify preview chrome, consistent with a direct layout child rendered by Mediva’s grid-based body shell. The next inspection is restricted to those active-theme direct children; no conversion element has changed.
+
+## Final-Viewport Background Determination
+
+Independent diagnosis now confirms that the page structure is minimal—`MainContent` contains one article, which contains the `oral-natalie-jill` container and its `oral-footer`; no trailing Shopify section or non-zero-height sibling is rendered after the footer. The former white canvas was structural and has been removed. The remaining dark visual area at the end of a viewport is the page/background color visible after the short custom footer ends, not a scrollable blank section or a shared-template defect.
+
+No further structural or shared-theme edit is recommended. If the owner wants a more visually complete ending, the safe next step is a **page-scoped footer-finish treatment**—for example, extending the existing oral footer’s visual background to occupy the remaining viewport. This is a design choice, not a defect fix, and requires separate approval.

@@ -1696,16 +1696,8 @@ async function startServer() {
         }
       }
 
-      // 4. Notify owner
-      try {
-        const { notifyOwner } = await import("./notification");
-        await notifyOwner({
-          title: `New Lead (Kajabi page): ${name}`,
-          content: `📧 ${email}${phone ? ` | 📱 ${phone}` : ""}\nSource: Kajabi opt-in page\nTime: ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago" })} CT`,
-        });
-      } catch (notifyErr) {
-        console.error("[kajabi/optin] notifyOwner failed:", notifyErr);
-      }
+      // Owner notifications are intentionally batched by the hourly lead watchdog.
+      // Do not send one owner email per opt-in; it overwhelms the inbox during active traffic.
 
       return res.json({ ok: true, email, leadId });
     } catch (err) {

@@ -62,6 +62,7 @@ We have an existing library of educational content, webinars, guides, articles, 
 | “I am exhausted, wired, or not recovering.” | A sleep/recovery or nervous-system education asset. | The **Deep Sleep Solution** pathway. |
 | “I have tried every supplement and still feel like I am guessing.” | A systems-oriented gut/oral education asset or testing explainer. | The **Gut & Oral Health** pathway. |
 | “I have lost clarity, energy, or my sense of direction.” | A resilience, attention, energy, or whole-person educational asset. | The **Lights On** pathway. |
+| “I am a clinician, and I need a wider systems-level education experience for myself.” | The **Interconnected** microbiome series for physicians; **Gateway to Health** for dentists and oral-health professionals. | A self-selected deeper education path before any program or testing conversation. |
 | “I am curious, but I do not know where to start.” | A short orientation resource that lets the person choose sleep, gut/oral, or resilience. | A self-selected education path—not an automatic program push. |
 
 ### Three 12-Month Pathways
@@ -122,9 +123,9 @@ The first interaction should create enough safety for a person to say: **“Yes,
 
 ---
 
-## Two Helpful Starting Profiles
+## Three Helpful Starting Profiles
 
-We still see useful relevance in two initial professional groups. The point is not to treat people as job titles; it is to understand the context they carry.
+We see useful relevance in three initial professional groups. The point is not to treat people as job titles; it is to understand the context they carry and offer the most respectful educational entry point.
 
 ### Working Professional Pilot
 
@@ -139,6 +140,22 @@ This is the priority D-to-C audience: a person working in a company who is still
 
 **Good first resource areas:** sleep/recovery, nervous-system education, energy/clarity, introductory whole-person health education, and a simple “choose your next question” guide.
 
+### Burned-Out Physician Pilot — Interconnected
+
+Physicians often carry a particular form of exhaustion: enormous responsibility, fragmented time, emotional exposure, and a professional environment that can reward rapid symptom management while leaving little room to step back and explore how a person’s systems may relate to one another.
+
+The intention is never to criticize physicians, their training, or conventional care. The point is to recognize a tension many clinicians feel themselves: a model built around short visits, problem-specific treatment algorithms, and immediate symptom management can make it difficult to slow down and ask broader questions about recovery, sleep, stress, inflammation, gut/oral health, and the lived experience behind a chart.
+
+**The best education entry:** **Interconnected**, the Urban Monk microbiome series. It gives a physician an intelligent, respectful way to explore systems-level health education without being lectured, sold to, or told that one answer explains everything.
+
+| What may resonate | How to introduce Interconnected |
+|---|---|
+| “I spend my days solving the next clinical problem, but I do not always have room to step back and look at my own health as a whole.” | “Interconnected is a thoughtful series for people who are curious about the way our health systems influence one another—especially when a symptom-by-symptom approach has not created the clarity they hoped for.” |
+| “I am not looking for another wellness hack.” | “It is not a quick-fix promise. It is a deep education experience that helps people ask more useful questions.” |
+| “I need something that respects my intelligence and my profession.” | “The series is designed to be curious, nuanced, and respectful of complexity.” |
+
+**Language to avoid:** “The medical model is broken,” “doctors only mask symptoms,” “your training missed the real cause,” or any implication that Interconnected diagnoses or treats a condition. The stronger and more respectful truth is that the series offers space for a wider systems conversation that many people do not get in a compressed care environment.
+
 ### Dentist and Oral-Health Professional Pilot
 
 Dentists and oral-health professionals may have a natural intellectual interest in the relationship between the mouth, stress, recovery, and broader health. The right posture is collegial and curious, never instructive or sensational.
@@ -149,7 +166,9 @@ Dentists and oral-health professionals may have a natural intellectual interest 
 - The experience of carrying clinical precision and high decision load all day.
 - Practical reflection on recovery, sleep, stress, and personal health—not a lecture about their profession.
 
-**Good first resource areas:** oral-systemic education, sleep/recovery for high-cognitive-load work, and a clear explanation of testing as an optional learning tool rather than a diagnosis.
+**The best education entry:** **Gateway to Health**, a deep onboarding series for dentists and oral-health professionals who want to engage thoughtfully with the broader oral/systemic conversation. It provides a respectful educational path before any invitation to learn about testing, a program, or other next steps.
+
+**Good first resource areas:** Gateway to Health, oral-systemic education, sleep/recovery for high-cognitive-load work, and a clear explanation of testing as an optional learning tool rather than a diagnosis.
 
 ---
 

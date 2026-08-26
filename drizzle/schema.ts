@@ -885,7 +885,7 @@ export type InsertIngestReport = typeof ingestReports.$inferInsert;
 // known landing pages and key articles.
 export const verifiedLinks = mysqlTable("verified_links", {
   id: int("id").autoincrement().primaryKey(),
-  url: varchar("url", { length: 1024 }).notNull().unique(),
+  url: varchar("url", { length: 768 }).notNull().unique(),
   title: varchar("title", { length: 512 }).notNull(),
   description: text("description"),                 // 1-2 sentence description for prompt context
   topicTags: text("topicTags"),                     // JSON: string[] — topic keywords for relevance matching
@@ -904,7 +904,7 @@ export const newsfeedArticles = mysqlTable("newsfeed_articles", {
   id: int("id").autoincrement().primaryKey(),
   title: varchar("title", { length: 512 }).notNull(),
   source: varchar("source", { length: 255 }),        // e.g. "PubMed", "The Guardian"
-  url: varchar("url", { length: 1024 }).notNull().unique(),
+  url: varchar("url", { length: 768 }).notNull().unique(),
   imageUrl: text("imageUrl"),                         // Article thumbnail (if available)
   description: text("description"),                   // Article excerpt / abstract
   commentary: text("commentary"),                     // AI-generated Pedram-voice LinkedIn post
@@ -2191,7 +2191,7 @@ export const videoJobs = mysqlTable("video_jobs", {
   productionPath: videoProductionPathEnum.default("heygen_only").notNull(),
   // Output channels: JSON array e.g. ["youtube","tiktok","meta"]
   // Determines where the final video is distributed after VA approval
-  outputChannels: text("vj_output_channels").default(JSON.stringify(["youtube"])).notNull(),
+  outputChannels: varchar("vj_output_channels", { length: 255 }).default(JSON.stringify(["youtube"])).notNull(),
   // Legacy field kept for backwards compatibility (maps to productionPath)
   videoType: mysqlEnum("vj_video_type", ["standard", "avatar"]).default("standard").notNull(),
   // HeyGen avatar pipeline fields

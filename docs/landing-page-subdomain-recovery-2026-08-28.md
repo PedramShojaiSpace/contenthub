@@ -6,6 +6,12 @@ The project source, database-hosted pages, and core public route handlers are in
 
 > **Priority action:** Move only the `content` DNS record from Railway to the Manus custom-domain target shown in the project Domains panel. Do not change `ch`, `get`, `try`, `theacademy`, or `shop` as part of this repair.
 
+## Recovery Result — 2026-08-28
+
+The `content` CNAME was corrected at GoDaddy to `cname.manus.space`, and the hostname was then disconnected and reconnected in the restored project’s Domains panel. The panel subsequently showed a green connected/verified state. A new public test of the restored-only route `/upstream/program` returned **HTTP 200** with the expected `Upstream Program — Direct Sales VSL` page title, replacing its prior custom-domain 404.
+
+The same read-only smoke test returned **HTTP 200** on all 14 current priority routes: the Interconnected landing page, Thank You B, Kajabi offer page, Upstream Program, published Gut and Lights On hosted pages, published Orobiome bridge, and all seven Tantra pages. No page, funnel, offer, checkout, tracking, redirect, or other hostname was changed during recovery verification.
+
 ## Subdomain Ownership and Recovery Status
 
 | Hostname | Current DNS/serving owner | Current status | Recovery owner | Priority |
@@ -76,6 +82,6 @@ These seven content-first acquisition pages currently return 200 on `content`, b
 4. I will then run an immediate smoke test across the P0 Interconnected, Upstream, Gut, Lights On, bridge, and Tantra pages.
 5. Separately, open the other Manus project that owns `get.theurbanmonk.com/oral`; its current 503 cannot be repaired from this project.
 
-## Decision Needed
+## Remaining Separate Follow-ups
 
-The owner has already approved reconnecting `content.theurbanmonk.com` only. The only remaining owner action is the DNS-record update because the active `content` CNAME is still controlled by the old Railway destination. Once the new target is copied from Domains, send it here (or a screenshot of the Domains panel), and I can verify propagation without touching any other hostname or sales route.
+The approved `content` recovery is complete. `get.theurbanmonk.com/oral` remains a 503 on a separate Manus project and needs recovery inside that project. `ch.theurbanmonk.com` remains intentionally untouched pending separate authorization and should not be treated as an alias for the restored Content Hub.

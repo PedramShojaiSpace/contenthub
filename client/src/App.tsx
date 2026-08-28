@@ -4,7 +4,6 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Toaster } from "@/components/ui/sonner";
-import { shouldRenderUpstreamAtRoot } from "./lib/hostnameRouting";
 
 // Lazy-load all pages to enable code splitting and reduce initial bundle size
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -130,13 +129,9 @@ function PageLoader() {
 }
 
 function Router() {
-  const renderUpstreamAtHostnameRoot =
-    typeof window !== "undefined" &&
-    shouldRenderUpstreamAtRoot(window.location.hostname, window.location.pathname);
-
   return (
     <Suspense fallback={<PageLoader />}>
-      {renderUpstreamAtHostnameRoot ? <UpstreamHome /> : <Switch>
+      <Switch>
         <Route path={"/"} component={CommandCenter} />
         <Route path={"/studio"} component={CreationStudio} />
         <Route path={"/assets"} component={AssetLibrary} />
@@ -252,7 +247,7 @@ function Router() {
         <Route path={"/orobiome-funnel"} component={OrobiomeFunnelDashboard} />
         <Route path={"/404"} component={NotFound} />
         <Route component={NotFound} />
-      </Switch>}
+      </Switch>
     </Suspense>
   );
 }

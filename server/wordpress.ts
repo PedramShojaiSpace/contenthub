@@ -16,6 +16,27 @@ function getWpAuth(): { baseUrl: string; authHeader: string } {
   const baseUrl = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
   const username = process.env.WORDPRESS_USERNAME ?? "";
   const appPassword = process.env.WORDPRESS_APP_PASSWORD ?? "";
+  if (!baseUrl) {
+    throw new Error(
+      "WordPress URL is not configured. Set WORDPRESS_URL to the full HTTPS site URL before publishing."
+    );
+  }
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(baseUrl);
+  } catch {
+    throw new Error(
+      "WordPress URL is invalid. Set WORDPRESS_URL to a full HTTPS site URL before publishing."
+    );
+  }
+  if (parsedUrl.protocol !== "https:") {
+    throw new Error("WordPress URL must use HTTPS before publishing.");
+  }
+  if (!username || !appPassword) {
+    throw new Error(
+      "WordPress credentials are not configured. Set WORDPRESS_USERNAME and WORDPRESS_APP_PASSWORD before publishing."
+    );
+  }
   const authHeader =
     "Basic " + Buffer.from(`${username}:${appPassword}`).toString("base64");
   return { baseUrl, authHeader };

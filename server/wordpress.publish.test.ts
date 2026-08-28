@@ -144,6 +144,31 @@ describe("WordPress credentials", () => {
     expect(process.env.WORDPRESS_URL).toBeTruthy();
   });
 
+  it("should have a valid absolute WORDPRESS_URL", () => {
+    const url = new URL(process.env.WORDPRESS_URL ?? "");
+    expect(url.protocol).toBe("https:");
+    expect(url.hostname).toBeTruthy();
+  });
+
+  it("reaches the configured WordPress REST API without publishing content", async () => {
+    const baseUrl = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
+    const response = await fetch(`${baseUrl}/wp-json/wp/v2/types/post`);
+    expect(response.ok).toBe(true);
+    expect(response.headers.get("content-type") ?? "").toContain("application/json");
+  }, 20_000);
+
+  it("authenticates to the WordPress post endpoint without creating content", async () => {
+    const baseUrl = (process.env.WORDPRESS_URL ?? "").replace(/\/$/, "");
+    const username = process.env.WORDPRESS_USERNAME ?? "";
+    const appPassword = process.env.WORDPRESS_APP_PASSWORD ?? "";
+    const authorization = "Basic " + Buffer.from(`${username}:${appPassword}`).toString("base64");
+    const response = await fetch(`${baseUrl}/wp-json/wp/v2/posts?context=edit&per_page=1`, {
+      headers: { Authorization: authorization },
+    });
+    expect(response.ok).toBe(true);
+    expect(response.headers.get("content-type") ?? "").toContain("application/json");
+  }, 20_000);
+
   it("should have WORDPRESS_USERNAME set", () => {
     expect(process.env.WORDPRESS_USERNAME).toBeTruthy();
   });

@@ -7,8 +7,8 @@
   ],
   "dev_command": "pnpm run dev",
   "env_vars": {
-    "DATABASE_URL": "mysql://2Xox4WBe4KrUPbP.bb54cdcee2e7:6uhKZ0LQV0VgXDC6S23B@gateway02.us-east-1.prod.aws.tidbcloud.com:4000/iUgsiz76NwfDUVHZHV7CyJ?ssl={\"rejectUnauthorized\":true}",
-    "DRIZZLE_DATABASE_URL": "mysql://2Xox4WBe4KrUPbP.bb54cdcee2e7:6uhKZ0LQV0VgXDC6S23B@gateway02.us-east-1.prod.aws.tidbcloud.com:4000/iUgsiz76NwfDUVHZHV7CyJ?ssl={\"rejectUnauthorized\":true}",
+    "DATABASE_URL": "mysql://2Xox4WBe4KrUPbP.f1c8a1c75e07:pK6x1eH5FSK3UO73JYGr@gateway02.us-east-1.prod.aws.tidbcloud.com:4000/iUgsiz76NwfDUVHZHV7CyJ?ssl={\"rejectUnauthorized\":true}",
+    "DRIZZLE_DATABASE_URL": "mysql://2Xox4WBe4KrUPbP.f1c8a1c75e07:pK6x1eH5FSK3UO73JYGr@gateway02.us-east-1.prod.aws.tidbcloud.com:4000/iUgsiz76NwfDUVHZHV7CyJ?ssl={\"rejectUnauthorized\":true}",
     "MANUS_WEBDEV_PROJECT_ID": "iUgsiz76NwfDUVHZHV7CyJ"
   },
   "experiments": [
@@ -16,10 +16,10 @@
   ],
   "git_remote": {
     "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ",
-    "access_key_id": "ASIAZV3A2ECZH3ON5SO4",
-    "secret_access_key": "4PNBIlIiTrLSyoebbtaaFCCqVSwVbVvNVBNLxhc4",
-    "session_token": "IQoJb3JpZ2luX2VjEK///////////wEaCXVzLWVhc3QtMSJHMEUCIQCoCyk6zLztafHAb03aDcjC3ePol72HS++GiBERTXbWIAIgFzk2gJs2iNm94kVZ48Xp8U6h1uVLPocCxIMzPBG92R4q9QMIdxAEGgw2NjUzODYwOTg4NjYiDO1CDAf8QoaJq/j+jirSA55v2xp/TBYxQ5Dv/uXjipCxf+QQtlM2eBOn52Y69+VLmN/gGRWGnF+4xxNLbzCYDl1Dwk/Ju7QqueLbK5uMe0MP1vgDeqR5Np388WwE5PROcohuENPSxTgGm7pMsBgklXYCXAiw+t7MxZcmztLyvNfn80VjDVnBMjZUuzx9AkdJmiNn9+6XCiYF0dIkPM+851geDWm3lJrz4JdvgjgigANyMqXxzM1yhy1I4OjJyYOzzcxp5nVEF0OZTCpec+OQVJLjunq+hbX6kfgN7gJApFJqHtAhkX8NEpGSNosoBZDZCMj3jJJDnuE9UCICckTA8ol26JeGyDa1bsP4+ZDwPOMyopHUmVHq+9zGd2pg7w7uEtgJWT/g5rZ5/6ib1Tg8x/EWJFKYU8LyW/9oRHmy6rBqU7UYWFOYssCqm1UIhXrJgcLZ92tX9Lf/nVnnnc2Nt431DPufzeShnEQ4UK/SkXNQeNOqcY/wcxP8jJA16e0o9cQalqhkO2alOb5o0misDmBOfYUcaFSdkesw+lr8N005NwGWdIDFKXr7L7FHSq03lz7GXFF1rvkS7GKG7hs5xw67L+Avm13/xcCIcBAPHV2jKW6JKPROsK4ucpJCXP3Xu/owvfeW1AY6nQHdkobBYPNwghaGSzMyJfted+39hIKQTfoPVrcGDPZZKUKua0CGn6bj3PkyOGtdyIt4e6hLSfwJppdIY20MBzRoCDVbQjqDjjJMRov7vZ9jOTsf3ZN4UxChfNRe9886vcy2/h3cjDY9wsZQVrOlzSEhc5n9ovAHdVmEuUqzka0b8I5S0oYOdOgMxO6MkN5vYN5RlegV2rYHtnKK9bFh",
-    "expiration": "2026-08-20T02:20:45.000Z",
+    "access_key_id": "ASIAZV3A2ECZGZ7XE2SK",
+    "secret_access_key": "t38pnP33Dh6ipHEi7OwTJVcChVokk+4RsfDsJ8Cy",
+    "session_token": "IQoJb3JpZ2luX2VjEHoaCXVzLWVhc3QtMSJGMEQCIFAmq5695grwfK8u3Bt6a8ZEoZqcCz441VNDuJzSLLKwAiA9FkgL3Iibhrvqh/xCxvqkuqIIfkuLkerPxYSQaHvMlCr1AwhDEAQaDDY2NTM4NjA5ODg2NiIMBL37+w4ogT7xgN6OKtIDO+bS2mleGfYE+m+LRBzDmkgoe5tewVvxiCdKkibZm0PrOBOBuw68/l58A2fTpR8DyLRoY1BFrUTgNLN9no3P2+0QNMRHdZNjtXdVCOcfgO1taKp+7C0Kbx91DYGQQsf8Jjmtl7PX52VZ1njn4BR9ShOC1gJ7UD/U6HUmRThGF1ev0/vRlcdfHKlHQBuDEYNAO70zHGBnNy3MKmDAKSG9hHOjGfwMPoregcPKE5fnX6aeu/O0IeONm4tN/kD8mDJo1MRu2V5HAsPQbNOjLjOdeuz70iGR4Y5/eqOrjbVCFWZXeH06/5jNK28xTN5ixSNkvSYvP7jcbZhGCCSgpsPttrpCkROnEixn9SoMlS3eWi95KfRwpVUJXNSYuIlJu7PGfXYLguq+nYrQZyiEC6NzBCuo8aVC5hYWIRoRAHOGLbRTJljR6jS9S6bSxC7HcI7ax0wxitVwoVNX8qKmDeqPbzwuDUZcsXeYXU94SiuLDFaqFO2Kd+1ZdrKgP+7YWdrLEZWDTGRRbC7zuqtLKdEe7QtKgeOWI4zQcvlnNX2QDnehnj0949i2yOPFG3FntpPXRm5I4sGNdoMNvfpJRbv/AaZb4cU0OgRv+uaUjBhjAUoLyTCt18PUBjqeAWyjBHSg0n81Tdg/NjCdwa4HcRJpL/WiY1jOKjzD+nxrv9YN3JTmvIoDljh8sU1Vbr89yX+ijocCzglJB5Cap3FKXq1rNyKTD1VD+Dc5tgwAykKIXyaFKQxVHpUJc9gUvjPKFix30YAtZ+/urm9uSD0SiiAreY16+rCXzzfAIG53WN6jMyq4LTWHxRH+b2k8seW1PuVWdLnnHnFlrO1i",
+    "expiration": "2026-08-28T14:00:13.000Z",
     "backend": "GIT_BACKEND_S3"
   },
   "injected_features": [
@@ -32,7 +32,7 @@
     "ANTHROPIC_API_KEY": "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",
     "APOLLO_API_KEY": "XVYXH8xrB-T7I2otDtTOOw",
     "BUFFER_ACCESS_TOKEN": "poKz3ynLtuvgotw0sWkHiFyGDFbXZPDtX8_qO9Y48y3",
-    "BUILT_IN_FORGE_API_KEY": "5AVCyfY2SWPYSp6AmjFoZL",
+    "BUILT_IN_FORGE_API_KEY": "SJHkmqmY6NAGREFirtXJSu",
     "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",
     "DATAFORSEO_LOGIN": "pedram@theurbanmonk.com",
     "DATAFORSEO_PASSWORD": "493c0fae4c2bc846",
@@ -65,7 +65,7 @@
     "PEXELS_API_KEY": "WC0ZHUE8kH89dkF9HyVbB907v9rsAb3Q6IUHXFiMURuQBxQteKhONkyv",
     "SHOPIFY_ADMIN_CLIENT_ID": "315a736972fffcbacbe3bb282e86b6a7",
     "SHOPIFY_ADMIN_CLIENT_SECRET": "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",
-    "SHOPIFY_STOREFRONT_API_ACCESS_TOKEN": "384d62d50829871552c4d96c9551341e",
+    "SHOPIFY_STOREFRONT_API_ACCESS_TOKEN": "175da850fe5dc24f2ed6f3515755f8df",
     "SHOPIFY_STORE_DOMAIN": "theurbanmonkstore.myshopify.com",
     "SHOPIFY_WEBHOOK_SECRET": "f9a578f2ae6fe672efa72d4de49265f0816a66eeb9064ab656f0e36ff3892816",
     "SUBSTACK_PUBLICATION_URL": "https://drpedramshojai.substack.com",
@@ -79,7 +79,7 @@
     "VITE_APP_ID": "iUgsiz76NwfDUVHZHV7CyJ",
     "VITE_APP_LOGO": "https://files.manuscdn.com/user_upload_by_module/web_dev_logo/310519663158996687/STCioZiqBCXByfeK.png",
     "VITE_APP_TITLE": "Urban Monk Content Hub",
-    "VITE_FRONTEND_FORGE_API_KEY": "j9WHH9XYnrAjwzV4gR6JxV",
+    "VITE_FRONTEND_FORGE_API_KEY": "MofkUn5odwLWzZtJSYonNP",
     "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",
     "VITE_OAUTH_PORTAL_URL": "https://manus.im",
     "WORDPRESS_APP_PASSWORD": "v5qRVSp7IIAea7qNNYoPuS8y",

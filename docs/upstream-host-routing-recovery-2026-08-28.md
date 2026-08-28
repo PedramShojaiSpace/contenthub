@@ -24,7 +24,7 @@ This is not a redirect. The browser stays on the clean root URL `https://upstrea
 
 ## Validation
 
-The hostname-routing logic has focused regression coverage for the intended host root, a trailing-dot/port normalization case, the Content Hub root, and explicit routes. The focused Vitest suite passed **3/3**. The public customer-facing bundle also completed successfully after the change. A full staged build reached the project’s pre-existing memory-sensitive Hub-core stage and was terminated there after the changed public bundle had already completed; the development service was restarted successfully with no TypeScript errors.
+The hostname-routing logic has focused regression coverage for the intended host root, a trailing-dot/port normalization case, the Content Hub root, and explicit routes. The focused Vitest suite passed **3/3**. The public customer-facing bundle completed successfully. After stopping the temporary development watcher to release memory, the complete staged public, Hub core, Hub content, Hub growth, Hub analytics, and server production build also completed successfully. The development service was then restarted with no TypeScript errors.
 
 ## Remaining Owner Action
 

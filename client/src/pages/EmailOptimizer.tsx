@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { buildSendyCampaignBrief, buildSendyFilename, htmlToPlainText } from "@/lib/sendyHandoff";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,10 @@ import {
   ChevronRight,
   Download,
   Lightbulb,
+  Send,
+  ClipboardCheck,
+  Loader2,
+  ShieldCheck,
 } from "lucide-react";
 
 type Severity = "ok" | "warning" | "bad";
@@ -202,7 +207,22 @@ export default function EmailOptimizer() {
   const [inputHtml, setInputHtml] = useState("");
   const [result, setResult] = useState<OptResult | null>(null);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<"bookmarklet" | "manual" | "bulk">("bookmarklet");
+  const [activeTab, setActiveTab] = useState<"bookmarklet" | "manual" | "bulk" | "sendy">(() => (
+    new URLSearchParams(window.location.search).get("tab") === "sendy" ? "sendy" : "bookmarklet"
+  ));
+  const [sendyCopied, setSendyCopied] = useState(false);
+  const [sendyBrandId, setSendyBrandId] = useState("");
+  const [sendyDraftConfirmed, setSendyDraftConfirmed] = useState(false);
+  const [sendyDraftMessage, setSendyDraftMessage] = useState("");
+  const [sendyCampaign, setSendyCampaign] = useState({
+    title: "",
+    subject: "",
+    fromName: "",
+    fromEmail: "",
+    replyTo: "",
+    audience: "",
+    html: "",
+  });
 
   // Bulk state
   const [bulkEntries, setBulkEntries] = useState<BulkEmailEntry[]>([newEntry("Welcome Email", ""), newEntry("Day 3 Follow-up", "")]);
@@ -235,6 +255,23 @@ export default function EmailOptimizer() {
     },
   });
 
+  const sendyBrands = trpc.emailOptimizer.sendyBrands.useQuery(undefined, {
+    enabled: activeTab === "sendy",
+    retry: 1,
+  });
+  const sendyLists = trpc.emailOptimizer.sendyLists.useQuery(
+    { brandId: sendyBrandId },
+    { enabled: activeTab === "sendy" && Boolean(sendyBrandId), retry: 1 }
+  );
+  const createSendyDraft = trpc.emailOptimizer.createSendyDraft.useMutation({
+    onSuccess: (data) => {
+      setSendyDraftMessage(data.message);
+      setSendyDraftConfirmed(false);
+      toast.success("Sendy draft created. Review it in Sendy before any schedule or send.");
+    },
+    onError: (error) => toast.error(error.message || "Sendy could not create the draft."),
+  });
+
   const handleOptimize = () => {
     if (!inputHtml.trim()) {
       toast.error("Paste your Kajabi email HTML first");
@@ -254,6 +291,66 @@ export default function EmailOptimizer() {
   const handleCopyBookmarklet = async () => {
     await navigator.clipboard.writeText(bookmarkletCode);
     toast.success("Bookmarklet code copied — paste it as a bookmark URL");
+  };
+
+  const updateSendyCampaign = (field: keyof typeof sendyCampaign, value: string) => {
+    setSendyCampaign((previous) => ({ ...previous, [field]: value }));
+  };
+
+  const useLatestOptimizedHtml = () => {
+    if (!result?.optimizedHtml) {
+      toast.info("Optimize an email first, then use its cleaned HTML here.");
+      return;
+    }
+    updateSendyCampaign("html", result.optimizedHtml);
+    toast.success("Latest optimized HTML added to the Sendy handoff.");
+  };
+
+  const copySendyHandoff = async () => {
+    await navigator.clipboard.writeText(buildSendyCampaignBrief(sendyCampaign));
+    setSendyCopied(true);
+    toast.success("Sendy draft handoff copied — paste the fields into a draft campaign in Sendy.");
+    setTimeout(() => setSendyCopied(false), 2000);
+  };
+
+  const downloadSendyHandoff = () => {
+    const blob = new Blob([buildSendyCampaignBrief(sendyCampaign)], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = buildSendyFilename(sendyCampaign.title);
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("Sendy campaign handoff downloaded.");
+  };
+
+  const handleCreateSendyDraft = () => {
+    if (!sendyBrandId) {
+      toast.error("Select the Sendy brand that should own this draft.");
+      return;
+    }
+    if (!sendyCampaign.title || !sendyCampaign.subject || !sendyCampaign.fromName || !sendyCampaign.fromEmail || !sendyCampaign.replyTo || !sendyCampaign.html) {
+      toast.error("Add the campaign title, subject, approved sender details, and HTML before creating a draft.");
+      return;
+    }
+    if (!sendyDraftConfirmed) {
+      toast.error("Confirm that this will create a Sendy draft only before continuing.");
+      return;
+    }
+    setSendyDraftMessage("");
+    createSendyDraft.mutate({
+      brandId: sendyBrandId,
+      fromName: sendyCampaign.fromName,
+      fromEmail: sendyCampaign.fromEmail,
+      replyTo: sendyCampaign.replyTo,
+      title: sendyCampaign.title,
+      subject: sendyCampaign.subject,
+      plainText: htmlToPlainText(sendyCampaign.html),
+      html: sendyCampaign.html,
+      trackOpens: true,
+      trackClicks: true,
+      confirmDraftOnly: true,
+    });
   };
 
   const handleBulkOptimize = () => {
@@ -372,6 +469,20 @@ export default function EmailOptimizer() {
             <span className="flex items-center gap-2">
               <FileCode2 className="w-4 h-4" />
               Single Email
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab("sendy")}
+            className={`px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+              activeTab === "sendy"
+                ? "border-cyan-600 text-cyan-800 bg-cyan-50"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Send className="w-4 h-4" />
+              Sendy Handoff
+              <Badge className="bg-cyan-100 text-cyan-800 border-cyan-200 text-xs ml-1">Manual</Badge>
             </span>
           </button>
         </div>
@@ -918,6 +1029,146 @@ export default function EmailOptimizer() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === "sendy" && (
+          <div className="space-y-6">
+            <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-5">
+              <div className="flex gap-3">
+                <ClipboardCheck className="w-5 h-5 text-cyan-700 shrink-0 mt-0.5" />
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-cyan-950">Connected Sendy draft workflow</p>
+                  <p className="text-sm text-cyan-900/80 leading-relaxed">
+                    Create a review-first campaign <strong>draft</strong> in Sendy after optimizing your HTML. This workflow cannot schedule or send an email; final audience selection, test delivery, scheduling, and sending remain in Sendy.
+                  </p>
+                  <p className="text-xs text-cyan-800">
+                    Sendy retains the approved list, suppression rules, unsubscribe link, and Amazon SES delivery configuration. The Content Hub does not store AWS credentials.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-5 space-y-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground">Campaign details for the Sendy draft</h2>
+                  <p className="text-xs text-muted-foreground mt-1">A draft is created only after you complete the confirmation below. Nothing in this page can schedule or send a campaign.</p>
+                </div>
+                <Button onClick={useLatestOptimizedHtml} size="sm" variant="outline" className="gap-2 shrink-0">
+                  <Zap className="w-4 h-4" />
+                  Use Latest Optimized HTML
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Sendy brand <span className="text-red-600">*</span></label>
+                  <select
+                    value={sendyBrandId}
+                    onChange={(event) => {
+                      setSendyBrandId(event.target.value);
+                      setSendyDraftMessage("");
+                    }}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+                    disabled={sendyBrands.isLoading || sendyBrands.isError}
+                  >
+                    <option value="">{sendyBrands.isLoading ? "Loading Sendy brands…" : "Select the brand for this draft"}</option>
+                    {sendyBrands.data?.brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
+                  </select>
+                  {sendyBrands.isError && <p className="text-xs text-red-600">Sendy brands could not be loaded. Check the connection and try again.</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Campaign title</label>
+                  <Input value={sendyCampaign.title} onChange={(event) => updateSendyCampaign("title", event.target.value)} placeholder="e.g. Welcome sequence — day 1" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Subject line</label>
+                  <Input value={sendyCampaign.subject} onChange={(event) => updateSendyCampaign("subject", event.target.value)} placeholder="Enter the approved subject line" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">From name</label>
+                  <Input value={sendyCampaign.fromName} onChange={(event) => updateSendyCampaign("fromName", event.target.value)} placeholder="Use the approved Sendy sender name" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">From email</label>
+                  <Input value={sendyCampaign.fromEmail} onChange={(event) => updateSendyCampaign("fromEmail", event.target.value)} placeholder="Use an approved verified sender" type="email" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Reply-to</label>
+                  <Input value={sendyCampaign.replyTo} onChange={(event) => updateSendyCampaign("replyTo", event.target.value)} placeholder="Use the approved reply-to address" type="email" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Planned audience for review in Sendy</label>
+                  <Input value={sendyCampaign.audience} onChange={(event) => updateSendyCampaign("audience", event.target.value)} placeholder="List/segment name and any exclusions" />
+                  {sendyBrandId && sendyLists.data?.lists.length ? (
+                    <p className="text-xs text-muted-foreground">Available lists: {sendyLists.data.lists.map((list) => list.name).join(", ")}. Final audience selection remains a review step in Sendy.</p>
+                  ) : null}
+                  {sendyBrandId && sendyLists.data && sendyLists.data.lists.length === 0 ? (
+                    <p className="text-xs text-amber-700">No Sendy lists were returned for this brand. Create or confirm the approved audience in Sendy before any test delivery, scheduling, or send.</p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="text-xs font-medium text-foreground">Optimized HTML</label>
+                  {sendyCampaign.html && <span className="text-xs text-muted-foreground">{formatBytes(new TextEncoder().encode(sendyCampaign.html).length)}</span>}
+                </div>
+                <Textarea
+                  value={sendyCampaign.html}
+                  onChange={(event) => updateSendyCampaign("html", event.target.value)}
+                  placeholder="Paste optimized HTML here, or use the latest optimized result from this tool..."
+                  className="h-52 font-mono text-xs resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4 border-t border-border pt-5">
+                <div className="space-y-2">
+                  <h3 className="text-xs font-semibold text-foreground">Plain-text companion</h3>
+                  <Textarea value={htmlToPlainText(sendyCampaign.html)} readOnly className="h-32 font-mono text-xs bg-muted/40 resize-none" placeholder="The plain-text companion will appear after HTML is added." />
+                </div>
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 space-y-2">
+                  <p className="font-semibold">Review before delivery in Sendy</p>
+                  <ul className="list-disc list-inside space-y-1 text-amber-800">
+                    <li>Create a draft first—this tool cannot create or send a campaign.</li>
+                    <li>Confirm the correct list/segment, exclusions, sender, and reply-to.</li>
+                    <li>Keep Sendy unsubscribe and preference handling enabled.</li>
+                    <li>Preview desktop/mobile and send a test from Sendy before scheduling.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button onClick={copySendyHandoff} variant="outline" className="gap-2">
+                  {sendyCopied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {sendyCopied ? "Copied!" : "Copy Backup Handoff"}
+                </Button>
+                <Button onClick={downloadSendyHandoff} variant="outline" className="gap-2">
+                  <Download className="w-4 h-4" />
+                  Download Backup Handoff
+                </Button>
+              </div>
+
+              <div className="border-t border-border pt-5 space-y-4">
+                <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                  <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-700 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-emerald-950">Create a draft only</p>
+                    <p className="text-xs leading-relaxed text-emerald-900">The Content Hub submits Sendy’s documented `send_campaign=0` setting. It does not pass a schedule time or audience IDs, so the campaign is not queued, scheduled, or sent. Complete recipient selection and any test send only after reviewing the draft in Sendy.</p>
+                  </div>
+                </div>
+                <label className="flex items-start gap-3 text-sm text-foreground cursor-pointer">
+                  <input type="checkbox" checked={sendyDraftConfirmed} onChange={(event) => setSendyDraftConfirmed(event.target.checked)} className="mt-0.5 h-4 w-4" />
+                  <span>I confirm that this should create a Sendy <strong>draft only</strong>. I will review audience, exclusions, sender identity, unsubscribe handling, previews, and a test email in Sendy before any scheduling or delivery.</span>
+                </label>
+                <Button onClick={handleCreateSendyDraft} disabled={createSendyDraft.isPending} className="bg-emerald-700 hover:bg-emerald-800 text-white gap-2">
+                  {createSendyDraft.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {createSendyDraft.isPending ? "Creating Draft…" : "Create Sendy Draft"}
+                </Button>
+                {sendyDraftMessage && <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{sendyDraftMessage}</p>}
+              </div>
+            </div>
           </div>
         )}
 

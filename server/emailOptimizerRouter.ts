@@ -22,6 +22,7 @@ import { minify } from "html-minifier-terser";
 import juice from "juice";
 import * as cheerio from "cheerio";
 import { reviewWinningCopyPatterns, type CopyPatternReview } from "./emailCopyPatterns";
+import { createSendyDraft, listSendyBrands, listSendyLists } from "./sendy";
 
 interface OptimizationResult {
   optimizedHtml: string;
@@ -530,6 +531,30 @@ async function optimizeEmailHtml(rawHtml: string): Promise<OptimizationResult> {
 export { optimizeEmailHtml as optimizeEmailHtmlPublic };
 
 export const emailOptimizerRouter = router({
+  /** Read-only Sendy discovery; Sendy remains the source of truth for brands and lists. */
+  sendyBrands: protectedProcedure.query(async () => ({ brands: await listSendyBrands() })),
+
+  sendyLists: protectedProcedure
+    .input(z.object({ brandId: z.string().min(1).max(200) }))
+    .query(async ({ input }) => ({ lists: await listSendyLists(input.brandId) })),
+
+  /** Explicitly creates a Sendy draft only. It cannot queue, schedule, or send a campaign. */
+  createSendyDraft: protectedProcedure
+    .input(z.object({
+      brandId: z.string().min(1).max(200),
+      fromName: z.string().min(1).max(200),
+      fromEmail: z.string().email().max(320),
+      replyTo: z.string().email().max(320),
+      title: z.string().min(1).max(250),
+      subject: z.string().min(1).max(250),
+      plainText: z.string().min(1).max(500_000),
+      html: z.string().min(10).max(500_000),
+      trackOpens: z.boolean(),
+      trackClicks: z.boolean(),
+      confirmDraftOnly: z.literal(true),
+    }))
+    .mutation(async ({ input }) => createSendyDraft(input)),
+
   /** Bulk optimize multiple sequence emails at once */
   bulkOptimize: protectedProcedure
     .input(

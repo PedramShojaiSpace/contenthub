@@ -19,4 +19,6 @@ export const ENV = {
   heygenVoiceId: process.env.HEYGEN_VOICE_ID ?? "",
   supadataApiKey: process.env.SUPADATA_API_KEY ?? "",
   klaviyoPrivateKey: process.env.KLAVIYO_PRIVATE_KEY ?? "",
+  sendyBaseUrl: process.env.SENDY_BASE_URL ?? "",
+  sendyApiKey: process.env.SENDY_API_KEY ?? "",
 };

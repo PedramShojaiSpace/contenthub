@@ -23,6 +23,11 @@ describe("Hub cross-bundle route resolver", () => {
     expect(getHubPublicHref("/ebook-generator")).toBe("/hub/content/ebook-generator");
   });
 
+  it("routes Blog Import Studio to the content bundle", () => {
+    expect(getHubBundleForPath("/blog-importer")).toBe("content");
+    expect(getHubPublicHref("/blog-importer")).toBe("/hub/content/blog-importer");
+  });
+
   it("routes Email → Revenue to its Core owner from a wrong Growth URL", () => {
     expect(getHubBundleForPath("/interconnected-email-revenue")).toBe("core");
     expect(getHubPublicHref("/hub/growth/interconnected-email-revenue"))

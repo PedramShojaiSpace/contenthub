@@ -24,6 +24,7 @@ const VADashboard = lazy(() => import("./pages/VADashboard"));
 const AdsManager = lazy(() => import("./pages/AdsManager"));
 const LeadScrubber = lazy(() => import("./pages/LeadScrubber"));
 const EmailOptimizer = lazy(() => import("./pages/EmailOptimizer"));
+const BlogImportStudio = lazy(() => import("./pages/BlogImportStudio"));
 const KlaviyoFlowOptimizer = lazy(() => import("./pages/KlaviyoFlowOptimizer"));
 const KidsResearch = lazy(() => import("./pages/KidsResearch"));
 const KidsReview = lazy(() => import("./pages/KidsReview"));
@@ -63,6 +64,7 @@ export default function HubContentApp() {
     <Route path="/ads" component={AdsManager} />
     <Route path="/lead-scrubber" component={LeadScrubber} />
     <Route path="/email-optimizer" component={EmailOptimizer} />
+    <Route path="/blog-importer" component={BlogImportStudio} />
     <Route path="/klaviyo-flow-optimizer" component={KlaviyoFlowOptimizer} />
     <Route path="/kids-research" component={KidsResearch} />
     <Route path="/kids-review" component={KidsReview} />

@@ -127,6 +127,7 @@ import { leadScrubberRouter } from "./leadScrubberRouter";
 import { emailSequenceRouter } from "./emailSequenceRouter";
 import { qrGeneratorRouter } from "./qrGeneratorRouter";
 import { emailOptimizerRouter } from "./emailOptimizerRouter";
+import { blogImportRouter } from "./blogImportRouter";
 import { klaviyoFlowOptimizerRouter } from "./klaviyoFlowOptimizerRouter";
 import { plainTextEmailRouter } from "./plainTextEmailRouter";
 import { metaAdPushRouter } from "./metaAdPushRouter";
@@ -536,6 +537,7 @@ export const appRouter = router({
   emailSequence: emailSequenceRouter,
   qrGenerator: qrGeneratorRouter,
   emailOptimizer: emailOptimizerRouter,
+  blogImport: blogImportRouter,
   klaviyoFlowOptimizer: klaviyoFlowOptimizerRouter,
   metaAdPush: metaAdPushRouter,
   tantraContentAdPush: tantraContentAdPushRouter,

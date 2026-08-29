@@ -6,7 +6,7 @@ const contentPaths = new Set([
   "/competitive-intelligence", "/keyword-strategy", "/ch-pages", "/qr-generator",
   "/backlink-outreach", "/video-to-blog", "/blog-to-youtube", "/review-queue",
   "/ask-urban-monk", "/presence-assessment", "/syndication", "/va", "/ads",
-  "/lead-scrubber", "/email-optimizer", "/klaviyo-flow-optimizer", "/kids-research",
+  "/lead-scrubber", "/email-optimizer", "/blog-importer", "/klaviyo-flow-optimizer", "/kids-research",
   "/kids-review", "/collective-sourcing", "/soro-intelligence", "/plain-text-email",
   "/va-tasks", "/kajabi-live", "/advertorial-builder", "/webinar", "/webinar-intelligence",
   "/viral-studio", "/video-variants", "/video-production", "/ebook-generator",

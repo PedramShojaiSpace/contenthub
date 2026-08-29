@@ -53,6 +53,7 @@ import { registerUnbounceKlaviyoLeadBridge } from "../unbounceKlaviyoLeadBridge"
 import { registerUnbounceNativeInterconnectedWebhook } from "../unbounceNativeInterconnectedWebhook";
 import { createCronOnlyMiddleware } from "../cronOnlyMiddleware";
 import { handleOrobiomeCheckoutStarted, handleOrobiomeFunnelEvent } from "../orobiomeFunnelTracking";
+import { getUpstreamFallbackLocation, isUpstreamHostname } from "../upstreamHostRedirect";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -2147,6 +2148,14 @@ async function startServer() {
       console.error("[weekly-deep-dive] Error:", err);
       res.status(500).json({ error: err?.message, stack: err?.stack, timestamp: new Date().toISOString() });
     }
+  });
+
+  // Temporary live-traffic protection: upstream.theurbanmonk.com has an owner-
+  // approved permanent redirect to the verified public Upstream landing page.
+  // Scope this to the exact host root only; all Content Hub paths remain unchanged.
+  app.get("/", (req, res, next) => {
+    if (!isUpstreamHostname(req.get("host"))) return next();
+    return res.redirect(301, getUpstreamFallbackLocation(req.originalUrl));
   });
 
   // development mode uses Vite, production mode uses static files

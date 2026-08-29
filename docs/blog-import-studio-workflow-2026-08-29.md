@@ -2,13 +2,13 @@
 
 ## Team Access
 
-Use the direct working route:
-
-`https://content.theurbanmonk.com/blog-importer`
-
-The same tool is also registered for the Content Hub at:
+Use the verified canonical team route:
 
 `https://content.theurbanmonk.com/hub/content/blog-importer`
+
+The shorter direct path is also registered and normalizes to the canonical Content Hub URL:
+
+`https://content.theurbanmonk.com/blog-importer`
 
 ## Review-First Article Workflow
 
@@ -27,4 +27,4 @@ The CTA comes from the existing approved Urban Monk CTA library and receives the
 
 ## Validation
 
-The rebuilt Studio renders successfully at the direct route in the active preview. Focused Blog Import, Hub routing, and WordPress safeguard tests passed **26/26**. The complete staged production build passed for public, Hub core, Hub content, Hub growth, Hub analytics, and server bundles.
+The rebuilt Studio renders successfully in the active preview and at the canonical live Content Hub route after the `content` custom-domain mapping was reconnected. The live custom domain now serves a new main asset that includes the Blog Import route, rather than the older stale asset that caused the loading loop. Focused Blog Import, Hub routing, and WordPress safeguard tests passed **26/26**. The complete staged production build passed for public, Hub core, Hub content, Hub growth, Hub analytics, and server bundles.

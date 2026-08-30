@@ -34,4 +34,10 @@ describe("Signal Lab aggregate-result safeguards", () => {
     expect(source).not.toContain("fetch(");
     expect(source).not.toContain("launchCampaign");
   });
+
+  it("registers the workspace in the Hub Core bundle used by the custom-domain route", async () => {
+    const hubCoreSource = await readFile(path.resolve(process.cwd(), "client/src/HubCoreApp.tsx"), "utf8");
+    expect(hubCoreSource).toContain('lazy(() => import("./pages/SignalLab"))');
+    expect(hubCoreSource).toContain('<Route path="/signal-lab" component={SignalLab} />');
+  });
 });

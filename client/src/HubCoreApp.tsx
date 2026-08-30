@@ -28,6 +28,7 @@ const ManyChatWizard = lazy(() => import("./pages/ManyChatWizard"));
 const BookLibrary = lazy(() => import("./pages/BookLibrary"));
 const RedditIntelligence = lazy(() => import("./pages/RedditIntelligence"));
 const InterconnectedEmailRevenue = lazy(() => import("./pages/InterconnectedEmailRevenue"));
+const SignalLab = lazy(() => import("./pages/SignalLab"));
 
 export default function HubCoreApp() {
   return <HubShell>
@@ -56,6 +57,7 @@ export default function HubCoreApp() {
     <Route path="/book-library" component={BookLibrary} />
     <Route path="/reddit-intelligence" component={RedditIntelligence} />
     <Route path="/interconnected-email-revenue" component={InterconnectedEmailRevenue} />
+    <Route path="/signal-lab" component={SignalLab} />
     <Route component={HubCrossBundleRedirect} />
   </HubShell>;
 }

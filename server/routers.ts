@@ -134,6 +134,7 @@ import { metaAdPushRouter } from "./metaAdPushRouter";
 import { tantraContentAdPushRouter } from "./tantraContentAdPushRouter";
 import { metaCustomAudienceRouter } from "./metaCustomAudienceRouter";
 import { apolloManualAudienceExportRouter } from "./apolloManualAudienceExport";
+import { signalLabRouter } from "./signalLabRouter";
 import { kidsResearchRouter } from "./kidsResearchRouter";
 import { collectiveRouter } from "./collectiveRouter";
 import { soroRouter } from "./soroRouter";
@@ -544,6 +545,7 @@ export const appRouter = router({
   tantraContentAdPush: tantraContentAdPushRouter,
   metaCustomAudience: metaCustomAudienceRouter,
   apolloManualAudienceExport: apolloManualAudienceExportRouter,
+  signalLab: signalLabRouter,
   kidsResearch: kidsResearchRouter,
   plainTextEmail: plainTextEmailRouter,
   intentIdeas: intentIdeasRouter,

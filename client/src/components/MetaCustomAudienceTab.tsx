@@ -22,6 +22,8 @@ import {
   ChevronUp,
   ExternalLink,
   Info,
+  Download,
+  ShieldCheck,
 } from "lucide-react";
 
 const CATEGORIES = [
@@ -49,6 +51,20 @@ export function MetaCustomAudienceTab() {
 
   const { data: audiences = [], refetch, isLoading } = trpc.metaCustomAudience.listAudiences.useQuery();
   const { data: stats = [], refetch: refetchStats } = trpc.metaCustomAudience.getAudienceStats.useQuery();
+
+  const downloadInitialCsvMutation = trpc.apolloManualAudienceExport.downloadApprovedInitialCsv.useMutation({
+    onSuccess: (data) => {
+      const blob = new Blob([data.csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = data.filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${data.audienceName} CSV downloaded (${data.verifiedExclusiveEmails.toLocaleString()} verified emails).`);
+    },
+    onError: (error) => toast.error(`Secure CSV preparation failed: ${error.message}`),
+  });
 
   const createMutation = trpc.metaCustomAudience.createAudience.useMutation({
     onSuccess: (d) => {
@@ -111,6 +127,32 @@ export function MetaCustomAudienceTab() {
           <Button size="sm" onClick={() => setShowCreate(!showCreate)} className="gap-1 bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="w-3.5 h-3.5" /> New Audience
           </Button>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-emerald-950">Owner-approved manual Meta upload — step 1 of 9</p>
+            <p className="mt-1 text-xs leading-5 text-emerald-900">
+              Download only the approved Medical Doctors CSV for the current manual Customer List upload. The file contains one
+              <code className="mx-1 rounded bg-emerald-100 px-1 py-0.5 text-[11px]">email</code>
+              column and exactly 989 exclusive, normalized, verified business emails. This download does not contact Meta or create an ad.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <Button
+                size="sm"
+                onClick={() => downloadInitialCsvMutation.mutate()}
+                disabled={downloadInitialCsvMutation.isPending}
+                className="gap-1.5 bg-emerald-700 text-white hover:bg-emerald-800"
+              >
+                <Download className="h-3.5 w-3.5" />
+                {downloadInitialCsvMutation.isPending ? "Preparing protected CSV…" : "Download Medical Doctors CSV"}
+              </Button>
+              <span className="text-xs text-emerald-800">Next: upload it manually in the separate Meta Audience Manager tab.</span>
+            </div>
+          </div>
         </div>
       </div>
 

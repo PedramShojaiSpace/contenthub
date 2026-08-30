@@ -133,6 +133,7 @@ import { plainTextEmailRouter } from "./plainTextEmailRouter";
 import { metaAdPushRouter } from "./metaAdPushRouter";
 import { tantraContentAdPushRouter } from "./tantraContentAdPushRouter";
 import { metaCustomAudienceRouter } from "./metaCustomAudienceRouter";
+import { apolloManualAudienceExportRouter } from "./apolloManualAudienceExport";
 import { kidsResearchRouter } from "./kidsResearchRouter";
 import { collectiveRouter } from "./collectiveRouter";
 import { soroRouter } from "./soroRouter";
@@ -542,6 +543,7 @@ export const appRouter = router({
   metaAdPush: metaAdPushRouter,
   tantraContentAdPush: tantraContentAdPushRouter,
   metaCustomAudience: metaCustomAudienceRouter,
+  apolloManualAudienceExport: apolloManualAudienceExportRouter,
   kidsResearch: kidsResearchRouter,
   plainTextEmail: plainTextEmailRouter,
   intentIdeas: intentIdeasRouter,

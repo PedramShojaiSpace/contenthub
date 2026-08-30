@@ -125,6 +125,16 @@ After Meta approves the relevant feature/permissions, rerun the existing non-mut
 
 The daily synchronization is deterministic and should run as a deployed, authenticated scheduled request rather than an in-process timer. It must be configured only after an approved build is deployed, with a durable task identifier, error handling, retry-safe idempotency, and a manual pause control.[5]
 
+## Current manual-upload blocker: Meta business ad-account limit
+
+During the approved Medical Doctors Customer List setup, Meta confirmed that ad account `10207858653523297` is **Pedram Shojai Ad Account** and would be added to **Urban Monk Productions, Inc.** The dialog then disabled the action with: “You’ve reached the maximum number of ad accounts you can create at this time.” It showed the business already has 11 ad accounts. No account was added, transferred, removed, or modified, and the downloaded 989-contact CSV was not uploaded.
+
+Meta’s own guidance says a business portfolio’s permitted number of ad accounts is visible in **Meta Business Suite → Settings → Business info → Ad account creation limit**. It further explains that a closed ad account still counts against the business portfolio’s limit, and that Meta generally adjusts the limit based on confirmed payment, historical spending, and use of existing accounts. It directs advertisers to **Business Support Home** for feature/limit status and support.[6] [7] [8]
+
+The lowest-risk next step is therefore an owner-led **Business Support Home** request that asks Meta to review the ad-account limit so the existing Pedram Shojai account can be added to Urban Monk Productions, Inc. The request should state that the account is already active, that the purpose is to use Customer List Custom Audiences for the owner’s own authorized business, and that no additional ad account is being requested. It must not claim that the request will create an ad account or promise an outcome Meta has not stated.
+
+Do not remove, close, transfer, or reassign any of the 11 existing accounts merely to bypass the limit. If Meta support asks which account should be added, identify only `10207858653523297` / Pedram Shojai Ad Account. After Meta confirms the assignment is allowed, return to the Customer List flow, verify the destination business, and create the first approved audience before considering the remaining eight cohorts.
+
 ## References
 
 [1]: https://www.facebook.com/business/help/170456843145568 "Meta Business Help Center — Create a Customer List Custom Audience"
@@ -132,3 +142,6 @@ The daily synchronization is deterministic and should run as a deployed, authent
 [3]: https://www.facebook.com/business/help/2082575038703844 "Meta Business Help Center — Customer List Formatting Guidelines for Custom Audiences"
 [4]: https://developers.facebook.com/documentation/ads-commerce/marketing-api/get-started/authorization "Meta for Developers — Marketing API Authorization"
 [5]: https://developers.facebook.com/documentation/ads-commerce/marketing-api/audiences/guides/custom-audiences "Meta for Developers — Customer File Custom Audiences"
+[6]: https://www.facebook.com/business/help/1253008271714847 "Meta Business Help Center — Find a business portfolio’s ad-account creation limit"
+[7]: https://www.facebook.com/business/help/1026272311098874 "Meta Business Help Center — Ad account limits"
+[8]: https://www.facebook.com/business/help/443041549525801 "Meta Business Help Center — Troubleshoot business portfolio ad-account limit issues"

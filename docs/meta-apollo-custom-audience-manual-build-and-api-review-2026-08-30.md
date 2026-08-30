@@ -23,7 +23,7 @@ The counts below were re-queried from the current database on 2026-08-30 without
 | 5 | `UM Apollo — Nurses & NPs` | `nurse` | 724 | `email` | Apollo-sourced partner/data-provider business contacts |
 | 6 | `UM Apollo — Longevity Professionals` | `biohacker` | 921 | `email` | Apollo-sourced partner/data-provider business contacts |
 | 7 | `UM Apollo — Wellness Coaches` | `wellness_coach` | 482 | `email` | Apollo-sourced partner/data-provider business contacts |
-| 8 | `UM Apollo — Stress & Burnout Coaches` | `burnout` | 490 | `email` | Apollo-sourced partner/data-provider business contacts |
+| 8 | `UM Apollo — Resilience & Workplace Wellbeing Professionals` | `burnout` | 490 | `email` | Apollo-sourced partner/data-provider business contacts |
 | 9 | `UM Apollo — Meditation & Yoga Professionals` | `meditation_teacher` | 424 | `email` | Apollo-sourced partner/data-provider business contacts |
 |  | **Total** |  | **5,880** |  |  |
 

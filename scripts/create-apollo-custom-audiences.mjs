@@ -13,7 +13,7 @@ const cohorts = [
   { category: "nurse", name: "UM Apollo — Nurses & NPs" },
   { category: "biohacker", name: "UM Apollo — Longevity Professionals" },
   { category: "wellness_coach", name: "UM Apollo — Wellness Coaches" },
-  { category: "burnout", name: "UM Apollo — Stress & Burnout Coaches" },
+  { category: "burnout", name: "UM Apollo — Resilience & Workplace Wellbeing Professionals" },
   { category: "meditation_teacher", name: "UM Apollo — Meditation & Yoga Professionals" },
 ];
 
@@ -106,8 +106,8 @@ async function createOrRetrieveAudience(cohort) {
   const created = await graphPost(`act_${accountId}/customaudiences`, {
     name: cohort.name,
     subtype: "CUSTOM",
-    description: "Verified, deduplicated Apollo business-email cohort. Daily category-specific sync only; no fallback audience.",
-    customer_file_source: "USER_PROVIDED_ONLY",
+    description: "Verified, deduplicated Apollo business-email professional-role cohort. Daily category-specific sync only; no fallback audience.",
+    customer_file_source: "PARTNER_PROVIDED_ONLY",
   });
 
   if (!created?.id) {
@@ -119,7 +119,7 @@ async function createOrRetrieveAudience(cohort) {
     [
       created.id,
       cohort.name,
-      "Verified, deduplicated Apollo business-email cohort. Daily category-specific sync only; no fallback audience.",
+      "Verified, deduplicated Apollo business-email professional-role cohort. Daily category-specific sync only; no fallback audience.",
       cohort.category,
     ],
   );

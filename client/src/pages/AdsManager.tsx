@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MetaAdPushTab } from "@/components/MetaAdPushTab";
 import { MetaCustomAudienceTab } from "@/components/MetaCustomAudienceTab";
+import { SignalLabWorkspace } from "@/components/SignalLabWorkspace";
 import { TantraContentAdWorkspace } from "@/components/TantraContentAdWorkspace";
 import {
   AlertTriangle,
@@ -210,6 +211,10 @@ export default function AdsManager() {
           <TabsTrigger value="hooktesting" className="gap-1.5">
             <Zap className="w-3.5 h-3.5" />
             Hook Testing
+          </TabsTrigger>
+          <TabsTrigger value="signallab" className="gap-1.5">
+            <FlaskConical className="w-3.5 h-3.5" />
+            Signal Lab
           </TabsTrigger>
           <TabsTrigger value="optimizer" className="gap-1.5">
             <BarChart2 className="w-3.5 h-3.5" />
@@ -519,6 +524,10 @@ export default function AdsManager() {
         {/* ── Hook Testing Tab ──────────────────────────────────────────────────────── */}
         <TabsContent value="hooktesting" className="space-y-4 mt-4">
           <HookTestingTab />
+        </TabsContent>
+
+        <TabsContent value="signallab" className="space-y-4 mt-4">
+          <SignalLabWorkspace />
         </TabsContent>
 
                 {/* ── Optimizer Tab (Phase 3) ────────────────────────────────────────────── */}

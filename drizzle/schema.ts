@@ -2444,6 +2444,112 @@ export const hookAbTests = mysqlTable("hook_ab_tests", {
 export type HookAbTest = typeof hookAbTests.$inferSelect;
 export type InsertHookAbTest = typeof hookAbTests.$inferInsert;
 
+// ─── Signal Lab — review-only message/creative test planning ─────────────────
+// These records deliberately store aggregate performance and human approval
+// decisions only. They do not store audience rows, customer identifiers, health
+// data, or credentials, and no router using these tables calls Meta write APIs.
+export const signalTestStatusEnum = mysqlEnum("signal_test_status", [
+  "draft",
+  "pending_policy_review",
+  "ready_for_owner_review",
+  "owner_approved_for_manual_setup",
+  "needs_revision",
+  "archived",
+]);
+
+export const signalPolicyStatusEnum = mysqlEnum("signal_policy_status", [
+  "not_started",
+  "needs_revision",
+  "reviewed",
+]);
+
+export const signalDataCoverageEnum = mysqlEnum("signal_data_coverage", [
+  "not_connected",
+  "partial",
+  "complete",
+]);
+
+export const signalDecisionEnum = mysqlEnum("signal_decision", [
+  "hold",
+  "refine",
+  "prepare_manual_test",
+  "not_selected",
+]);
+
+export const signalTests = mysqlTable("signal_tests", {
+  id: int("id").primaryKey().autoincrement(),
+  title: varchar("title", { length: 255 }).notNull(),
+  offer: varchar("offer", { length: 128 }).notNull(),
+  destinationUrl: varchar("destination_url", { length: 512 }).notNull(),
+  audienceDescription: text("audience_description").notNull(),
+  objective: varchar("objective", { length: 128 }).notNull(),
+  primaryMetric: varchar("primary_metric", { length: 128 }).notNull(),
+  fixedVariables: text("fixed_variables").notNull(), // JSON string array
+  maxTestSpendCents: int("max_test_spend_cents"),
+  status: signalTestStatusEnum.notNull().default("draft"),
+  policyStatus: signalPolicyStatusEnum.notNull().default("not_started"),
+  ownerApprovalNote: text("owner_approval_note"),
+  ownerApprovedBy: varchar("owner_approved_by", { length: 255 }),
+  ownerApprovedAt: timestamp("owner_approved_at"),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type SignalTest = typeof signalTests.$inferSelect;
+
+export const signalMessageClusters = mysqlTable("signal_message_clusters", {
+  id: int("id").primaryKey().autoincrement(),
+  testId: int("test_id").notNull(),
+  label: varchar("label", { length: 128 }).notNull(),
+  hypothesis: text("hypothesis").notNull(),
+  headline: varchar("headline", { length: 255 }).notNull(),
+  primaryText: text("primary_text").notNull(),
+  description: text("description"),
+  cta: varchar("cta", { length: 128 }).notNull(),
+  creativeReference: varchar("creative_reference", { length: 512 }),
+  policyStatus: signalPolicyStatusEnum.notNull().default("not_started"),
+  policyReviewer: varchar("policy_reviewer", { length: 255 }),
+  policyReviewedAt: timestamp("policy_reviewed_at"),
+  policyNotes: text("policy_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type SignalMessageCluster = typeof signalMessageClusters.$inferSelect;
+
+export const signalAggregateResults = mysqlTable("signal_aggregate_results", {
+  id: int("id").primaryKey().autoincrement(),
+  clusterId: int("cluster_id").notNull(),
+  resultDate: date("result_date").notNull(),
+  metaCampaignId: varchar("meta_campaign_id", { length: 64 }),
+  metaAdSetId: varchar("meta_adset_id", { length: 64 }),
+  metaAdId: varchar("meta_ad_id", { length: 64 }),
+  dataCoverage: signalDataCoverageEnum.notNull().default("not_connected"),
+  impressions: int("impressions").notNull().default(0),
+  outboundClicks: int("outbound_clicks").notNull().default(0),
+  landingPageViews: int("landing_page_views").notNull().default(0),
+  leads: int("leads").notNull().default(0),
+  qualifiedLeads: int("qualified_leads").notNull().default(0),
+  checkouts: int("checkouts").notNull().default(0),
+  purchases: int("purchases").notNull().default(0),
+  spendCents: int("spend_cents").notNull().default(0),
+  revenueCents: int("revenue_cents").notNull().default(0),
+  sourceNote: text("source_note"),
+  recordedBy: varchar("recorded_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type SignalAggregateResult = typeof signalAggregateResults.$inferSelect;
+
+export const signalDecisionLogs = mysqlTable("signal_decision_logs", {
+  id: int("id").primaryKey().autoincrement(),
+  testId: int("test_id").notNull(),
+  decision: signalDecisionEnum.notNull(),
+  rationale: text("rationale").notNull(),
+  nextStep: text("next_step").notNull(),
+  decidedBy: varchar("decided_by", { length: 255 }).notNull(),
+  decidedAt: timestamp("decided_at").defaultNow().notNull(),
+});
+export type SignalDecisionLog = typeof signalDecisionLogs.$inferSelect;
+
 
 // ─── Lead Scrubber — 3-Tier Cold Lead Prospecting ───────────────────────────
 

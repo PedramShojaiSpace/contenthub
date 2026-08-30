@@ -119,6 +119,7 @@ const Reconciliation = lazy(() => import("./pages/Reconciliation"));
 const InterconnectedCommandCenter = lazy(() => import("./pages/InterconnectedCommandCenter"));
 const InterconnectedEmailRevenue = lazy(() => import("./pages/InterconnectedEmailRevenue"));
 const OrobiomeFunnelDashboard = lazy(() => import("./pages/OrobiomeFunnelDashboard"));
+const ApolloManualAudienceUpload = lazy(() => import("./pages/ApolloManualAudienceUpload"));
 
 // Simple full-screen loading fallback
 function PageLoader() {
@@ -182,6 +183,7 @@ function Router() {
         <Route path={"/syndication"} component={SyndicationQueue} />
         <Route path={"/va"} component={VADashboard} />
         <Route path={"/ads"} component={AdsManager} />
+        <Route path={"/apollo-manual-audiences"} component={ApolloManualAudienceUpload} />
         <Route path={"/lead-scrubber"} component={LeadScrubber} />
         <Route path={"/email-optimizer"} component={EmailOptimizer} />
         <Route path={"/blog-importer"} component={BlogImportStudio} />

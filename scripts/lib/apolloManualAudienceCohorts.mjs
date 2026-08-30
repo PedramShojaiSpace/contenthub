@@ -13,7 +13,7 @@ export const manualAudienceCohorts = [
   { category: "nurse", name: "UM Apollo — Nurses & NPs", expectedCount: 724 },
   { category: "biohacker", name: "UM Apollo — Longevity Professionals", expectedCount: 921 },
   { category: "wellness_coach", name: "UM Apollo — Wellness Coaches", expectedCount: 482 },
-  { category: "burnout", name: "UM Apollo — Stress & Burnout Coaches", expectedCount: 490 },
+  { category: "burnout", name: "UM Apollo — Resilience & Workplace Wellbeing Professionals", expectedCount: 490 },
   { category: "meditation_teacher", name: "UM Apollo — Meditation & Yoga Professionals", expectedCount: 424 },
 ];
 

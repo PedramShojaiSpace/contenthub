@@ -21,7 +21,7 @@ describe("Apollo manual Custom Audience cohort definitions", () => {
       "UM Apollo — Nurses & NPs",
       "UM Apollo — Longevity Professionals",
       "UM Apollo — Wellness Coaches",
-      "UM Apollo — Stress & Burnout Coaches",
+      "UM Apollo — Resilience & Workplace Wellbeing Professionals",
       "UM Apollo — Meditation & Yoga Professionals",
     ]);
   });

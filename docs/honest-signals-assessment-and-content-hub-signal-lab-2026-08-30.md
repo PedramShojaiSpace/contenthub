@@ -134,6 +134,10 @@ The current Ads Manager already contains a Hook Testing area that can generate c
 
 The first implementation should be entirely review-only and use aggregate data. The second increment could import approved Meta Insights rows and first-party conversion summaries. Only after a successful manual pilot should Urban Monk consider a vendor integration or any automated suggestion. Campaign creation, budget changes, audience updates, and activation must remain separated by explicit owner confirmation.
 
+## Deployment note — 2026-08-30
+
+The Signal Lab is registered in the Hub Core bundle at `/hub/signal-lab`, and the complete staged build passed. Post-deployment asset inspection initially confirmed that `content.theurbanmonk.com` was still serving prior asset `/assets/index-C6iie1ZU.js`, which did not contain the Signal Lab code, while the freshly built Hub Core output did. The blank Hub loading state was therefore a **custom-domain deployment-asset mismatch**, not a Signal Lab data, authorization, Meta, or vendor-integration error. With owner approval, only the `content.theurbanmonk.com` project-domain mapping was refreshed; no DNS record, traffic destination, or other hostname changed. Browser verification then confirmed the live route renders the review-only Signal Lab and resolves its empty state as “No brief yet.”
+
 ## Decision needed
 
 Choose one of the following next steps:

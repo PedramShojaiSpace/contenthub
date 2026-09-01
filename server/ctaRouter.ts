@@ -294,6 +294,20 @@ export async function getCtaForTopic(topic: string): Promise<{
   };
 }
 
+export async function getActiveCtaById(id: number): Promise<{
+  id: number;
+  label: string;
+  ctaText: string;
+  url: string | null;
+}> {
+  const db = await getDb();
+  if (!db) throw new Error("CTA library is unavailable. Please try again.");
+  await seedCtaBlocks();
+  const [cta] = await db.select().from(ctaBlocks).where(eq(ctaBlocks.id, id)).limit(1);
+  if (!cta || !cta.active) throw new Error("Choose an active CTA from the approved CTA library.");
+  return { id: cta.id, label: cta.label, ctaText: cta.ctaText, url: cta.url ?? null };
+}
+
 /**
  * Returns the canonical UTM params for a given platform.
  * Used by the frontend to preview what UTM will be injected into generated content.

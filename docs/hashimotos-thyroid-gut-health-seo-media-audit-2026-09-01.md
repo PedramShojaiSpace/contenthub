@@ -42,6 +42,28 @@ The private Yoast fields `_yoast_wpseo_linkdex` and `_yoast_wpseo_content_score`
 
 The Blog Import Studio’s review-only image workflow now sends the reviewed article title, focus keyword, and bounded opening excerpt into the generation brief. Its prompt explicitly requires a visual expression of the article’s named relationship or mechanism and rejects generic wellness/spa/meditation/supplement/nature stock imagery. Image candidates remain text-free, editorial, and separate from WordPress until a separate owner-approved upload/assignment action.
 
-## Reference
+## Deeper public SEO readiness audit
+
+| Area | Verified state | Assessment |
+|---|---|---|
+| HTTP, crawlability, and sitemap | The public URL returns HTTP 200, has `index, follow`, and is present in the public post sitemap. `robots.txt` is reachable and permits crawling. | Healthy. |
+| Canonical and social image | The public page now exposes the correct self-canonical URL plus the new 16:9 featured image in Open Graph, Twitter, and Yoast image/schema output. | Healthy. |
+| Article structure | The article body contains 1,021 words, one H1, and eight H2 sections. | Solid scannable article structure. |
+| Focus keyphrase signal | The WordPress focus keyphrase is saved, but its exact full phrase does not appear verbatim in the body. | Not a technical failure; its constituent concepts occur naturally. A forced exact-match rewrite is not recommended without an editorial review. |
+| Contextual links | The article body has no same-domain contextual link and one external CTA link to the verified Upstream subdomain. | A genuine internal-linking opportunity, but it needs relevance-led editorial selection—not a generic score-chasing link. |
+| Yoast score fields | `_yoast_wpseo_linkdex` and `_yoast_wpseo_content_score` remain unavailable/empty through the authenticated REST metadata response. | The numeric editor score cannot be verified from the current API; a WordPress-editor review is required to calculate or inspect it. |
+| Metadata emitters | The public source contains both a Yoast SEO block and a SmartCrawl SEO block. It emits 3 meta descriptions, 2 canonicals, 2 Open Graph titles, and 2 Open Graph descriptions. The values conflict. | **Priority defect.** Search and social crawlers receive duplicate/conflicting instructions. |
+
+The duplicate output is caused by two active SEO emitters, not by the repaired article itself. SmartCrawl’s documented per-post fields include `_wds_title`, `_wds_metadesc`, `_wds_canonical`, `_wds_opengraph`, and `_wds_twitter`; none is currently registered in this site’s REST post-metadata schema. That means the Content Hub cannot safely harmonize SmartCrawl’s output through the existing WordPress REST workflow. A site administrator must choose one of the following controlled remedies:
+
+1. **Preferred:** Disable SmartCrawl’s Titles & Meta/Social output modules while retaining Yoast as the single authoritative metadata/schema source, after a sitewide backup and smoke test.
+2. **Alternative:** Keep SmartCrawl active but configure it at the WordPress-admin level to avoid emitting conflicting post title, description, canonical, Open Graph, Twitter, and schema output.
+
+Neither option has been applied. Both affect sitewide SEO output and require explicit owner approval plus authenticated WordPress-admin access.
+
+## References
 
 [1]: https://theurbanmonk.com/wp-json/wp/v2/posts?slug=hashimotos-thyroid-and-gut-health&_fields=id,link,slug,title,featured_media,yoast_head_json,meta,date,modified "Public WordPress REST post record inspected September 1, 2026"
+[2]: https://theurbanmonk.com/hashimotos-thyroid-and-gut-health/ "Live post and public metadata inspected September 1, 2026"
+[3]: https://wpmudev.com/docs/wpmu-dev-plugins/smartcrawl/ "SmartCrawl SEO Plugin Usage Documentation"
+[4]: https://gist.github.com/wpmudev-sls/02a03fb6ef57b7a09c0fac7ddcbde393 "WPMU DEV SmartCrawl post-meta import example"

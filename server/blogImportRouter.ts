@@ -7,9 +7,10 @@ import { createWpPost } from "./wordpress";
 import { markdownToWpHtml } from "./wpContentUtils";
 
 const MAX_ARTICLE_LENGTH = 80_000;
+export const MAX_IMPORTED_BLOG_TITLE_LENGTH = 96;
 
 const refinementSchema = z.object({
-  title: z.string().min(1).max(96),
+  title: z.string().min(1).max(300),
   slug: z.string().min(1).max(120),
   focusKeyword: z.string().min(1).max(120),
   metaDescription: z.string().min(1).max(180),
@@ -19,7 +20,7 @@ const refinementSchema = z.object({
 });
 
 const refineInput = z.object({
-  sourceTitle: z.string().max(180).optional(),
+  sourceTitle: z.string().max(500).optional(),
   sourceLabel: z.string().max(180).optional(),
   focusKeyword: z.string().max(120).optional(),
   article: z.string().min(300).max(MAX_ARTICLE_LENGTH),
@@ -36,6 +37,17 @@ const wordpressInput = z.object({
 
 export function toBlogImportSlug(value: string) {
   return value.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 96) || "urban-monk-import";
+}
+
+export function toBlogImportTitle(value: string) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) return "Urban Monk Article";
+  if (normalized.length <= MAX_IMPORTED_BLOG_TITLE_LENGTH) return normalized;
+
+  const candidate = normalized.slice(0, MAX_IMPORTED_BLOG_TITLE_LENGTH - 1).trimEnd();
+  const finalWordBoundary = candidate.lastIndexOf(" ");
+  const readable = finalWordBoundary >= 48 ? candidate.slice(0, finalWordBoundary).trimEnd() : candidate;
+  return `${readable}…`;
 }
 
 export function wordpressStatusForImportedBlog(confirmLivePublish: boolean): "draft" | "publish" {
@@ -76,7 +88,7 @@ export const blogImportRouter = router({
       messages: [
         {
           role: "system",
-          content: "You are The Urban Monk editorial desk. Refine a full imported article for clear, science-informed health education, readability, SEO, and AEO. Preserve the author’s core argument, quotes, citations, reference list, and uncertainty. Never invent studies, citations, testimonials, patient stories, results, product claims, or medical guarantees. Do not diagnose, prescribe, or promise treatment outcomes. Soften unsupported health claims and list them in reviewNotes. Use H2 headings and concise paragraphs. Do not include an H1 title, any CTA, sales copy, or external links. Return only the required JSON.",
+          content: "You are The Urban Monk editorial desk. Refine a full imported article for clear, science-informed health education, readability, SEO, and AEO. Preserve the author’s core argument, quotes, citations, reference list, and uncertainty. Never invent studies, citations, testimonials, patient stories, results, product claims, or medical guarantees. Do not diagnose, prescribe, or promise treatment outcomes. Soften unsupported health claims and list them in reviewNotes. Use H2 headings and concise paragraphs. Do not include an H1 title, any CTA, sales copy, or external links. Return only the required JSON. The SEO title must be 96 characters or fewer.",
         },
         {
           role: "user",
@@ -105,10 +117,21 @@ export const blogImportRouter = router({
     let result: unknown;
     try { result = JSON.parse(raw); } catch { throw new Error("The article editor returned an invalid review package. Please try again."); }
     const refined = refinementSchema.parse(result);
-    const slug = toBlogImportSlug(refined.slug || refined.title);
+    const generatedTitle = refined.title;
+    const title = toBlogImportTitle(generatedTitle);
+    const slug = toBlogImportSlug(refined.slug || title);
     const ctaUrl = appendUtmToCtaUrl(cta.url, "blog", slug, "imported-article");
     const articleMarkdown = `${refined.articleMarkdown.trim()}\n\n## Continue the Conversation\n\n${cta.ctaText}\n\n[Explore ${cta.label}](${ctaUrl})`;
-    return { ...refined, slug, metaDescription: refined.metaDescription.slice(0, 160), articleMarkdown, ctaLabel: cta.label, ctaUrl };
+    return {
+      ...refined,
+      title,
+      titleWasShortened: title !== generatedTitle.trim(),
+      slug,
+      metaDescription: refined.metaDescription.slice(0, 160),
+      articleMarkdown,
+      ctaLabel: cta.label,
+      ctaUrl,
+    };
   }),
 
   createWordPressDraft: protectedProcedure.input(wordpressInput).mutation(async ({ input }) => createWordPressPost(input, false)),

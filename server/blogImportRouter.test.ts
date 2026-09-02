@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildBlogFeaturedImageAltText, buildBlogFeaturedImagePrompt, MAX_IMPORTED_BLOG_TITLE_LENGTH, toBlogImportSlug, toBlogImportTitle, wordpressStatusForImportedBlog } from "./blogImportRouter";
+import { buildBlogFeaturedImageAltText, buildBlogFeaturedImagePrompt, countBlogImportWords, MAX_IMPORTED_BLOG_TITLE_LENGTH, meetsImportedLongFormStandard, MIN_IMPORTED_LONG_FORM_WORDS, toBlogImportSlug, toBlogImportTitle, wordpressStatusForImportedBlog } from "./blogImportRouter";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -88,5 +88,23 @@ describe("Blog Import Studio safeguards", () => {
     expect(repairHelper).not.toContain("content:");
     expect(repairHelper).not.toContain("status:");
     expect(repairHelper).not.toContain("yoast_meta");
+  });
+
+  it("requires substantive long-form content rather than accepting a short imported-vlog recap", async () => {
+    const shortRecap = "A thoughtful idea ".repeat(80);
+    const longFormArticle = "A developed paragraph with concrete explanation and context. ".repeat(220);
+    const pagePath = path.resolve(process.cwd(), "client/src/pages/BlogImportStudio.tsx");
+    const routerPath = path.resolve(process.cwd(), "server/blogImportRouter.ts");
+    const [page, router] = await Promise.all([readFile(pagePath, "utf8"), readFile(routerPath, "utf8")]);
+
+    expect(countBlogImportWords(shortRecap)).toBeLessThan(MIN_IMPORTED_LONG_FORM_WORDS);
+    expect(meetsImportedLongFormStandard(shortRecap)).toBe(false);
+    expect(meetsImportedLongFormStandard(longFormArticle)).toBe(true);
+    expect(router).toContain("1,400–1,900");
+    expect(router).toContain("do not present it as settled biological science");
+    expect(router).toContain("articleWordCount: countBlogImportWords(refined.articleMarkdown)");
+    expect(page).toContain("Long-form depth check:");
+    expect(page).toContain("The source is expanded; it is not treated as final copy.");
+    expect(page).toContain("long-form checks pass");
   });
 });

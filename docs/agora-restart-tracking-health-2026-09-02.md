@@ -21,8 +21,29 @@ The direct Meta/Kajabi collector and Command Center should not be assumed to hav
 
 The technical ability to read restarted Agora spend, Meta lead/checkout signals, and Kajabi revenue is working. The dashboard refresh demonstrated a current tracked funnel state rather than a dead connector. The next analytical step is to make the dashboard’s exact today-window and ad-set/campaign selection transparent beside its totals, so it can be reconciled directly with repeatable Meta Graph reports. No scale recommendation is appropriate from the first partial restart window alone.
 
+## Owner-confirmed current-day reconciliation — September 2, 2026
+
+The owner’s Kajabi custom-date view showed exactly four paid current-day transactions: three active Interconnected $67 Bundle OTO purchases and one active $199 Gut Permeability and Food Sensitivity Testing w/ Coach purchase. No customer email addresses were retained in this audit.
+
+An explicit **September 2 only** Central-time read at `2026-09-02T17:52:36Z` returned the same four exact-offer Kajabi transactions and **$400.00** in first-party revenue. It did not include September 1. At the same read, Meta returned $258.83 spend, 158 leads, and 12 checkouts for the selected Agora/Interconnected campaign-name scope. The correctly scoped first-party current-day revenue-to-spend ratio was therefore **1.5454x** ($400.00 ÷ $258.83).
+
+| Current-day reconciliation item | Confirmed result |
+|---|---:|
+| Kajabi paid current-day transactions | 4 |
+| Current $67 Interconnected Bundle OTO | 3 / $201.00 |
+| Current $199 OCUS | 1 / $199.00 |
+| Current Kajabi revenue | $400.00 |
+| Meta spend (direct current-day read) | $258.83 |
+| Current-day first-party revenue ÷ Meta spend | 1.5454x |
+
+The earlier two-day figure of six transactions / $666.00 combined September 1 and September 2 by design. It was not a claim that six transactions occurred today. It is now superseded for any **today** reporting by the one-day Central-time reconciliation above.
+
+### Corrective control
+
+The Command Center and its exact-offer Kajabi reader now convert timestamps to the operational `America/Chicago` date before applying `Today`, `Yesterday`, and range boundaries. A focused regression test proves that a September 1 late-evening Central transaction represented after UTC midnight is excluded from the September 2 report, while a late September 2 Central transaction is included. The production build completed successfully.
+
 ## Sources
 
-1. Read-only execution of `scripts/report-agora-restart-health-2026-09-02.mjs` at 2026-09-02T16:23:28Z, using the current Interconnected $67 and $199 Kajabi offer IDs rather than price matching alone.
+1. Read-only execution of `scripts/report-agora-restart-health-2026-09-02.mjs` at 2026-09-02T16:23:28Z and 2026-09-02T17:52:36Z, using the current Interconnected $67 and $199 Kajabi offer IDs rather than price matching alone.
 2. Production Content Hub: `https://content.theurbanmonk.com/hub/analytics/interconnected-command`, owner-triggered read-only refresh on September 2, 2026.
 3. Read-only Shopify Admin MCP product lookup on September 2, 2026.

@@ -11,16 +11,25 @@ import {
 } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+const OPERATIONAL_TIME_ZONE = "America/Chicago";
+
+function centralDate(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: OPERATIONAL_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
 function todayStr() {
-  return new Date().toISOString().split("T")[0];
+  return centralDate();
 }
 function daysAgoStr(n: number) {
-  const d = new Date(); d.setDate(d.getDate() - n);
-  return d.toISOString().split("T")[0];
+  return centralDate(new Date(Date.now() - n * 24 * 60 * 60 * 1000));
 }
 function thisMonthStart() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  return `${centralDate().slice(0, 7)}-01`;
 }
 function fmtDollars(n: number) {
   return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

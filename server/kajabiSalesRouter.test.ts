@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   HISTORICAL_299_OCUS_BENCHMARK,
+  operationalDate,
   summarizeCurrentInterconnectedTransactions,
   type KajabiTransactionRow,
 } from "./kajabiSalesRouter";
@@ -63,5 +64,17 @@ describe("summarizeCurrentInterconnectedTransactions", () => {
       takeRatePct: 25,
       auditReference: "Direct Kajabi historical offer audit — 2026-08-16",
     });
+  });
+
+  it("uses Central-time calendar dates so UTC midnight does not pull yesterday into today", () => {
+    const summary = summarizeCurrentInterconnectedTransactions([
+      transaction("late-central-sept-1", "2151314475", 6700, "2026-09-02T00:30:00.000Z"),
+      transaction("late-central-sept-2", "2151314475", 6700, "2026-09-03T04:30:00.000Z"),
+    ], "2026-09-02", "2026-09-02");
+
+    expect(operationalDate("2026-09-02T00:30:00.000Z")).toBe("2026-09-01");
+    expect(operationalDate("2026-09-03T04:30:00.000Z")).toBe("2026-09-02");
+    expect(summary.totalPurchases).toBe(1);
+    expect(summary.totalRevenueCents).toBe(6700);
   });
 });

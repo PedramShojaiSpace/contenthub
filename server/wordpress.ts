@@ -171,6 +171,39 @@ export interface WpPostResult {
   editLink: string;
 }
 
+export interface WpCategory {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+/** Fetch existing WordPress categories for explicit author selection; never creates or edits taxonomy. */
+export async function fetchWpCategories(): Promise<WpCategory[]> {
+  const { baseUrl, authHeader } = getWpAuth();
+  const categories: WpCategory[] = [];
+  let page = 1;
+
+  while (true) {
+    const res = await wpFetch(
+      `${baseUrl}/wp-json/wp/v2/categories?per_page=100&hide_empty=false&orderby=name&order=asc&page=${page}`,
+      { headers: { Authorization: authHeader } },
+      15_000,
+    );
+    if (!res.ok) {
+      if (res.status === 400) break;
+      throw new Error(`WordPress category lookup failed: ${res.statusText}`);
+    }
+
+    const rows = await safeParseJson<Array<{ id: number; name: string; slug: string }>>(res, "WordPress category lookup");
+    categories.push(...rows.map(row => ({ id: row.id, name: row.name, slug: row.slug })));
+    const totalPages = Number(res.headers.get("X-WP-TotalPages") ?? "1");
+    if (page >= totalPages) break;
+    page += 1;
+  }
+
+  return categories;
+}
+
 /**
  * Build Article JSON-LD schema for E-E-A-T and Google rich results.
  * Follows GhostLink OS B15 AEO requirements.

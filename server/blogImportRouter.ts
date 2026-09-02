@@ -3,9 +3,10 @@ import { invokeLLM } from "./_core/llm";
 import { protectedProcedure, router } from "./_core/trpc";
 import { appendUtmToCtaUrl, getActiveCtaById, getCtaForTopic } from "./ctaRouter";
 import { updateContentItem } from "./db";
-import { createWpPost } from "./wordpress";
+import { createWpPost, fetchWpCategories, uploadMediaFromUrl } from "./wordpress";
 import { markdownToWpHtml } from "./wpContentUtils";
 import { generateImage } from "./_core/imageGeneration";
+import { createSubstackDraft } from "./substackPublisher";
 
 const MAX_ARTICLE_LENGTH = 80_000;
 export const MAX_IMPORTED_BLOG_TITLE_LENGTH = 96;
@@ -41,6 +42,17 @@ const wordpressInput = z.object({
   focusKeyword: z.string().min(1).max(120),
   metaDescription: z.string().min(1).max(180),
   articleMarkdown: z.string().min(300).max(MAX_ARTICLE_LENGTH),
+  categoryId: z.number().int().positive(),
+  featuredImageUrl: z.string().url().max(2_000),
+  featuredImageAltText: z.string().min(8).max(250),
+});
+
+const substackDraftInput = z.object({
+  contentItemId: z.number().int().positive(),
+  title: z.string().min(1).max(180),
+  metaDescription: z.string().max(180).optional(),
+  articleMarkdown: z.string().min(300).max(MAX_ARTICLE_LENGTH),
+  confirmCreateSubstackDraft: z.literal(true),
 });
 
 export function toBlogImportSlug(value: string) {
@@ -97,23 +109,36 @@ export function wordpressStatusForImportedBlog(confirmLivePublish: boolean): "dr
 async function createWordPressPost(input: z.infer<typeof wordpressInput>, confirmLivePublish: boolean) {
   const status = wordpressStatusForImportedBlog(confirmLivePublish);
   const slug = toBlogImportSlug(input.slug);
-  const post = await createWpPost({
-    title: input.title,
-    slug,
-    content: markdownToWpHtml(input.articleMarkdown),
-    excerpt: input.metaDescription,
-    status,
-    metaDescription: input.metaDescription,
-    focusKeyword: input.focusKeyword,
-    seoTitle: input.title,
-    canonicalUrl: `https://theurbanmonk.com/${slug}/`,
-  });
+  const categories = await fetchWpCategories();
+  if (!categories.some(category => category.id === input.categoryId)) {
+    throw new Error("Choose an existing WordPress category before handoff. No category was created or changed.");
+  }
+  const featuredMedia = await uploadMediaFromUrl(input.featuredImageUrl, `${slug}-featured.jpg`, input.featuredImageAltText);
+  let post;
+  try {
+    post = await createWpPost({
+      title: input.title,
+      slug,
+      content: markdownToWpHtml(input.articleMarkdown),
+      excerpt: input.metaDescription,
+      status,
+      featuredMediaId: featuredMedia.id,
+      categories: [input.categoryId],
+      metaDescription: input.metaDescription,
+      focusKeyword: input.focusKeyword,
+      seoTitle: input.title,
+      canonicalUrl: `https://theurbanmonk.com/${slug}/`,
+    });
+  } catch (error) {
+    throw new Error(`The featured image was uploaded, but WordPress did not create the post. The uploaded media can be reused manually. ${error instanceof Error ? error.message : ""}`.trim());
+  }
   await updateContentItem(input.contentItemId, {
     status: status === "publish" ? "published" : "review",
     publishUrl: post.link,
     wpPostId: post.id,
     yoastSeoTitle: input.title,
     yoastMetaDescription: input.metaDescription,
+    imageUrl: input.featuredImageUrl,
   });
   return post;
 }
@@ -187,9 +212,25 @@ export const blogImportRouter = router({
     };
   }),
 
+  listWordPressCategories: protectedProcedure.query(async () => fetchWpCategories()),
+
   createWordPressDraft: protectedProcedure.input(wordpressInput).mutation(async ({ input }) => createWordPressPost(input, false)),
 
   publishWordPressLive: protectedProcedure
     .input(wordpressInput.extend({ confirmLivePublish: z.literal(true) }))
     .mutation(async ({ input }) => createWordPressPost(input, input.confirmLivePublish)),
+
+  createSubstackDraft: protectedProcedure.input(substackDraftInput).mutation(async ({ input }) => {
+    const draft = await createSubstackDraft({
+      title: input.title,
+      subtitle: input.metaDescription,
+      bodyHtml: markdownToWpHtml(input.articleMarkdown),
+      sendEmail: false,
+    });
+    await updateContentItem(input.contentItemId, {
+      substackPostId: draft.postId,
+      substackPostUrl: draft.draftUrl,
+    });
+    return { ...draft, reviewOnly: true };
+  }),
 });

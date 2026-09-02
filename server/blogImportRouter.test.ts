@@ -37,13 +37,15 @@ describe("Blog Import Studio safeguards", () => {
     expect(buildBlogFeaturedImageAltText("The Gut-Brain Connection", "gut-brain axis")).toBe("Editorial illustration of gut-brain axis for “The Gut-Brain Connection”");
   });
 
-  it("requires an explicit selected CTA in the client refinement flow and keeps the image candidate out of WordPress handoff", async () => {
+  it("requires an explicit selected CTA while reserving category selection for WordPress handoff", async () => {
     const pagePath = path.resolve(process.cwd(), "client/src/pages/BlogImportStudio.tsx");
     const routerPath = path.resolve(process.cwd(), "server/blogImportRouter.ts");
     const [page, router] = await Promise.all([readFile(pagePath, "utf8"), readFile(routerPath, "utf8")]);
     expect(page).toContain("Choose the approved CTA before refining the article.");
+    expect(page).toContain("required for WordPress handoff");
+    expect(page).toContain("Substack drafts do not require a WordPress category.");
     expect(page).toContain("Selected CTA:");
-    expect(page).toContain("Review asset only — not uploaded or linked to a WordPress post.");
+    expect(page).toContain("Create WordPress draft with image + category");
     const imageProcedure = router.slice(router.indexOf("generateFeaturedImage:"), router.indexOf("createWordPressDraft:"));
     expect(imageProcedure).not.toContain("createWpPost");
     expect(imageProcedure).not.toContain("upload");
@@ -55,5 +57,24 @@ describe("Blog Import Studio safeguards", () => {
     expect(page).toContain("articleExcerpt: refined.articleMarkdown.slice(0, 1200)");
     expect(page).toContain("Generate article-specific image");
     expect(page).toContain("not a generic wellness image");
+  });
+
+  it("requires reviewed media and an existing category before WordPress handoff, while the new Substack route remains draft-only", async () => {
+    const pagePath = path.resolve(process.cwd(), "client/src/pages/BlogImportStudio.tsx");
+    const routerPath = path.resolve(process.cwd(), "server/blogImportRouter.ts");
+    const substackPath = path.resolve(process.cwd(), "server/substackPublisher.ts");
+    const [page, router, substack] = await Promise.all([readFile(pagePath, "utf8"), readFile(routerPath, "utf8"), readFile(substackPath, "utf8")]);
+    expect(page).toContain("Generate and review an article-specific featured image before WordPress handoff.");
+    expect(page).toContain("Choose the existing WordPress category before WordPress handoff.");
+    expect(page).toContain("Create Substack draft for review");
+    expect(router).toContain("listWordPressCategories: protectedProcedure.query");
+    expect(router).toContain("featuredMediaId: featuredMedia.id");
+    expect(router).toContain("categories: [input.categoryId]");
+    const draftProcedure = router.slice(router.indexOf("createSubstackDraft: protectedProcedure"));
+    expect(router).toContain("confirmCreateSubstackDraft: z.literal(true)");
+    expect(draftProcedure).not.toContain("publishToSubstack");
+    const draftOnlyHelper = substack.slice(substack.indexOf("export async function createSubstackDraft"), substack.indexOf("export async function publishToSubstack"));
+    expect(draftOnlyHelper).toContain("/api/v1/drafts");
+    expect(draftOnlyHelper).not.toContain("/api/v1/drafts/${draftId}/publish");
   });
 });

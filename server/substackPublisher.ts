@@ -48,6 +48,55 @@ export interface SubstackPostResult {
   postUrl: string;
 }
 
+export interface SubstackDraftResult {
+  postId: string;
+  draftUrl: string;
+}
+
+/**
+ * Create a Substack draft only. This does not publish a post, email subscribers,
+ * share to social platforms, or change an existing publication.
+ */
+export async function createSubstackDraft(
+  input: SubstackPostInput
+): Promise<SubstackDraftResult> {
+  const pubUrl = ENV.substackPublicationUrl;
+  if (!pubUrl) throw new Error("SUBSTACK_PUBLICATION_URL is not set.");
+
+  const pubHost = pubUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const baseUrl = `https://${pubHost}`;
+  const cookie = await getSessionCookie();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    Origin: baseUrl,
+    Referer: `${baseUrl}/publish/post`,
+    Cookie: cookie,
+  };
+  const draftRes = await fetch(`${baseUrl}/api/v1/drafts`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      draft_title: input.title,
+      draft_subtitle: input.subtitle ?? "",
+      draft_body: JSON.stringify(htmlToSubstackDoc(input.bodyHtml)),
+      draft_bylines: [],
+      type: "newsletter",
+      draft_section_id: null,
+      audience: input.audience ?? "everyone",
+    }),
+  });
+  if (draftRes.status === 401 || draftRes.status === 403) {
+    throw new Error(`Substack session expired or invalid (${draftRes.status}). Please refresh SUBSTACK_SESSION_COOKIE in the secrets manager.`);
+  }
+  if (!draftRes.ok) {
+    const body = await draftRes.text();
+    throw new Error(`Substack draft creation failed (${draftRes.status}): ${body}`);
+  }
+  const draft = (await draftRes.json()) as { id: number };
+  return { postId: String(draft.id), draftUrl: `${baseUrl}/publish/post/${draft.id}` };
+}
+
 /**
  * Publish a post to Substack.
  * Creates a draft then immediately publishes it.

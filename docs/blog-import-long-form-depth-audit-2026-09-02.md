@@ -19,3 +19,19 @@ The Studio exposes a live word-count gate at review time. A draft cannot be save
 ## Deployment verification note
 
 The new long-form interface was visible at the registered local application route `/blog-importer` after the code change. However, immediately after checkpoint `05238597`, the custom-domain route `https://content.theurbanmonk.com/hub/content/blog-importer` still served the earlier interface copy (“Import a complete article written elsewhere” and “Refine with Urban Monk voice + SEO”). The domain itself was reachable, but it had not yet served the latest Content Hub content bundle. The long-form release must not be represented as live until the custom domain reloads the current bundle or its mapping is owner-approved for refresh.
+
+## Completed owner-approved revision of post 11464
+
+After explicit owner approval, post `11464` received a body-only long-form revision. The revised article contains **1,827 words before the preserved CTA** and adds clearer definitions, careful distinction between spiritual metaphor and established biological science, a modern attention/reactivity discussion, a Taoist inner-terrain framework, non-prescriptive practical considerations, limits/uncertainty, and four FAQ responses.
+
+| Preserved post field | Read-back result |
+|---|---|
+| Post ID | `11464` |
+| Public status | `publish` |
+| Title | Unchanged |
+| Slug | `energy-parasites-archons-inner-terrain` — unchanged |
+| Category | `754` — existing Mindfulness category unchanged |
+| Featured media | `11463` — unchanged |
+| Existing Lights On CTA URL | Retained exactly |
+
+The WordPress update sent only the `content` field. An authenticated read-back verified the retained title, slug, status, category, featured-media ID, and CTA. A public browser check confirmed that the article heading, Mindfulness category, and existing featured image remain visible. No image, category, CTA, SEO metadata, Substack state, campaign, funnel, or other post property was changed.

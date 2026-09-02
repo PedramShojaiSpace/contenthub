@@ -45,7 +45,7 @@ describe("Blog Import Studio safeguards", () => {
     expect(page).toContain("required for WordPress handoff");
     expect(page).toContain("Substack drafts do not require a WordPress category.");
     expect(page).toContain("Selected CTA:");
-    expect(page).toContain("Create WordPress draft with image + category");
+    expect(page).toContain("Create and verify WordPress draft");
     const imageProcedure = router.slice(router.indexOf("generateFeaturedImage:"), router.indexOf("createWordPressDraft:"));
     expect(imageProcedure).not.toContain("createWpPost");
     expect(imageProcedure).not.toContain("upload");

@@ -3,7 +3,7 @@ import { invokeLLM } from "./_core/llm";
 import { protectedProcedure, router } from "./_core/trpc";
 import { appendUtmToCtaUrl, getActiveCtaById, getCtaForTopic } from "./ctaRouter";
 import { updateContentItem } from "./db";
-import { createWpPost, fetchWpCategories, uploadMediaFromUrl } from "./wordpress";
+import { createWpPost, fetchWpCategories, publishVerifiedWpDraft, uploadMediaFromUrl, verifyWpPostHandoff } from "./wordpress";
 import { markdownToWpHtml } from "./wpContentUtils";
 import { generateImage } from "./_core/imageGeneration";
 import { createSubstackDraft } from "./substackPublisher";
@@ -107,8 +107,9 @@ export function wordpressStatusForImportedBlog(confirmLivePublish: boolean): "dr
 }
 
 async function createWordPressPost(input: z.infer<typeof wordpressInput>, confirmLivePublish: boolean) {
-  const status = wordpressStatusForImportedBlog(confirmLivePublish);
+  const requestedStatus = wordpressStatusForImportedBlog(confirmLivePublish);
   const slug = toBlogImportSlug(input.slug);
+  const canonicalUrl = `https://theurbanmonk.com/${slug}/`;
   const categories = await fetchWpCategories();
   if (!categories.some(category => category.id === input.categoryId)) {
     throw new Error("Choose an existing WordPress category before handoff. No category was created or changed.");
@@ -121,26 +122,72 @@ async function createWordPressPost(input: z.infer<typeof wordpressInput>, confir
       slug,
       content: markdownToWpHtml(input.articleMarkdown),
       excerpt: input.metaDescription,
-      status,
+      status: "draft",
       featuredMediaId: featuredMedia.id,
       categories: [input.categoryId],
       metaDescription: input.metaDescription,
       focusKeyword: input.focusKeyword,
       seoTitle: input.title,
-      canonicalUrl: `https://theurbanmonk.com/${slug}/`,
+      canonicalUrl,
     });
   } catch (error) {
     throw new Error(`The featured image was uploaded, but WordPress did not create the post. The uploaded media can be reused manually. ${error instanceof Error ? error.message : ""}`.trim());
   }
+  const draftVerification = await verifyWpPostHandoff({
+    postId: post.id,
+    status: "draft",
+    title: input.title,
+    slug,
+    featuredMediaId: featuredMedia.id,
+    categoryId: input.categoryId,
+    seoTitle: input.title,
+    metaDescription: input.metaDescription,
+    focusKeyword: input.focusKeyword,
+    canonicalUrl,
+  });
+
+  if (!draftVerification.verified) {
+    await updateContentItem(input.contentItemId, {
+      status: "review",
+      publishUrl: post.link,
+      wpPostId: post.id,
+      yoastSeoTitle: input.title,
+      yoastMetaDescription: input.metaDescription,
+      imageUrl: input.featuredImageUrl,
+    });
+    return { ...post, requestedStatus, published: false, verification: draftVerification };
+  }
+
+  let finalStatus = post.status;
+  let verification = draftVerification;
+  let published = false;
+  if (confirmLivePublish) {
+    const publication = await publishVerifiedWpDraft(post.id);
+    finalStatus = publication.status;
+    published = publication.status === "publish";
+    verification = await verifyWpPostHandoff({
+      postId: post.id,
+      status: "publish",
+      title: input.title,
+      slug,
+      featuredMediaId: featuredMedia.id,
+      categoryId: input.categoryId,
+      seoTitle: input.title,
+      metaDescription: input.metaDescription,
+      focusKeyword: input.focusKeyword,
+      canonicalUrl,
+    });
+  }
+
   await updateContentItem(input.contentItemId, {
-    status: status === "publish" ? "published" : "review",
+    status: published ? "published" : "review",
     publishUrl: post.link,
     wpPostId: post.id,
     yoastSeoTitle: input.title,
     yoastMetaDescription: input.metaDescription,
     imageUrl: input.featuredImageUrl,
   });
-  return post;
+  return { ...post, status: finalStatus, requestedStatus, published, verification };
 }
 
 export const blogImportRouter = router({

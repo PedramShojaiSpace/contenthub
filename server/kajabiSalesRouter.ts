@@ -29,6 +29,7 @@ import { protectedProcedure, router } from "./_core/trpc";
 const KAJABI_API_BASE = "https://api.kajabi.com/v1";
 const KAJABI_TOKEN_URL = "https://api.kajabi.com/v1/oauth/token";
 const SITE_ID = "2148432935"; // The Urban Monk Academy
+const OPERATIONAL_TIME_ZONE = "America/Chicago";
 
 // Map of amount_in_cents → tier definition
 // These are the exact prices for each funnel offer. Since the API doesn't
@@ -149,6 +150,15 @@ export interface CurrentInterconnectedSalesMetrics {
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
+export function operationalDate(value: string | Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: OPERATIONAL_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
+}
+
 function getStartDate(datePreset: string): string {
   const now = new Date();
   switch (datePreset) {
@@ -184,7 +194,7 @@ export function summarizeCurrentInterconnectedTransactions(
 
   for (const row of rows) {
     const createdAt = row.attributes?.created_at || "";
-    const dateStr = createdAt.substring(0, 10);
+    const dateStr = operationalDate(createdAt);
     if (dateStr < startDate || dateStr > endDate) continue;
 
     const state = row.attributes?.state || "";
@@ -239,7 +249,7 @@ async function fetchCurrentInterconnectedSales(
     if (pageRows.length === 0) break;
 
     for (const row of pageRows) {
-      const dateStr = (row.attributes?.created_at || "").substring(0, 10);
+      const dateStr = operationalDate(row.attributes?.created_at || "");
       if (dateStr < startDate) {
         hitOldData = true;
         break;

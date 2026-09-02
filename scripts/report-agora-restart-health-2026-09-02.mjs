@@ -1,7 +1,9 @@
 const META_API_VERSION = "v21.0";
 const META_AD_ACCOUNT_ID = "1153114224705920";
 const KAJABI_SITE_ID = "2148432935";
-const TIME_RANGE = { since: "2026-09-01", until: "2026-09-02" };
+const START_DATE = process.env.START_DATE ?? "2026-09-01";
+const END_DATE = process.env.END_DATE ?? "2026-09-02";
+const TIME_RANGE = { since: START_DATE, until: END_DATE };
 const CURRENT_INTERCONNECTED_OFFERS = {
   "2151314475": { tier: "67", amountCents: 6700 },
   "2151333044": { tier: "199", amountCents: 19900 },
@@ -13,6 +15,9 @@ const kajabiClientSecret = process.env.KAJABI_CLIENT_SECRET;
 
 if (!metaAccessToken || !kajabiClientId || !kajabiClientSecret) {
   throw new Error("Required Meta or Kajabi credentials are unavailable for this read-only report.");
+}
+if (!/^\d{4}-\d{2}-\d{2}$/.test(START_DATE) || !/^\d{4}-\d{2}-\d{2}$/.test(END_DATE) || START_DATE > END_DATE) {
+  throw new Error("START_DATE and END_DATE must be ISO dates in chronological order.");
 }
 
 function ctDate(value) {

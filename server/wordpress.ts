@@ -204,6 +204,115 @@ export async function fetchWpCategories(): Promise<WpCategory[]> {
   return categories;
 }
 
+export type WpHandoffCheckState = "passed" | "failed" | "unverified";
+
+export interface WpHandoffCheck {
+  key: "status" | "title" | "slug" | "featuredMedia" | "category" | "seoTitle" | "metaDescription" | "focusKeyword" | "canonical";
+  label: string;
+  expected: string;
+  actual: string | null;
+  state: WpHandoffCheckState;
+}
+
+export interface WpHandoffExpectation {
+  postId: number;
+  status: "draft" | "publish";
+  title: string;
+  slug: string;
+  featuredMediaId: number;
+  categoryId: number;
+  seoTitle: string;
+  metaDescription: string;
+  focusKeyword: string;
+  canonicalUrl: string;
+}
+
+export interface WpHandoffVerification {
+  postId: number;
+  verified: boolean;
+  checks: WpHandoffCheck[];
+}
+
+type WpHandoffReadRecord = {
+  status?: string;
+  slug?: string;
+  title?: { raw?: string; rendered?: string };
+  featured_media?: number;
+  categories?: number[];
+  meta?: Record<string, unknown>;
+  yoast_meta?: Record<string, unknown>;
+  yoast_head_json?: { title?: string; description?: string; canonical?: string };
+};
+
+function normaliseWpText(value: string | null | undefined) {
+  return (value ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function checkWpHandoffField(params: {
+  key: WpHandoffCheck["key"];
+  label: string;
+  expected: string;
+  actual?: string | null;
+  matches?: (actual: string, expected: string) => boolean;
+}): WpHandoffCheck {
+  const actual = normaliseWpText(params.actual);
+  if (!actual) return { key: params.key, label: params.label, expected: params.expected, actual: null, state: "unverified" };
+  const matches = params.matches ?? ((candidate, expected) => candidate === expected);
+  return { key: params.key, label: params.label, expected: params.expected, actual, state: matches(actual, params.expected) ? "passed" : "failed" };
+}
+
+/** Evaluate a post-write record against the exact handoff request without performing a write. */
+export function evaluateWpHandoffVerification(
+  expected: WpHandoffExpectation,
+  record: WpHandoffReadRecord,
+): WpHandoffVerification {
+  const meta = record.meta ?? {};
+  const yoastMeta = record.yoast_meta ?? {};
+  const head = record.yoast_head_json ?? {};
+  const getMeta = (key: string) => {
+    const value = meta[`_${key}`] ?? meta[key] ?? yoastMeta[key];
+    return typeof value === "string" ? value : null;
+  };
+  const featuredMedia = String(record.featured_media ?? "");
+  const categoryAssigned = Boolean(record.categories?.includes(expected.categoryId));
+  const checks: WpHandoffCheck[] = [
+    checkWpHandoffField({ key: "status", label: "WordPress status", expected: expected.status, actual: record.status ?? null }),
+    checkWpHandoffField({ key: "title", label: "Post title", expected: expected.title, actual: record.title?.raw ?? record.title?.rendered ?? null }),
+    checkWpHandoffField({ key: "slug", label: "Post slug", expected: expected.slug, actual: record.slug ?? null }),
+    checkWpHandoffField({ key: "featuredMedia", label: "Featured image", expected: String(expected.featuredMediaId), actual: featuredMedia }),
+    { key: "category", label: "Selected category", expected: String(expected.categoryId), actual: record.categories?.join(", ") ?? null, state: categoryAssigned ? "passed" : "failed" },
+    checkWpHandoffField({ key: "seoTitle", label: "Yoast SEO title", expected: expected.seoTitle, actual: getMeta("yoast_wpseo_title") ?? head.title ?? null, matches: (actual, value) => actual === value || actual.startsWith(`${value} `) }),
+    checkWpHandoffField({ key: "metaDescription", label: "Yoast meta description", expected: expected.metaDescription, actual: getMeta("yoast_wpseo_metadesc") ?? head.description ?? null }),
+    checkWpHandoffField({ key: "focusKeyword", label: "Yoast focus keyphrase", expected: expected.focusKeyword, actual: getMeta("yoast_wpseo_focuskw") ?? null }),
+    checkWpHandoffField({ key: "canonical", label: "Canonical URL", expected: expected.canonicalUrl, actual: getMeta("yoast_wpseo_canonical") ?? head.canonical ?? null, matches: (actual, value) => actual.replace(/\/$/, "") === value.replace(/\/$/, "") }),
+  ];
+  return { postId: expected.postId, verified: checks.every(check => check.state === "passed"), checks };
+}
+
+/** Read back a WordPress post after a Blog Import handoff and verify all required fields. */
+export async function verifyWpPostHandoff(expected: WpHandoffExpectation): Promise<WpHandoffVerification> {
+  const { baseUrl, authHeader } = getWpAuth();
+  const res = await wpFetch(`${baseUrl}/wp-json/wp/v2/posts/${expected.postId}?context=edit`, {
+    headers: { Authorization: authHeader },
+  }, 20_000);
+  if (!res.ok) throw new Error(`WordPress post-write verification failed: ${res.statusText}`);
+  const record = await safeParseJson<WpHandoffReadRecord>(res, "WordPress post-write verification");
+  return evaluateWpHandoffVerification(expected, record);
+}
+
+/** Publish a previously verified WordPress draft without altering any other post field. */
+export async function publishVerifiedWpDraft(wpPostId: number): Promise<{ status: string }> {
+  const { baseUrl, authHeader } = getWpAuth();
+  const res = await wpFetch(`${baseUrl}/wp-json/wp/v2/posts/${wpPostId}`, {
+    method: "POST",
+    headers: { Authorization: authHeader, "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "publish" }),
+  }, 20_000);
+  if (!res.ok) throw new Error(`WordPress draft publication failed: ${res.statusText}`);
+  const post = await safeParseJson<{ status: string }>(res, "WordPress draft publication");
+  return { status: post.status };
+}
+
 /**
  * Build Article JSON-LD schema for E-E-A-T and Google rich results.
  * Follows GhostLink OS B15 AEO requirements.

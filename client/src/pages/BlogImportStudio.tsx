@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FileImage, FileText, Loader2, Send, ShieldCheck, Sparkles, Upload } from "lucide-react";
+import { CheckCircle2, CircleHelp, FileImage, FileText, Loader2, Send, ShieldCheck, Sparkles, Upload, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
@@ -18,6 +18,8 @@ type RefinedArticle = {
 };
 
 type ImageCandidate = { imageUrl: string; altText: string; title: string; reviewOnly: boolean };
+type HandoffCheck = { key: string; label: string; expected: string; actual: string | null; state: "passed" | "failed" | "unverified" };
+type WordPressHandoffResult = { editLink: string; link: string; status: string; requestedStatus: "draft" | "publish"; published: boolean; verification: { verified: boolean; checks: HandoffCheck[] } };
 
 export default function BlogImportStudio() {
   const [sourceLabel, setSourceLabel] = useState("Imported external article");
@@ -30,6 +32,7 @@ export default function BlogImportStudio() {
   const [contentItemId, setContentItemId] = useState<number | null>(null);
   const [publishLive, setPublishLive] = useState(false);
   const [imageCandidate, setImageCandidate] = useState<ImageCandidate | null>(null);
+  const [handoffResult, setHandoffResult] = useState<WordPressHandoffResult | null>(null);
 
   const { data: ctaBlocks = [], isLoading: ctasLoading } = trpc.cta.list.useQuery();
   const { data: wpCategories = [], isLoading: categoriesLoading } = trpc.blogImport.listWordPressCategories.useQuery();
@@ -54,12 +57,20 @@ export default function BlogImportStudio() {
     onSuccess: item => { setContentItemId(item.id); toast.success("Review draft saved inside the Content Hub."); },
     onError: error => toast.error(error.message),
   });
+  const handleWordPressResult = (post: WordPressHandoffResult) => {
+    setHandoffResult(post);
+    if (!post.verification.verified) {
+      toast.error("WordPress saved a draft, but the required handoff verification did not pass. Live publication was blocked.");
+      return;
+    }
+    toast.success(post.published ? `WordPress post published and verified: ${post.link}` : `WordPress draft created and verified: ${post.editLink}`);
+  };
   const createWpDraft = trpc.blogImport.createWordPressDraft.useMutation({
-    onSuccess: post => toast.success(`WordPress draft created: ${post.editLink}`),
+    onSuccess: handleWordPressResult,
     onError: error => toast.error(error.message),
   });
   const publishWp = trpc.blogImport.publishWordPressLive.useMutation({
-    onSuccess: post => toast.success(`WordPress post published: ${post.link}`),
+    onSuccess: handleWordPressResult,
     onError: error => toast.error(error.message),
   });
   const createSubstackDraft = trpc.blogImport.createSubstackDraft.useMutation({
@@ -74,6 +85,7 @@ export default function BlogImportStudio() {
     if (!selectedCtaId) return toast.error("Choose the approved CTA before refining the article.");
     setImageCandidate(null);
     setContentItemId(null);
+    setHandoffResult(null);
     refine.mutate({ sourceLabel, sourceTitle, focusKeyword, selectedCtaId: Number(selectedCtaId), article });
   };
 
@@ -179,7 +191,8 @@ export default function BlogImportStudio() {
             {refined.reviewNotes.length > 0 && <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"><strong>Editorial review notes</strong><ul className="mt-1 list-disc pl-5">{refined.reviewNotes.map(note => <li key={note}>{note}</li>)}</ul></div>}
             <label className="block text-sm font-medium">Complete editable article<textarea className="mt-1 min-h-[420px] w-full resize-y rounded-md border border-slate-300 px-3 py-2 font-mono text-xs leading-5" value={refined.articleMarkdown} onChange={e => setRefined({ ...refined, articleMarkdown: e.target.value })} /></label>
             <button type="button" disabled={busy || contentItemId !== null} onClick={handleSave} className="rounded-md border border-slate-300 px-4 py-2 font-semibold disabled:opacity-50">{contentItemId ? "Internal review draft saved" : "Save review draft"}</button>
-            <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-md border border-slate-200 p-3"><strong className="text-sm">WordPress handoff</strong><label className="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={publishLive} onChange={e => setPublishLive(e.target.checked)} />I completed final review and intend to publish live</label><button type="button" disabled={busy || contentItemId === null || !imageCandidate || !selectedCategoryId} onClick={handleWordPress} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md bg-slate-900 px-4 py-2.5 font-semibold text-white disabled:opacity-50"><Send className="h-4 w-4" />{publishLive ? "Confirm and publish live to WordPress" : "Create WordPress draft with image + category"}</button><p className="mt-2 text-xs text-slate-500">The selected category and reviewed image are intentionally required. Live publication also requires the checkbox and browser confirmation.</p></div><div className="rounded-md border border-indigo-200 bg-indigo-50 p-3"><strong className="text-sm text-indigo-950">Substack handoff</strong><p className="mt-2 text-xs leading-5 text-indigo-900">Creates a private Substack draft from this reviewed article. It does not publish, email subscribers, or auto-share.</p><button type="button" disabled={busy || contentItemId === null} onClick={handleSubstack} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md border border-indigo-700 px-4 py-2.5 font-semibold text-indigo-800 disabled:opacity-50"><Send className="h-4 w-4" />Create Substack draft for review</button></div></div>
+            <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-md border border-slate-200 p-3"><strong className="text-sm">WordPress handoff</strong><label className="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={publishLive} onChange={e => setPublishLive(e.target.checked)} />I completed final review and intend to publish live</label><button type="button" disabled={busy || contentItemId === null || !imageCandidate || !selectedCategoryId} onClick={handleWordPress} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md bg-slate-900 px-4 py-2.5 font-semibold text-white disabled:opacity-50"><Send className="h-4 w-4" />{publishLive ? "Verify draft, then publish live" : "Create and verify WordPress draft"}</button><p className="mt-2 text-xs text-slate-500">Every handoff creates and verifies a WordPress draft first. Live publication occurs only after all title, status, SEO, category, image, and canonical checks pass.</p></div><div className="rounded-md border border-indigo-200 bg-indigo-50 p-3"><strong className="text-sm text-indigo-950">Substack handoff</strong><p className="mt-2 text-xs leading-5 text-indigo-900">Creates a private Substack draft from this reviewed article. It does not publish, email subscribers, or auto-share.</p><button type="button" disabled={busy || contentItemId === null} onClick={handleSubstack} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md border border-indigo-700 px-4 py-2.5 font-semibold text-indigo-800 disabled:opacity-50"><Send className="h-4 w-4" />Create Substack draft for review</button></div></div>
+            {handoffResult && <div className={`rounded-md border p-4 ${handoffResult.verification.verified ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}><div className="flex items-start justify-between gap-3"><div><strong className="flex items-center gap-2 text-sm">{handoffResult.verification.verified ? <CheckCircle2 className="h-4 w-4 text-emerald-700" /> : <XCircle className="h-4 w-4 text-rose-700" />}{handoffResult.verification.verified ? handoffResult.published ? "WordPress publication verified" : "WordPress draft verified" : "WordPress handoff needs review"}</strong><p className="mt-1 text-xs text-slate-700">{handoffResult.verification.verified ? "All required fields passed the post-write verification." : "The draft was retained for review and live publication was blocked. Check the failed or unavailable fields below before continuing."}</p></div><a href={handoffResult.editLink} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-semibold underline">Open WordPress</a></div><div className="mt-3 grid gap-2 sm:grid-cols-2">{handoffResult.verification.checks.map(check => <div key={check.key} className="flex items-start gap-2 text-xs"><span className="mt-0.5">{check.state === "passed" ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-700" /> : check.state === "failed" ? <XCircle className="h-3.5 w-3.5 text-rose-700" /> : <CircleHelp className="h-3.5 w-3.5 text-amber-700" />}</span><span><strong>{check.label}</strong><br /><span className="text-slate-600">Expected: {check.expected} · Actual: {check.actual ?? "unavailable"}</span></span></div>)}</div></div>}
           </>}
         </div>
       </section>

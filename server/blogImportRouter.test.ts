@@ -77,4 +77,16 @@ describe("Blog Import Studio safeguards", () => {
     expect(draftOnlyHelper).toContain("/api/v1/drafts");
     expect(draftOnlyHelper).not.toContain("/api/v1/drafts/${draftId}/publish");
   });
+
+  it("keeps the existing-post repair helper limited to featured media and categories", async () => {
+    const wordpressPath = path.resolve(process.cwd(), "server/wordpress.ts");
+    const wordpress = await readFile(wordpressPath, "utf8");
+    const repairHelper = wordpress.slice(wordpress.indexOf("export async function updateWpPostFeaturedMediaAndCategories"));
+    expect(repairHelper).toContain("featured_media: params.featuredMediaId");
+    expect(repairHelper).toContain("categories: params.categories");
+    expect(repairHelper).not.toContain("title:");
+    expect(repairHelper).not.toContain("content:");
+    expect(repairHelper).not.toContain("status:");
+    expect(repairHelper).not.toContain("yoast_meta");
+  });
 });

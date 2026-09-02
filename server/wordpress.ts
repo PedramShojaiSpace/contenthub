@@ -830,3 +830,33 @@ export async function updateWpPostContent(
 
   return { success: true };
 }
+
+/**
+ * Apply a deliberately limited taxonomy/media repair to an existing WordPress post.
+ * This never changes title, slug, body, excerpt, status, CTA, or SEO metadata.
+ */
+export async function updateWpPostFeaturedMediaAndCategories(params: {
+  wpPostId: number;
+  featuredMediaId: number;
+  categories: number[];
+}): Promise<{ success: boolean; postId: number }> {
+  const { baseUrl, authHeader } = getWpAuth();
+  const res = await wpFetch(`${baseUrl}/wp-json/wp/v2/posts/${params.wpPostId}`, {
+    method: "POST",
+    headers: {
+      Authorization: authHeader,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      featured_media: params.featuredMediaId,
+      categories: params.categories,
+    }),
+  }, 20_000);
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`WordPress featured media/category update failed: ${errText.substring(0, 300)}`);
+  }
+
+  return { success: true, postId: params.wpPostId };
+}

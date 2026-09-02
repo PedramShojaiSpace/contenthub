@@ -4251,7 +4251,7 @@ export type InsertTantraContentEvent = typeof tantraContentEvents.$inferInsert;
 // ─── Orobiome Affiliate Funnel Visibility ─────────────────────────────────────
 // Stores anonymous page-level intent events only. It intentionally contains no
 // email, name, phone, address, or raw IP data.
-export const orobiomeFunnelEventTypeEnum = mysqlEnum("orobiome_funnel_event_type", [
+export const orobiomeFunnelEventTypeEnum = mysqlEnum("event_type", [
   "page_view",
   "scroll_25",
   "scroll_50",

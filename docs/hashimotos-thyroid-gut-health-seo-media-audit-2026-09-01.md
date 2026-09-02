@@ -61,9 +61,18 @@ The duplicate output is caused by two active SEO emitters, not by the repaired a
 
 Neither option has been applied. Both affect sitewide SEO output and require explicit owner approval plus authenticated WordPress-admin access.
 
+## SmartCrawl cleanup verification and remaining emitter
+
+The owner completed the approved SmartCrawl module changes: **Title & Meta**, **Schema**, and **Social Network** are now disabled; SEO Analysis, Readability Analysis, Sitemaps, URL Redirection, and Robots.txt Editor remain enabled. A public origin response after the change verifies the intended improvement: the article now has **one canonical**, **one Open Graph title**, **one Open Graph description**, and **one JSON-LD graph**. SmartCrawl now emits only its empty HTML marker; it is no longer emitting the duplicate canonical, social metadata, or schema objects.
+
+One older meta-description tag remains. It appears immediately before the Elementor generator tag and contains the post’s historical excerpt, while Yoast emits the current approved description. The response had cache-miss headers, so this is not a simple browser/CDN-cache propagation delay. This remaining tag must be treated as a **separate generic page-level emitter**. Active candidate sources include Elementor-level document/theme configuration and the site’s code/header injection plugins (`WPCode Lite` and `WP Headers and Footers`); the active Soro plugin documents that it writes descriptions into supported SEO-plugin fields, but the available evidence does not establish it as the direct HTML emitter.[5]
+
+No additional module, plugin, template, or code snippet has been modified. The next safe step is to inspect the exact page-level code/header setting and remove only the snippet or setting that generates the stale `post_excerpt` description, then recheck the live source. It would be unsafe to disable Elementor, WPCode, WP Headers and Footers, or Soro SEO by guesswork.
+
 ## References
 
 [1]: https://theurbanmonk.com/wp-json/wp/v2/posts?slug=hashimotos-thyroid-and-gut-health&_fields=id,link,slug,title,featured_media,yoast_head_json,meta,date,modified "Public WordPress REST post record inspected September 1, 2026"
 [2]: https://theurbanmonk.com/hashimotos-thyroid-and-gut-health/ "Live post and public metadata inspected September 1, 2026"
 [3]: https://wpmudev.com/docs/wpmu-dev-plugins/smartcrawl/ "SmartCrawl SEO Plugin Usage Documentation"
 [4]: https://gist.github.com/wpmudev-sls/02a03fb6ef57b7a09c0fac7ddcbde393 "WPMU DEV SmartCrawl post-meta import example"
+[5]: https://wordpress.org/plugins/soro-seo/ "Soro WordPress Plugin — official description and supported SEO-plugin integration"

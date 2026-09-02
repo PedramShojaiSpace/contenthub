@@ -10,6 +10,16 @@ import { createSubstackDraft } from "./substackPublisher";
 
 const MAX_ARTICLE_LENGTH = 80_000;
 export const MAX_IMPORTED_BLOG_TITLE_LENGTH = 96;
+export const MIN_IMPORTED_LONG_FORM_WORDS = 1_200;
+export const TARGET_IMPORTED_LONG_FORM_WORDS = "1,400–1,900";
+
+export function countBlogImportWords(value: string) {
+  return value.trim() ? value.trim().split(/\s+/).length : 0;
+}
+
+export function meetsImportedLongFormStandard(value: string) {
+  return countBlogImportWords(value) >= MIN_IMPORTED_LONG_FORM_WORDS;
+}
 
 const refinementSchema = z.object({
   title: z.string().min(1).max(300),
@@ -17,7 +27,9 @@ const refinementSchema = z.object({
   focusKeyword: z.string().min(1).max(120),
   metaDescription: z.string().min(1).max(180),
   semanticKeywords: z.array(z.string()).min(3).max(12),
-  articleMarkdown: z.string().min(300),
+  articleMarkdown: z.string().min(300).refine(meetsImportedLongFormStandard, {
+    message: `The refined article must contain at least ${MIN_IMPORTED_LONG_FORM_WORDS.toLocaleString()} words before its CTA is added.`,
+  }),
   reviewNotes: z.array(z.string()).max(10),
 });
 
@@ -41,7 +53,9 @@ const wordpressInput = z.object({
   slug: z.string().min(1).max(120),
   focusKeyword: z.string().min(1).max(120),
   metaDescription: z.string().min(1).max(180),
-  articleMarkdown: z.string().min(300).max(MAX_ARTICLE_LENGTH),
+  articleMarkdown: z.string().min(300).max(MAX_ARTICLE_LENGTH).refine(meetsImportedLongFormStandard, {
+    message: `Expand the article to at least ${MIN_IMPORTED_LONG_FORM_WORDS.toLocaleString()} words before WordPress handoff.`,
+  }),
   categoryId: z.number().int().positive(),
   featuredImageUrl: z.string().url().max(2_000),
   featuredImageAltText: z.string().min(8).max(250),
@@ -51,7 +65,9 @@ const substackDraftInput = z.object({
   contentItemId: z.number().int().positive(),
   title: z.string().min(1).max(180),
   metaDescription: z.string().max(180).optional(),
-  articleMarkdown: z.string().min(300).max(MAX_ARTICLE_LENGTH),
+  articleMarkdown: z.string().min(300).max(MAX_ARTICLE_LENGTH).refine(meetsImportedLongFormStandard, {
+    message: `Expand the article to at least ${MIN_IMPORTED_LONG_FORM_WORDS.toLocaleString()} words before creating a Substack review draft.`,
+  }),
   confirmCreateSubstackDraft: z.literal(true),
 });
 
@@ -200,7 +216,15 @@ export const blogImportRouter = router({
       messages: [
         {
           role: "system",
-          content: "You are The Urban Monk editorial desk. Refine a full imported article for clear, science-informed health education, readability, SEO, and AEO. Preserve the author’s core argument, quotes, citations, reference list, and uncertainty. Never invent studies, citations, testimonials, patient stories, results, product claims, or medical guarantees. Do not diagnose, prescribe, or promise treatment outcomes. Soften unsupported health claims and list them in reviewNotes. Use H2 headings and concise paragraphs. Do not include an H1 title, any CTA, sales copy, or external links. Return only the required JSON. The SEO title must be 96 characters or fewer.",
+          content: `You are The Urban Monk editorial desk. Transform a complete imported article, vlog, or transcript into a serious, thoughtful, publication-ready long-form article for educated adults. Treat the source as the author’s initial idea and core perspective—not as a finished post or license to invent facts.
+
+DEPTH STANDARD — REQUIRED: Write ${TARGET_IMPORTED_LONG_FORM_WORDS} words in articleMarkdown before the CTA is added; never return fewer than ${MIN_IMPORTED_LONG_FORM_WORDS.toLocaleString()} words. Expand through explanation, context, careful distinctions, and practical reader value—not repetition, filler, or padded lists.
+
+STRUCTURE — REQUIRED: Use a concise opening that names the reader tension and answers the central question early. Then develop at least five distinct H2 sections. Include: (1) clear definitions and why the topic matters; (2) the underlying biological, behavioral, cultural, or philosophical mechanism; (3) how the author’s perspective applies in modern life; (4) nuanced, non-prescriptive practical considerations; (5) limits, uncertainty, and what the framework does not claim; and (6) a short FAQ with 3–5 direct reader questions. Use occasional H3s when they improve clarity. Keep paragraphs readable and avoid generic conclusion language.
+
+EVIDENCE AND INTEGRITY: Preserve the author’s core argument, existing direct quotes, citations, reference list, and uncertainty. Never invent studies, citations, quotations, testimonials, patient stories, results, product claims, or medical guarantees. Do not diagnose, prescribe, or promise treatment outcomes. When a source uses spiritual, esoteric, traditional, or metaphorical language, identify it respectfully as a perspective or metaphor; do not present it as settled biological science. Do not merge speculation with scientific evidence. Soften unsupported health claims and list them in reviewNotes.
+
+SEO AND VOICE: Write in clear Urban Monk voice—practical, reflective, science-aware, and free of hype. Use H2 headings, varied sentence openings, transition language, and concise paragraphs. Place the focus keyword naturally in the opening, one H2, and where genuinely useful; never keyword-stuff. Do not include an H1 title, CTA, sales copy, invented internal links, or invented external links. Return only the required JSON. The SEO title must be 96 characters or fewer.`,
         },
         {
           role: "user",
@@ -241,6 +265,9 @@ export const blogImportRouter = router({
       slug,
       metaDescription: refined.metaDescription.slice(0, 160),
       articleMarkdown,
+      articleWordCount: countBlogImportWords(refined.articleMarkdown),
+      longFormMinimumWords: MIN_IMPORTED_LONG_FORM_WORDS,
+      longFormTargetWords: TARGET_IMPORTED_LONG_FORM_WORDS,
       ctaLabel: cta.label,
       ctaUrl,
       ctaWasSelected: Boolean(input.selectedCtaId),

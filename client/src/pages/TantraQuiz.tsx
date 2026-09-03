@@ -1,93 +1,13 @@
-/**
- * TantraQuiz.tsx
- *
- * Full patient-centered relationship and intimacy quiz funnel for the Tantra line.
- * Modeled on the InnerBalance cold-traffic quiz architecture.
- *
- * Screen flow:
- *   0  → Welcome / Hero
- *   1  → Age qualifier
- *   2  → Who is this for? (gender routing)
- *   3  → Vitality check (how are you feeling?)
- *   4  → Sexual energy question
- *   5  → Education interstitial: "This is not your fault"
- *   6  → Symptom mapping (multi-select, flags gut/sleep/oral)
- *   7  → Conditional hormone-context question(s)
- *   8  → Connection / relationship question
- *   9  → Education interstitial: "The East-West approach"
- *   10 → Safety screen
- *   11 → Goals / aspiration
- *   12 → Email capture (lead gate)
- *   13 → Results page (triage-first clinical pathway + optional product recommendation)
- */
-
-import { useState, useEffect, useRef, useCallback } from "react";
-import { trpc } from "@/lib/trpc";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useMemo, useState } from "react";
+import { ArrowRight, CheckCircle2, ChevronLeft, HeartPulse, Leaf, ShieldCheck, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { CheckCircle2, ArrowRight, ChevronRight, Shield, Star, Leaf, Zap, Moon, Heart } from "lucide-react";
-import { buildTantraCheckoutParams, type TantraTrackableOffer } from "@shared/tantraMetaEvents";
-import { TANTRA_CONTENT_SOURCE_KEYS } from "@shared/tantraContentAttribution";
+import { trpc } from "@/lib/trpc";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+type QuizScreen = "welcome" | "questions" | "results";
+type AnswerValue = string | string[];
+type ProductKey = "tantra_him" | "tantra_her" | "pending";
 
-type QuizScreen =
-  | "welcome"
-  | "age"
-  | "who"
-  | "vitality"
-  | "sexual_energy"
-  | "edu_not_your_fault"
-  | "symptoms"
-  | "hormone_symptoms"
-  | "hormone_male"
-  | "connection"
-  | "edu_east_west"
-  | "safety"
-  | "goals"
-  | "social_proof"
-  | "email_capture"
-  | "results";
-
-interface QuizState {
-  sessionId: string | null;
-  screen: QuizScreen;
-  answers: Record<string, string | string[]>;
-  result: "tantra_him" | "tantra_her" | "tantra_bundle" | "pending" | null;
-  product: ProductInfo | null;
-  upsells: UpsellInfo[];
-  triage: TriageFlags;
-  segmentation: SegmentationInfo;
-  clinicalResources: ClinicalResources;
-  tantraCourse: CourseInfo | null;
-  lightsOn: CourseInfo | null;
-  email: string;
-  name: string;
-  emailSubmitted: boolean;
-  progress: number; // 0-100
-}
-
-interface TriageFlags {
-  gutFlag: boolean;
-  sleepFlag: boolean;
-  oralFlag: boolean;
-  hormoneFlag: boolean;
-}
-
-interface SegmentationInfo {
-  primaryPath: string;
-  carePaths: string[];
-  clinicianFollowUp: boolean;
-}
-
-// Couple result carries both individual SKUs
-interface CoupleProducts {
-  him: ProductInfo;
-  her: ProductInfo;
-}
-
-interface ProductInfo {
+type Product = {
   name: string;
   tagline: string;
   headline: string;
@@ -96,1518 +16,479 @@ interface ProductInfo {
   price: string;
   shopifyUrl: string;
   primaryColor: string;
-}
-
-interface UpsellInfo {
-  name: string;
-  description: string;
-  price: string;
-  shopifyUrl?: string;
-  flag: string;
-}
-
-interface ClinicalResources {
-  fit22: UpsellInfo | null;
-  sleep: UpsellInfo | null;
-  oral: UpsellInfo | null;
-}
-
-interface CourseInfo {
-  name: string;
-  tagline: string;
-  description: string;
-  price: string;
-  shopifyUrl: string;
-}
-
-// ─── Progress mapping ─────────────────────────────────────────────────────────
-
-const SCREEN_PROGRESS: Record<QuizScreen, number> = {
-  welcome: 0,
-  age: 10,
-  who: 20,
-  vitality: 30,
-  sexual_energy: 38,
-  edu_not_your_fault: 44,
-  symptoms: 52,
-  hormone_symptoms: 58,
-  hormone_male: 58,
-  connection: 64,
-  edu_east_west: 70,
-  safety: 78,
-  goals: 86,
-  social_proof: 92,
-  email_capture: 95,
-  results: 100,
 };
 
-const SCREEN_ORDER: QuizScreen[] = [
-  "welcome",
-  "age",
-  "who",
-  "vitality",
-  "sexual_energy",
-  "edu_not_your_fault",
-  "symptoms",
-  "hormone_symptoms",
-  "hormone_male",
-  "connection",
-  "edu_east_west",
-  "safety",
-  "goals",
-  "social_proof",
-  "email_capture",
-  "results",
+type Question = {
+  id: "q_pathway" | "q_focus" | "q_recovery" | "q_goal" | "q_safety";
+  type: "single" | "multi";
+  eyebrow: string;
+  question: string;
+  helper?: string;
+  options: { id: string; text: string }[];
+};
+
+const QUESTIONS: Question[] = [
+  {
+    id: "q_pathway",
+    type: "single",
+    eyebrow: "START HERE",
+    question: "Which product pathway are you exploring?",
+    helper: "Choose the pathway that best fits the person considering care.",
+    options: [
+      { id: "men", text: "Men’s pathway" },
+      { id: "women", text: "Women’s pathway" },
+      { id: "not_sure", text: "I’m not sure which pathway fits" },
+    ],
+  },
+  {
+    id: "q_focus",
+    type: "multi",
+    eyebrow: "THE WHOLE SYSTEM",
+    question: "What feels most out of rhythm right now?",
+    helper: "Choose any that feel relevant. This is a check-in, not a diagnosis.",
+    options: [
+      { id: "desire", text: "Desire or sexual interest" },
+      { id: "energy", text: "Energy and stamina" },
+      { id: "responsiveness", text: "Feeling present and responsive in my body" },
+      { id: "stress", text: "Stress load or difficulty unwinding" },
+      { id: "connection", text: "Connection or ease with intimacy" },
+    ],
+  },
+  {
+    id: "q_recovery",
+    type: "single",
+    eyebrow: "RECOVERY",
+    question: "How has your recovery capacity felt lately?",
+    helper: "Desire does not live apart from sleep, stress, nourishment, movement, and overall resilience.",
+    options: [
+      { id: "steady", text: "Mostly steady" },
+      { id: "inconsistent", text: "Inconsistent — I have good and flat days" },
+      { id: "running_low", text: "I feel like I am running low most of the time" },
+      { id: "not_sure", text: "I’m not sure" },
+    ],
+  },
+  {
+    id: "q_goal",
+    type: "multi",
+    eyebrow: "YOUR INTENTION",
+    question: "What would you most like to support?",
+    options: [
+      { id: "desire", text: "A more connected sense of desire" },
+      { id: "confidence", text: "Confidence and presence" },
+      { id: "connection", text: "Connection with my partner" },
+      { id: "vitality", text: "Overall vitality and resilience" },
+    ],
+  },
+  {
+    id: "q_safety",
+    type: "multi",
+    eyebrow: "A RESPONSIBLE PAUSE",
+    question: "Is there any reason to speak with a qualified clinician before considering a product?",
+    helper: "This does not determine eligibility or provide medical advice. It simply helps identify when a clinical conversation should come first.",
+    options: [
+      { id: "pregnant_or_nursing", text: "Pregnant or nursing" },
+      { id: "nitrate_medication", text: "Taking nitrate medication" },
+      { id: "cardiovascular_concern", text: "A cardiovascular condition or uncontrolled blood pressure that concerns me" },
+      { id: "not_sure", text: "I’m not sure" },
+      { id: "none", text: "None of these apply to me" },
+    ],
+  },
 ];
 
-type FacebookPixel = (command: "track", eventName: string, parameters?: Record<string, unknown>, options?: { eventID: string }) => void;
+const FALLBACK_PRODUCTS: Record<Exclude<ProductKey, "pending">, Product> = {
+  tantra_him: {
+    name: "Tantra Him",
+    tagline: "A clinical pathway for established male patients",
+    headline: "Explore the Tantra Him pathway with the clinical team.",
+    subheadline: "A licensed clinician reviews your history and determines whether any product is appropriate.",
+    description: "Prescription compounded medication for established patients only. A valid prescription and clinical history review are required before dispensing.",
+    price: "$185",
+    shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-him",
+    primaryColor: "#164E63",
+  },
+  tantra_her: {
+    name: "Tantra Her",
+    tagline: "A clinical pathway for established female patients",
+    headline: "Explore the Tantra Her pathway with the clinical team.",
+    subheadline: "A licensed clinician reviews your history and determines whether any product is appropriate.",
+    description: "Prescription compounded medication for established patients only. A valid prescription and clinical history review are required before dispensing.",
+    price: "$185",
+    shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-her",
+    primaryColor: "#7C2D12",
+  },
+};
 
-function trackTantraPixel(eventName: string, parameters?: Record<string, unknown>, eventId?: string) {
-  const fbq = (window as Window & { fbq?: FacebookPixel }).fbq;
-  if (typeof fbq === "function") fbq("track", eventName, parameters, eventId ? { eventID: eventId } : undefined);
+function getUtmParams() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    utmSource: params.get("utm_source") ?? undefined,
+    utmCampaign: params.get("utm_campaign") ?? undefined,
+    utmMedium: params.get("utm_medium") ?? undefined,
+  };
 }
 
-function getCookie(name: string) {
-  return document.cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1);
-}
+function localRoute(answers: Record<string, AnswerValue>) {
+  const pathway = answers.q_pathway;
+  const safety = Array.isArray(answers.q_safety) ? answers.q_safety : [];
+  const reviewReasons = ["pregnant_or_nursing", "nitrate_medication", "cardiovascular_concern", "not_sure"];
+  const requiresClinicalReview = pathway === "not_sure" || safety.some((answer) => reviewReasons.includes(answer));
+  const result: ProductKey = requiresClinicalReview
+    ? "pending"
+    : pathway === "women"
+      ? "tantra_her"
+      : "tantra_him";
 
-// ─── Component ────────────────────────────────────────────────────────────────
+  return { result, requiresClinicalReview };
+}
 
 export default function TantraQuiz() {
-  const [state, setState] = useState<QuizState>({
-    sessionId: null,
-    screen: "welcome",
-    answers: {},
-    result: null,
-    product: null,
-    upsells: [],
-    triage: { gutFlag: false, sleepFlag: false, oralFlag: false, hormoneFlag: false },
-    segmentation: { primaryPath: "intimacy", carePaths: ["intimacy"], clinicianFollowUp: false },
-    clinicalResources: { fit22: null, sleep: null, oral: null },
-    tantraCourse: null,
-    lightsOn: null,
-    email: "",
-    name: "",
-    emailSubmitted: false,
-    progress: 0,
-  });
-  const completionEventIdRef = useRef<string | null>(null);
+  const [screen, setScreen] = useState<QuizScreen>("welcome");
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
+  const [result, setResult] = useState<ProductKey>("pending");
+  const [product, setProduct] = useState<Product | null>(null);
+  const [requiresClinicalReview, setRequiresClinicalReview] = useState(false);
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [newsletterConsent, setNewsletterConsent] = useState(false);
+  const [emailSaved, setEmailSaved] = useState(false);
 
-  // Couple products — set when q_who === "couple"
-  const [coupleProducts, setCoupleProducts] = useState<CoupleProducts | null>(null);
-
-  const topRef = useRef<HTMLDivElement>(null);
-  const completionEventFired = useRef(false);
-  const leadEventFired = useRef(false);
-
-  // Auto-scroll to top on screen change
-  useEffect(() => {
-    topRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [state.screen]);
-
-  // tRPC mutations
   const startSession = trpc.tantraQuiz.startSession.useMutation();
   const submitAnswers = trpc.tantraQuiz.submitAnswers.useMutation();
   const captureEmail = trpc.tantraQuiz.captureEmail.useMutation();
 
-  // Parse UTM params from URL
-  const getUtmParams = () => {
-    const params = new URLSearchParams(window.location.search);
-    return {
-      utmSource: params.get("utm_source") ?? undefined,
-      utmCampaign: params.get("utm_campaign") ?? undefined,
-      utmMedium: params.get("utm_medium") ?? undefined,
-    };
-  };
+  const currentQuestion = QUESTIONS[questionIndex];
+  const selected = answers[currentQuestion?.id];
+  const canContinue = Array.isArray(selected) ? selected.length > 0 : Boolean(selected);
+  const progress = Math.round(((questionIndex + 1) / QUESTIONS.length) * 100);
 
-  const getContentAttributionParams = () => {
-    const params = new URLSearchParams(window.location.search);
-    const sourcePage = params.get("tantra_source_page");
-    return {
-      sourcePage: sourcePage && TANTRA_CONTENT_SOURCE_KEYS.includes(sourcePage as typeof TANTRA_CONTENT_SOURCE_KEYS[number])
-        ? sourcePage as typeof TANTRA_CONTENT_SOURCE_KEYS[number]
-        : undefined,
-      sourceVisitorId: params.get("tantra_source_visitor") ?? undefined,
-    };
-  };
+  const focusSummary = useMemo(() => {
+    const selectedFocuses = Array.isArray(answers.q_focus) ? answers.q_focus : [];
+    const selectedGoals = Array.isArray(answers.q_goal) ? answers.q_goal : [];
+    const labels = QUESTIONS.flatMap((question) => question.options)
+      .filter((option) => selectedFocuses.includes(option.id) || selectedGoals.includes(option.id))
+      .map((option) => option.text.toLowerCase());
+    return [...new Set(labels)].slice(0, 3);
+  }, [answers.q_focus, answers.q_goal]);
 
-  // ── Navigation helpers ──────────────────────────────────────────────────────
-
-  const goToScreen = (screen: QuizScreen) => {
-    setState(s => ({ ...s, screen, progress: SCREEN_PROGRESS[screen] }));
-  };
-
-  const nextScreen = () => {
-    const who = state.answers["q_who"] as string | undefined;
-    if (state.screen === "symptoms") {
-      goToScreen(who === "me_male" ? "hormone_male" : "hormone_symptoms");
-      return;
-    }
-    if (state.screen === "hormone_symptoms") {
-      goToScreen(who === "couple" ? "hormone_male" : "connection");
-      return;
-    }
-    if (state.screen === "hormone_male") {
-      goToScreen("connection");
-      return;
-    }
-    const idx = SCREEN_ORDER.indexOf(state.screen);
-    if (idx < SCREEN_ORDER.length - 1) {
-      goToScreen(SCREEN_ORDER[idx + 1]);
-    }
-  };
-
-  const setAnswer = (questionId: string, value: string | string[]) => {
-    setState(s => ({ ...s, answers: { ...s.answers, [questionId]: value } }));
-  };
-
-  const toggleMultiAnswer = (questionId: string, value: string) => {
-    const current = (state.answers[questionId] as string[] | undefined) ?? [];
-    const next = current.includes(value)
-      ? current.filter(v => v !== value)
-      : [...current, value];
-    setAnswer(questionId, next);
-  };
-
-  // ── Start quiz ──────────────────────────────────────────────────────────────
-
-  const handleStart = async () => {
+  const start = async () => {
     try {
-      const utms = getUtmParams();
-      const attribution = getContentAttributionParams();
-      const { sessionId } = await startSession.mutateAsync({ ...utms, ...attribution });
-      setState(s => ({ ...s, sessionId }));
-      goToScreen("age");
+      const response = await startSession.mutateAsync(getUtmParams());
+      setSessionId(response.sessionId);
     } catch {
-      // Still allow quiz to proceed without session
-      setState(s => ({ ...s, sessionId: "local-" + Date.now() }));
-      goToScreen("age");
+      setSessionId(`local-${Date.now()}`);
+      toast.message("You can still take the check-in. Results will appear immediately.");
     }
+    setScreen("questions");
   };
 
-  // ── Submit answers and get results ─────────────────────────────────────────
-
-  const handleSubmitAnswers = async () => {
-    if (!state.sessionId) return;
-    try {
-      const res = await submitAnswers.mutateAsync({
-        sessionId: state.sessionId,
-        answers: state.answers,
-      });
-        setState(s => ({
-          ...s,
-          result: res.result,
-          product: res.product as ProductInfo,
-          upsells: res.upsells as UpsellInfo[],
-          triage: (res.flags as TriageFlags) ?? { gutFlag: false, sleepFlag: false, oralFlag: false, hormoneFlag: false },
-          segmentation: (res.segmentation as SegmentationInfo) ?? { primaryPath: "intimacy", carePaths: ["intimacy"], clinicianFollowUp: false },
-          clinicalResources: (res.clinicalResources as ClinicalResources) ?? { fit22: null, sleep: null, oral: null },
-        }));
-        // If couple, also store both individual SKUs
-        const r = res as any;
-        if (r.isCouple && r.himProduct && r.herProduct) {
-          setCoupleProducts({ him: r.himProduct as ProductInfo, her: r.herProduct as ProductInfo });
-        }
-        if (!completionEventFired.current) {
-          completionEventFired.current = true;
-          const eventId = crypto.randomUUID();
-          completionEventIdRef.current = eventId;
-          trackTantraPixel("CompleteRegistration", {
-            content_name: "Tantra Quiz Completed",
-            content_category: "tantra_quiz",
-          }, eventId);
-        }
-        goToScreen("email_capture");
-    } catch (err: unknown) {
-      // If submitAnswers fails, still allow progression with client-side routing
-      // Use the answers we have to determine product client-side
-      // NOTE: Bundle is not offered — couple/unknown defaults to Tantra Him
-      const who = (state.answers["q_who"] as string) ?? "";
-      const result = who === "me_female" ? "tantra_her" : "tantra_him";
-      const symptoms = state.answers["q_symptoms"] ?? [];
-      const symptomAnswers = Array.isArray(symptoms) ? symptoms : [symptoms];
-      const hormoneFlag = ["q_hormone_symptoms", "q_hormone_male"].some((questionId) => {
-        const answer = state.answers[questionId] ?? [];
-        const selected = Array.isArray(answer) ? answer : [answer];
-        return selected.some((value) => value !== "none");
-      });
-      const triage: TriageFlags = {
-        gutFlag: symptomAnswers.includes("gut_issues"),
-        sleepFlag: symptomAnswers.includes("poor_sleep"),
-        oralFlag: symptomAnswers.includes("oral_issues"),
-        hormoneFlag,
-      };
-      const clinicalPaths = [
-        ...(hormoneFlag ? ["hormone_health"] : []),
-        ...(triage.gutFlag ? ["gut_health"] : []),
-        ...(triage.sleepFlag ? ["sleep_health"] : []),
-        ...(triage.oralFlag ? ["oral_health"] : []),
-      ];
-      const PRODUCTS: Record<string, ProductInfo> = {
-        tantra_him: {
-          name: "Tantra Him",
-          tagline: "Maximum Strength Formula for Men",
-          headline: "Your life force is ready to come back online.",
-          subheadline: "The East-West formula designed for men who are ready to feel fully alive again.",
-          description: "Tantra Him is the bed chamber formula — Oxytocin for deep bonding, Bremelanotide to reawaken desire at the neurological level, and Tadalafil for the circulation that makes it all possible. Precision-compounded, physician-prescribed, and rooted in 5,000 years of Taoist sexual medicine.",
-          price: "$185",
-          shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-him",
-          primaryColor: "#B8860B",
-        },
-        tantra_her: {
-          name: "Tantra Her",
-          tagline: "Maximum Strength Formula for Women",
-          headline: "Your life force is ready to come back online.",
-          subheadline: "The East-West formula designed for women who are ready to feel fully alive again.",
-          description: "Tantra Her is the bed chamber formula for women — Oxytocin to open the heart and deepen connection, Bremelanotide to restore desire that modern life has dimmed, and Tadalafil 5mg for the circulation and sensitivity that makes intimacy feel the way it's supposed to. Precision-compounded, physician-prescribed, rooted in 5,000 years of Taoist sexual medicine.",
-          price: "$185",
-          shopifyUrl: "https://shop.theurbanmonk.com/products/tantra-her",
-          primaryColor: "#9B59B6",
-        },
-      };
-      setState(s => ({
-        ...s,
-        result,
-        product: PRODUCTS[result],
-        upsells: [],
-        triage,
-        segmentation: {
-          primaryPath: clinicalPaths.length > 1 ? "multifactor" : clinicalPaths[0] ?? "intimacy",
-          carePaths: ["intimacy", ...clinicalPaths],
-          clinicianFollowUp: clinicalPaths.length > 0,
-        },
-        clinicalResources: { fit22: null, sleep: null, oral: null },
-      }));
-      if (!completionEventFired.current) {
-        completionEventFired.current = true;
-        const eventId = crypto.randomUUID();
-        completionEventIdRef.current = eventId;
-        trackTantraPixel("CompleteRegistration", {
-          content_name: "Tantra Quiz Completed",
-          content_category: "tantra_quiz",
-        }, eventId);
-      }
-      goToScreen("email_capture");
-    }
+  const selectSingle = (value: string) => {
+    setAnswers((current) => ({ ...current, [currentQuestion.id]: value }));
   };
 
-  // ── Capture email ───────────────────────────────────────────────────────────
+  const toggleMulti = (value: string) => {
+    const current = Array.isArray(selected) ? selected : [];
+    let next: string[];
+    if (value === "none") {
+      next = ["none"];
+    } else {
+      const withoutNone = current.filter((item) => item !== "none");
+      next = withoutNone.includes(value)
+        ? withoutNone.filter((item) => item !== value)
+        : [...withoutNone, value];
+    }
+    setAnswers((currentAnswers) => ({ ...currentAnswers, [currentQuestion.id]: next }));
+  };
 
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!state.email || !state.sessionId) return;
-    try {
-      const leadEventId = crypto.randomUUID();
-      const res = await captureEmail.mutateAsync({
-        sessionId: state.sessionId,
-        email: state.email,
-        name: state.name || undefined,
-        meta: {
-          leadEventId,
-          completionEventId: completionEventIdRef.current ?? undefined,
-          eventSourceUrl: window.location.href,
-          fbp: getCookie("_fbp"),
-          fbc: getCookie("_fbc"),
-        },
-      });
-      setState(s => ({
-        ...s,
-        emailSubmitted: true,
-        tantraCourse: (res as any).tantraCourse ?? null,
-        lightsOn: (res as any).lightsOn ?? null,
-      }));
-      if (!leadEventFired.current) {
-        leadEventFired.current = true;
-        trackTantraPixel("Lead", {
-          content_name: "Tantra Quiz Results",
-          content_category: "tantra_quiz",
-        }, leadEventId);
+  const finish = async () => {
+    const fallback = localRoute(answers);
+    let nextResult = fallback.result;
+    let nextProduct = fallback.result === "pending" ? null : FALLBACK_PRODUCTS[fallback.result];
+    let nextClinicalReview = fallback.requiresClinicalReview;
+
+    if (sessionId && !sessionId.startsWith("local-")) {
+      try {
+        const response = await submitAnswers.mutateAsync({ sessionId, answers });
+        nextResult = response.result as ProductKey;
+        nextProduct = response.product as Product | null;
+        nextClinicalReview = response.requiresClinicalReview;
+      } catch {
+        toast.message("Your results are ready. The secure save was unavailable, so nothing was sent anywhere.");
       }
-      goToScreen("results");
+    }
+
+    setResult(nextResult);
+    setProduct(nextProduct);
+    setRequiresClinicalReview(nextClinicalReview);
+    setScreen("results");
+  };
+
+  const advance = () => {
+    if (!canContinue) return;
+    if (questionIndex === QUESTIONS.length - 1) {
+      void finish();
+      return;
+    }
+    setQuestionIndex((current) => current + 1);
+  };
+
+  const back = () => {
+    if (questionIndex === 0) {
+      setScreen("welcome");
+      return;
+    }
+    setQuestionIndex((current) => current - 1);
+  };
+
+  const saveEmail = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!sessionId || sessionId.startsWith("local-")) {
+      toast.error("Your private check-in could not be saved right now. Your results are still available here.");
+      return;
+    }
+
+    try {
+      await captureEmail.mutateAsync({
+        sessionId,
+        email,
+        name: name.trim() || undefined,
+        newsletterConsent,
+      });
+      setEmailSaved(true);
     } catch {
-      toast.error("Could not save your email. Please try again.");
+      toast.error("We could not save your details. No email was sent and no subscription was created.");
     }
   };
-
-  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div
-      ref={topRef}
-      className="min-h-screen bg-[#0d0d0d] text-white font-sans"
-      style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
-    >
-      {/* Progress bar */}
-      {state.screen !== "welcome" && state.screen !== "results" && (
-        <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-white/10">
-          <div
-            className="h-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
-            style={{ width: `${state.progress}%` }}
-          />
-        </div>
-      )}
-
-      {/* Header */}
-      <header className="py-5 px-6 flex items-center justify-between border-b border-white/5 bg-[#0d0d0d]/90 backdrop-blur-sm sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-amber-900/40 border border-amber-700/40 flex items-center justify-center">
-            <span className="text-amber-400 text-sm font-bold">UM</span>
+    <main className="min-h-screen bg-[#f4f0e7] text-[#183334] selection:bg-[#b6d7c9] selection:text-[#183334]">
+      <header className="border-b border-[#183334]/10 bg-[#f4f0e7]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-[#183334] text-xs font-black tracking-tight text-[#f4f0e7]">UM</div>
+            <div>
+              <p className="font-serif text-base font-semibold leading-none text-[#183334]">The Urban Monk</p>
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#52706b]">Desire & Vitality Check-In</p>
+            </div>
           </div>
-          <span className="text-white/80 text-sm tracking-wide">Dr. Pedram Shojai · The Urban Monk</span>
+          <p className="hidden text-right text-xs leading-5 text-[#52706b] sm:block">Educational check-in<br />Not medical advice</p>
         </div>
-        {state.screen !== "welcome" && state.screen !== "results" && (
-          <span className="text-white/65 text-xs">{state.progress}% complete</span>
-        )}
       </header>
 
-      {/* ── SCREEN: WELCOME ── */}
-      {state.screen === "welcome" && (
-        <WelcomeScreen onStart={handleStart} isLoading={startSession.isPending} />
-      )}
-
-      {/* ── SCREEN: AGE ── */}
-      {state.screen === "age" && (
-        <SingleChoiceScreen
-          question="How old are you?"
-          options={[
-            { id: "under30", text: "Under 30" },
-            { id: "30_44", text: "30–44" },
-            { id: "45_59", text: "45–59" },
-            { id: "60plus", text: "60 or older" },
-          ]}
-          selected={state.answers["q_age"] as string}
-          onSelect={v => { setAnswer("q_age", v); nextScreen(); }}
-        />
-      )}
-
-      {/* ── SCREEN: WHO ── */}
-      {state.screen === "who" && (
-        <SingleChoiceScreen
-          question="Are you taking this quiz for yourself, your partner, or both of you together?"
-          subtext="This helps us personalize your results."
-          options={[
-            { id: "me_male", text: "For myself — I'm a man" },
-            { id: "me_female", text: "For myself — I'm a woman" },
-            { id: "couple", text: "We're doing this together as a couple" },
-          ]}
-          selected={state.answers["q_who"] as string}
-          onSelect={v => { setAnswer("q_who", v); nextScreen(); }}
-        />
-      )}
-
-      {/* ── SCREEN: VITALITY ── */}
-      {state.screen === "vitality" && (
-        <SingleChoiceScreen
-          question="How would you describe your overall vitality and life force right now?"
-          subtext="In Eastern medicine, vitality is your Jing — the root energy that powers everything."
-          options={[
-            { id: "depleted", text: "Depleted — I'm running on empty and I can feel it" },
-            { id: "inconsistent", text: "Inconsistent — some days I feel alive, other days flat" },
-            { id: "disconnected", text: "Physically okay but mentally and emotionally disconnected" },
-            { id: "lost_spark", text: "I have energy but I've lost my spark and drive" },
-          ]}
-          selected={state.answers["q_vitality"] as string}
-          onSelect={v => { setAnswer("q_vitality", v); nextScreen(); }}
-        />
-      )}
-
-      {/* ── SCREEN: SEXUAL ENERGY ── */}
-      {state.screen === "sexual_energy" && (
-        <SingleChoiceScreen
-          question="How has your sexual energy and desire felt over the past few months?"
-          subtext="In Taoist medicine, sexual energy is the root of everything — your drive, your passion, your presence with the person you love. When it dims, everything dims with it."
-          options={[
-            { id: "much_lower", text: "Much lower than it used to be — I barely think about it" },
-            { id: "desire_no_energy", text: "The desire is there but the energy to act on it isn't" },
-            { id: "disconnected", text: "I feel disconnected from my body and my partner" },
-            { id: "unpredictable", text: "My drive comes and goes unpredictably" },
-          ]}
-          selected={state.answers["q_sexual_energy"] as string}
-          onSelect={v => { setAnswer("q_sexual_energy", v); nextScreen(); }}
-        />
-      )}
-
-      {/* ── SCREEN: EDUCATION — NOT YOUR FAULT ── */}
-      {state.screen === "edu_not_your_fault" && (
-        <EducationScreen
-          icon={<Shield className="w-10 h-10 text-amber-400" />}
-          headline="This is not a willpower problem."
-          body={[
-            "Modern life systematically depletes the hormones and neurochemicals that drive desire, passion, and the kind of intimacy that makes you feel truly alive with another person.",
-            "Chronic stress floods your system with cortisol — which directly suppresses testosterone, estrogen, and oxytocin.",
-            "Poor sleep, processed food, and constant overstimulation drain the root energy that Eastern medicine has called Jing for 5,000 years.",
-            "You are not broken. Your biology is responding exactly as it was designed to — to a world it was never designed for.",
-            "The question is: what do you do about it?",
-          ]}
-          ctaText="Continue"
-          onCta={nextScreen}
-        />
-      )}
-
-      {/* ── SCREEN: SYMPTOMS ── */}
-      {state.screen === "symptoms" && (
-        <MultiChoiceScreen
-          question="Which of these do you experience? Select all that apply."
-          subtext="This helps us identify the root cause — and the right path forward."
-          options={[
-            { id: "low_libido", text: "Low libido or reduced sexual desire" },
-            { id: "fatigue", text: "Fatigue that doesn't go away with rest" },
-            { id: "brain_fog", text: "Brain fog or difficulty concentrating" },
-            { id: "poor_sleep", text: "Poor sleep or waking unrefreshed" },
-            { id: "gut_issues", text: "Digestive issues, bloating, or gut discomfort" },
-            { id: "oral_issues", text: "Gum sensitivity, mouth inflammation, or dental issues" },
-            { id: "mood", text: "Mood swings, irritability, or anxiety" },
-            { id: "disconnected", text: "Feeling disconnected from your partner or from intimacy" },
-            { id: "creative_loss", text: "Loss of creative energy or motivation" },
-            { id: "flat", text: "Feeling 'flat' — less alive than you used to feel" },
-          ]}
-          selected={(state.answers["q_symptoms"] as string[]) ?? []}
-          onToggle={v => toggleMultiAnswer("q_symptoms", v)}
-          onNext={nextScreen}
-        />
-      )}
-
-      {/* ── SCREEN: HORMONE CONTEXT — WOMEN / COUPLES ── */}
-      {state.screen === "hormone_symptoms" && (
-        <MultiChoiceScreen
-          question="Do any of these changes sound familiar?"
-          subtext="This is not a diagnosis. It helps us suggest whether a clinician conversation may be useful."
-          options={[
-            { id: "irregular_periods", text: "Periods that have become irregular or stopped unexpectedly" },
-            { id: "hot_flashes", text: "Hot flashes or night sweats" },
-            { id: "mood_changes", text: "New or unexplained mood changes or irritability" },
-            { id: "weight_changes", text: "Significant weight changes without a clear change in routine" },
-            { id: "hair_thinning", text: "Hair thinning or loss that concerns me" },
-            { id: "none", text: "None of these" },
-          ]}
-          selected={(state.answers["q_hormone_symptoms"] as string[]) ?? []}
-          onToggle={v => {
-            if (v === "none") {
-              setAnswer("q_hormone_symptoms", ["none"]);
-              return;
-            }
-            const current = (state.answers["q_hormone_symptoms"] as string[] | undefined) ?? [];
-            const withoutNone = current.filter(x => x !== "none");
-            setAnswer("q_hormone_symptoms", withoutNone.includes(v) ? withoutNone.filter(x => x !== v) : [...withoutNone, v]);
-          }}
-          onNext={nextScreen}
-        />
-      )}
-
-      {/* ── SCREEN: HORMONE CONTEXT — MEN / COUPLES ── */}
-      {state.screen === "hormone_male" && (
-        <MultiChoiceScreen
-          question="Do any of these changes sound familiar?"
-          subtext="This is not a diagnosis. It helps us suggest whether a clinician conversation may be useful."
-          options={[
-            { id: "fatigue_despite_sleep", text: "Ongoing fatigue despite getting enough sleep" },
-            { id: "muscle_changes", text: "Loss of muscle mass or strength without a clear explanation" },
-            { id: "mood_changes", text: "New or unexplained mood changes or irritability" },
-            { id: "none", text: "None of these" },
-          ]}
-          selected={(state.answers["q_hormone_male"] as string[]) ?? []}
-          onToggle={v => {
-            if (v === "none") {
-              setAnswer("q_hormone_male", ["none"]);
-              return;
-            }
-            const current = (state.answers["q_hormone_male"] as string[] | undefined) ?? [];
-            const withoutNone = current.filter(x => x !== "none");
-            setAnswer("q_hormone_male", withoutNone.includes(v) ? withoutNone.filter(x => x !== v) : [...withoutNone, v]);
-          }}
-          onNext={nextScreen}
-        />
-      )}
-
-      {/* ── SCREEN: CONNECTION ── */}
-      {state.screen === "connection" && (
-        <SingleChoiceScreen
-          question="How would you describe your connection to intimacy and your partner right now?"
-          options={[
-            { id: "going_through_motions", text: "Disconnected — we're going through the motions" },
-            { id: "want_close", text: "We want to feel close but something is blocking it" },
-            { id: "cant_sustain", text: "We feel present sometimes but can't sustain it" },
-            { id: "lost_play", text: "We've lost the sense of play and aliveness in our relationship" },
-          ]}
-          selected={state.answers["q_connection"] as string}
-          onSelect={v => { setAnswer("q_connection", v); nextScreen(); }}
-        />
-      )}
-
-      {/* ── SCREEN: EDUCATION — EAST-WEST ── */}
-      {state.screen === "edu_east_west" && (
-        <EducationScreen
-          icon={<Leaf className="w-10 h-10 text-amber-400" />}
-          headline="5,000 years of wisdom. Modern clinical science. One formula."
-          body={[
-            "I spent 10 years as a Taoist monk studying the traditions that treat sexual energy as the root of all vitality.",
-            "Then I went to medical school. And I discovered that the ancient masters were right — they just didn't have the molecular biology to explain why.",
-            "Oxytocin — the bonding molecule — is the neurochemical equivalent of what the Taoists called heart-opening.",
-            "Bremelanotide activates the exact neural pathways that Tantric traditions have been stimulating through breathwork and meditation for millennia.",
-            "The Tantra formula is the bridge I spent 20 years building.",
-          ]}
-          attribution="— Dr. Pedram Shojai, OMD · Physician · Former Taoist Monk · Author of The Urban Monk"
-          ctaText="I'm ready to see my results"
-          onCta={nextScreen}
-        />
-      )}
-
-      {/* ── SCREEN: SAFETY ── */}
-      {state.screen === "safety" && (
-        <MultiChoiceScreen
-          question="Do any of these apply to you?"
-          subtext="This helps us make sure the Tantra formula is right for you. This is a prescription compound — your safety matters."
-          options={[
-            { id: "hormone_therapy", text: "Currently taking hormone therapy or prescription medications for sexual health" },
-            { id: "hormone_condition", text: "Diagnosed with a hormone-sensitive condition" },
-            { id: "pregnant", text: "Currently pregnant or nursing" },
-            { id: "none", text: "None of these apply to me" },
-          ]}
-          selected={(state.answers["q_safety"] as string[]) ?? []}
-          onToggle={v => {
-            if (v === "none") {
-              setAnswer("q_safety", ["none"]);
-            } else {
-              const current = (state.answers["q_safety"] as string[] | undefined) ?? [];
-              const withoutNone = current.filter(x => x !== "none");
-              const next = withoutNone.includes(v)
-                ? withoutNone.filter(x => x !== v)
-                : [...withoutNone, v];
-              setAnswer("q_safety", next);
-            }
-          }}
-          onNext={nextScreen}
-          nextLabel="Continue"
-        />
-      )}
-
-      {/* ── SCREEN: GOALS ── */}
-      {state.screen === "goals" && (
-        <MultiChoiceScreen
-          question="What are you most hoping to restore? Select all that apply."
-          options={[
-            { id: "sexual_vitality", text: "Sexual desire and vitality" },
-            { id: "physical_energy", text: "Physical energy and stamina" },
-            { id: "emotional_connection", text: "Emotional connection with my partner" },
-            { id: "mental_clarity", text: "Mental clarity and creative drive" },
-            { id: "aliveness", text: "A sense of aliveness and presence" },
-            { id: "relationship_spark", text: "Our relationship's spark and playfulness" },
-            { id: "all", text: "All of the above" },
-          ]}
-          selected={(state.answers["q_goals"] as string[]) ?? []}
-          onToggle={v => toggleMultiAnswer("q_goals", v)}
-          onNext={() => {
-            // After goals, submit answers and get routing
-            handleSubmitAnswers();
-          }}
-          nextLabel="See my personalized results →"
-          isLoading={submitAnswers.isPending}
-        />
-      )}
-
-      {/* ── SCREEN: SOCIAL PROOF ── */}
-      {state.screen === "social_proof" && (
-        <SocialProofScreen onNext={nextScreen} />
-      )}
-
-      {/* ── SCREEN: EMAIL CAPTURE ── */}
-      {state.screen === "email_capture" && (
-        <EmailCaptureScreen
-          product={state.product}
-          email={state.email}
-          name={state.name}
-          onEmailChange={v => setState(s => ({ ...s, email: v }))}
-          onNameChange={v => setState(s => ({ ...s, name: v }))}
-          onSubmit={handleEmailSubmit}
-          isLoading={captureEmail.isPending}
-        />
-      )}
-
-      {/* ── SCREEN: RESULTS ── */}
-      {state.screen === "results" && state.product && (
-        <ResultsScreen
-          product={state.product}
-          upsells={state.upsells}
-          triage={state.triage}
-          segmentation={state.segmentation}
-          clinicalResources={state.clinicalResources}
-          result={state.result}
-          tantraCourse={state.tantraCourse}
-          lightsOn={state.lightsOn}
-          coupleProducts={coupleProducts}
-          onCheckoutIntent={(offer) => trackTantraPixel("InitiateCheckout", buildTantraCheckoutParams(offer))}
-        />
-      )}
-    </div>
-  );
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function WelcomeScreen({ onStart, isLoading }: { onStart: () => void; isLoading: boolean }) {
-  return (
-    <div className="min-h-[calc(100vh-73px)] flex flex-col md:flex-row relative overflow-hidden bg-[#0d0d0d]">
-      {/* Ambient glow */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-900/15 rounded-full blur-[140px] pointer-events-none" />
-
-      {/* LEFT: Narrower headshot column */}
-      <div className="relative md:w-[30%] flex-shrink-0 hidden md:flex flex-col">
-        <div className="relative flex-1 overflow-hidden">
-          <img
-            src="/manus-storage/pedram-shojai-doctor_657618c7.webp"
-            alt="Dr. Pedram Shojai, OMD"
-            className="w-full h-full object-cover object-top"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/20 to-transparent pointer-events-none" />
-          <div className="absolute bottom-0 left-0 right-0 p-3">
-            <div className="bg-[#0d0d0d]/85 backdrop-blur-sm border border-amber-700/40 rounded-xl px-4 py-3">
-              <p className="text-white font-bold text-base leading-tight">Dr. Pedram Shojai, OMD</p>
-              <p className="text-amber-400 text-xs font-semibold tracking-wide mt-0.5">Doctor of Oriental Medicine</p>
-              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
-                <span className="text-white/60 text-xs">Former Taoist Monk</span>
-                <span className="text-white/30 text-xs">·</span>
-                <span className="text-white/60 text-xs">NYT Bestselling Author</span>
-                <span className="text-white/30 text-xs">·</span>
-                <span className="text-white/60 text-xs">20+ Years Clinical Practice</span>
+      {screen === "welcome" && (
+        <section className="relative overflow-hidden">
+          <div className="pointer-events-none absolute -right-32 top-0 h-96 w-96 rounded-full bg-[#bdd8c7]/55 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-40 -left-20 h-80 w-80 rounded-full bg-[#e4c8aa]/55 blur-3xl" />
+          <div className="relative mx-auto grid min-h-[calc(100vh-82px)] max-w-6xl items-center gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[1.05fr_.95fr] lg:py-20">
+            <div>
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#183334]/15 bg-white/55 px-4 py-2 text-xs font-semibold text-[#31534f]">
+                <HeartPulse className="h-4 w-4" /> A two-minute whole-system check-in
               </div>
+              <h1 className="max-w-3xl font-serif text-5xl font-semibold leading-[.98] tracking-[-0.035em] text-[#183334] sm:text-6xl lg:text-7xl">
+                Your desire is part of the whole system.
+              </h1>
+              <p className="mt-7 max-w-2xl text-lg leading-8 text-[#365552] sm:text-xl">
+                Desire is not a character trait and it is not separate from your body. Energy, recovery, stress, connection, and a thoughtful clinical conversation can all matter.
+              </p>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-[#52706b]">
+                Dr. Pedram Shojai’s functional-medicine perspective starts with the person, not a promise. This check-in helps you choose the right pathway to explore next.
+              </p>
+              <button
+                type="button"
+                onClick={() => void start()}
+                disabled={startSession.isPending}
+                className="mt-9 inline-flex items-center gap-3 rounded-full bg-[#183334] px-7 py-4 text-base font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#244744] disabled:cursor-wait disabled:opacity-70"
+              >
+                {startSession.isPending ? "Opening your check-in…" : "Start the free check-in"}
+                <ArrowRight className="h-5 w-5" />
+              </button>
+              <p className="mt-4 text-xs leading-5 text-[#52706b]">Results appear immediately. No purchase. No automatic email enrollment.</p>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* RIGHT: Video + copy + CTA column */}
-      <div className="relative z-10 flex-1 flex flex-col justify-start px-6 md:px-10 py-8 md:py-10 overflow-y-auto">
-        {/* "From the desk of" label */}
-        <p className="text-amber-500/80 text-xs font-semibold tracking-[0.15em] uppercase mb-3">
-          A Message From Dr. Shojai
-        </p>
-
-        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-tight mb-4">
-          The Ancient Secret to Desire,<br />
-          <span className="text-amber-400">Passion, and Coming Back to Each Other</span>
-        </h1>
-
-        {/* ── Intro video — above the fold in right column ── */}
-        <div className="w-full mb-4 rounded-xl overflow-hidden border border-amber-700/20 bg-black" style={{ aspectRatio: '16/9', maxWidth: '560px' }}>
-          <script src="https://fast.wistia.com/assets/external/E-v1.js" async></script>
-          <div
-            className="wistia_embed wistia_async_sq2gcr1ggd videoFoam=true"
-            style={{ height: '100%', width: '100%', position: 'relative' }}
-          >&nbsp;</div>
-        </div>
-
-        <p className="text-white/85 text-sm md:text-base leading-relaxed mb-3 max-w-lg">
-          I spent 10 years as a Taoist monk studying the sacred traditions of the bed chamber — the ancient science of desire, love, and what it means to truly come home to the person you chose.
-        </p>
-
-        <p className="text-white/75 text-sm leading-relaxed mb-5 max-w-lg">
-          This 2-minute quiz will identify exactly what's dimming the campfire between you — and show you the East-West prescription formula I developed to bring it back.
-        </p>
-
-        {/* Credential pills */}
-        <div className="flex flex-wrap gap-2 mb-5">
-          <span className="inline-flex items-center gap-1.5 bg-amber-900/25 border border-amber-700/35 rounded-full px-3 py-1 text-amber-300/90 text-xs font-medium">
-            <CheckCircle2 className="w-3 h-3" /> Physician-Formulated
-          </span>
-          <span className="inline-flex items-center gap-1.5 bg-amber-900/25 border border-amber-700/35 rounded-full px-3 py-1 text-amber-300/90 text-xs font-medium">
-            <Shield className="w-3 h-3" /> HIPAA Compliant
-          </span>
-          <span className="inline-flex items-center gap-1.5 bg-amber-900/25 border border-amber-700/35 rounded-full px-3 py-1 text-amber-300/90 text-xs font-medium">
-            <Star className="w-3 h-3" /> Compounded by Strive Pharmacy
-          </span>
-        </div>
-
-        <Button
-          onClick={onStart}
-          disabled={isLoading}
-          className="bg-amber-500 hover:bg-amber-400 text-black font-bold text-lg px-10 py-6 rounded-full shadow-lg shadow-amber-900/40 transition-all duration-200 self-start"
-        >
-          {isLoading ? "Starting..." : "Take the Free Quiz →"}
-        </Button>
-
-        <p className="text-white/50 text-xs mt-4">
-          Takes 2 minutes · No credit card required · Personalized results
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function SingleChoiceScreen({
-  question,
-  subtext,
-  options,
-  selected,
-  onSelect,
-}: {
-  question: string;
-  subtext?: string;
-  options: { id: string; text: string }[];
-  selected?: string;
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <div className="min-h-[calc(100vh-73px)] flex flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-xl mx-auto">
-        <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-3 leading-snug">
-          {question}
-        </h2>
-        {subtext && (
-          <p className="text-white/75 text-sm text-center mb-8 italic">{subtext}</p>
-        )}
-        {!subtext && <div className="mb-8" />}
-        <div className="space-y-3">
-          {options.map(opt => (
-            <button
-              key={opt.id}
-              onClick={() => onSelect(opt.id)}
-              className={`w-full text-left px-5 py-4 rounded-xl border transition-all duration-150 text-base ${
-                selected === opt.id
-                  ? "bg-amber-500/20 border-amber-500 text-white"
-                  : "bg-white/5 border-white/10 text-white/80 hover:bg-white/10 hover:border-white/20"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <span className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
-                  selected === opt.id ? "border-amber-500 bg-amber-500" : "border-white/30"
-                }`}>
-                  {selected === opt.id && <span className="w-2 h-2 rounded-full bg-white" />}
-                </span>
-                {opt.text}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MultiChoiceScreen({
-  question,
-  subtext,
-  options,
-  selected,
-  onToggle,
-  onNext,
-  nextLabel = "Continue →",
-  isLoading = false,
-}: {
-  question: string;
-  subtext?: string;
-  options: { id: string; text: string }[];
-  selected: string[];
-  onToggle: (id: string) => void;
-  onNext: () => void;
-  nextLabel?: string;
-  isLoading?: boolean;
-}) {
-  return (
-    <div className="min-h-[calc(100vh-73px)] flex flex-col items-center justify-start px-6 py-12">
-      <div className="w-full max-w-xl mx-auto">
-        <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-3 leading-snug">
-          {question}
-        </h2>
-        {subtext && (
-          <p className="text-white/75 text-sm text-center mb-8 italic">{subtext}</p>
-        )}
-        {!subtext && <div className="mb-8" />}
-        <div className="space-y-3 mb-8">
-          {options.map(opt => (
-            <button
-              key={opt.id}
-              onClick={() => onToggle(opt.id)}
-              className={`w-full text-left px-5 py-4 rounded-xl border transition-all duration-150 text-base ${
-                selected.includes(opt.id)
-                  ? "bg-amber-500/20 border-amber-500 text-white"
-                  : "bg-white/5 border-white/10 text-white/80 hover:bg-white/10 hover:border-white/20"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <span className={`w-5 h-5 rounded-md border-2 flex-shrink-0 flex items-center justify-center transition-all ${
-                  selected.includes(opt.id) ? "border-amber-500 bg-amber-500" : "border-white/30"
-                }`}>
-                  {selected.includes(opt.id) && <CheckCircle2 className="w-3 h-3 text-white" />}
-                </span>
-                {opt.text}
-              </span>
-            </button>
-          ))}
-        </div>
-        <Button
-          onClick={onNext}
-          disabled={selected.length === 0 || isLoading}
-          className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold text-base py-5 rounded-xl"
-        >
-          {isLoading ? "Analyzing your answers..." : nextLabel}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function EducationScreen({
-  icon,
-  headline,
-  body,
-  attribution,
-  ctaText,
-  onCta,
-}: {
-  icon: React.ReactNode;
-  headline: string;
-  body: string[];
-  attribution?: string;
-  ctaText: string;
-  onCta: () => void;
-}) {
-  return (
-    <div className="min-h-[calc(100vh-73px)] flex flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-xl mx-auto text-center">
-        <div className="flex justify-center mb-6">{icon}</div>
-        <h2 className="text-2xl md:text-3xl font-bold text-white mb-8 leading-snug">{headline}</h2>
-        <div className="space-y-4 text-left mb-10">
-          {body.map((paragraph, i) => (
-            <p key={i} className="text-white/90 text-base leading-relaxed">{paragraph}</p>
-          ))}
-          {attribution && (
-            <p className="text-amber-400/70 text-sm italic mt-6">{attribution}</p>
-          )}
-        </div>
-        <Button
-          onClick={onCta}
-          className="bg-amber-500 hover:bg-amber-400 text-black font-bold text-base px-8 py-5 rounded-xl w-full"
-        >
-          {ctaText}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function SocialProofScreen({ onNext }: { onNext: () => void }) {
-  const testimonials = [
-    {
-      quote: "I didn't realize how much I'd lost until I started getting it back. By week three I felt like myself again — actually present with my wife for the first time in years.",
-      name: "Michael R., 52",
-      detail: "Executive, San Francisco",
-    },
-    {
-      quote: "I was skeptical. I'm a physician myself. But the East-West framing made sense to me in a way that nothing else had. The results were undeniable.",
-      name: "Dr. Sarah K., 47",
-      detail: "Internal Medicine",
-    },
-    {
-      quote: "We did this together. It changed our relationship in ways I didn't think were possible after 18 years of marriage.",
-      name: "Jennifer & David T.",
-      detail: "Married 18 years",
-    },
-  ];
-
-  return (
-    <div className="min-h-[calc(100vh-73px)] flex flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="flex justify-center gap-1 mb-3">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} className="w-5 h-5 text-amber-400 fill-amber-400" />
-            ))}
-          </div>
-          <h2 className="text-2xl font-bold text-white">You're almost there.</h2>
-          <p className="text-white/75 text-sm mt-2">Here's what others discovered when they took this step.</p>
-        </div>
-        <div className="space-y-4 mb-8">
-          {testimonials.map((t, i) => (
-            <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-5">
-              <p className="text-white/80 text-sm italic leading-relaxed mb-3">"{t.quote}"</p>
-              <div>
-                <p className="text-amber-400 text-sm font-semibold">{t.name}</p>
-                <p className="text-white/65 text-xs">{t.detail}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        <Button
-          onClick={onNext}
-          className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold text-base py-5 rounded-xl"
-        >
-          See My Personalized Results →
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function EmailCaptureScreen({
-  product,
-  email,
-  name,
-  onEmailChange,
-  onNameChange,
-  onSubmit,
-  isLoading,
-}: {
-  product: ProductInfo | null;
-  email: string;
-  name: string;
-  onEmailChange: (v: string) => void;
-  onNameChange: (v: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
-  isLoading: boolean;
-}) {
-  return (
-    <div className="min-h-[calc(100vh-73px)] flex flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-md mx-auto text-center">
-        {/* Teaser */}
-        <div className="w-16 h-16 rounded-full bg-amber-900/30 border border-amber-700/40 flex items-center justify-center mx-auto mb-6">
-          <Zap className="w-8 h-8 text-amber-400" />
-        </div>
-        <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
-          Your results are ready.
-        </h2>
-        <p className="text-white/85 text-base mb-2">
-          {product
-            ? `Based on your answers, we've identified the right formula to help you reconnect.`
-            : `Based on your answers, we've personalized your path back to each other.`}
-        </p>
-        <p className="text-white/65 text-sm mb-8 italic">
-          Enter your email to see your personalized results — and to receive Dr. Shojai's free guide on reigniting desire and coming back to each other.
-        </p>
-
-        <form onSubmit={onSubmit} className="space-y-4">
-          <Input
-            type="text"
-            placeholder="First name (optional)"
-            value={name}
-            onChange={e => onNameChange(e.target.value)}
-            className="bg-white/5 border-white/20 text-white placeholder:text-white/85 py-5 text-base rounded-xl"
-          />
-          <Input
-            type="email"
-            placeholder="Your email address"
-            value={email}
-            onChange={e => onEmailChange(e.target.value)}
-            required
-            className="bg-white/5 border-white/20 text-white placeholder:text-white/85 py-5 text-base rounded-xl"
-          />
-          <Button
-            type="submit"
-            disabled={!email || isLoading}
-            className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold text-base py-5 rounded-xl"
-          >
-            {isLoading ? "Loading your results..." : "Show Me My Results →"}
-          </Button>
-        </form>
-
-        <p className="text-white/55 text-xs mt-4">
-          We respect your privacy. Unsubscribe at any time. Your information is never sold.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function ClinicalTriageSection({
-  triage,
-  segmentation,
-  clinicalResources,
-  onCheckoutIntent,
-}: {
-  triage: TriageFlags;
-  segmentation: SegmentationInfo;
-  clinicalResources: ClinicalResources;
-  onCheckoutIntent: (offer: TantraTrackableOffer) => void;
-}) {
-  const resourceLink = (resource: UpsellInfo | null, label: string) => {
-    if (!resource?.shopifyUrl) return null;
-    return (
-      <a
-        href={resource.shopifyUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={() => onCheckoutIntent(resource)}
-        className="inline-flex items-center gap-1 text-amber-300 text-sm font-semibold hover:text-amber-200"
-      >
-        {label} <ChevronRight className="w-4 h-4" />
-      </a>
-    );
-  };
-
-  return (
-    <section className="max-w-2xl mx-auto mb-8 text-left" aria-label="Clinician-guided next steps">
-      <div className="border border-amber-700/45 bg-amber-950/20 rounded-2xl px-6 py-6">
-        <div className="flex items-start gap-3 mb-5">
-          <div className="w-10 h-10 rounded-full bg-amber-900/40 border border-amber-700/50 flex items-center justify-center flex-shrink-0">
-            <Shield className="w-5 h-5 text-amber-300" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-white">What your answers suggest</h2>
-            <p className="text-white/75 text-sm leading-relaxed mt-1">
-              Your responses raise a few factors that may be worth discussing with a licensed clinician. This quiz cannot diagnose a condition or identify the cause of a symptom.
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {triage.hormoneFlag && (
-            <div className="border-t border-white/10 pt-4">
-              <h3 className="text-white font-semibold mb-1">Start with the gut-health path and a conversation with our team</h3>
-              <p className="text-white/75 text-sm leading-relaxed">
-                The changes you selected can have many explanations. The practical first step is Fit22 and a conversation with our team, who can look at the bigger picture with you. This quiz cannot diagnose a hormone condition or menopausal status.
-              </p>
-              <p className="text-white/65 text-sm leading-relaxed mt-3">
-                From there, a licensed clinician can decide whether hormone testing or another assessment is appropriate. Fit22 is a gut-health baseline, not a hormone assay, and it does not diagnose a hormone condition.
-              </p>
-              <div className="mt-3">{resourceLink(clinicalResources.fit22, "Start with Fit22 → meet our team")}</div>
-            </div>
-          )}
-
-          {triage.gutFlag && (
-            <div className="border-t border-white/10 pt-4">
-              <h3 className="text-white font-semibold mb-1">Your gut may hold clues that are worth exploring</h3>
-              <p className="text-white/75 text-sm leading-relaxed">
-                Your digestive system does far more than process food. Food reactivity, gut-barrier changes, microbiome patterns, and immune signaling can all be part of a broader health picture. They can influence how settled, energized, and resilient you feel—but this quiz cannot determine which factor, if any, explains your symptoms.
-              </p>
-              <p className="text-white/65 text-sm leading-relaxed mt-3">
-                Fit22 gives our team a practical baseline around food sensitivity and gut permeability, so we can look for useful clues together instead of guessing. Start with the test, meet with our team, and let a clinician determine whether any additional assessment makes sense. Persistent or concerning digestive symptoms still warrant clinical evaluation.
-              </p>
-              <div className="mt-3">{resourceLink(clinicalResources.fit22, "Start with Fit22 → meet our team")}</div>
-            </div>
-          )}
-
-          {triage.sleepFlag && (
-            <div className="border-t border-white/10 pt-4">
-              <h3 className="text-white font-semibold mb-1">Sleep is often where the whole system tells the truth</h3>
-              <p className="text-white/75 text-sm leading-relaxed">
-                Broken or unrefreshing sleep can sit at the intersection of circadian rhythm, stress signaling, cortisol rhythm, inflammation, breathing, and metabolic health. When sleep is consistently off, desire and connection often have less room to return. None of that identifies a sleep disorder or tells us what is causing your sleep changes.
-              </p>
-              <p className="text-white/65 text-sm leading-relaxed mt-3">
-                A sleep test can give our team more concrete information to bring into the conversation rather than treating this as a willpower problem. Start with the test, then let a qualified clinician help decide what the findings mean and whether further evaluation is appropriate.
-              </p>
-              <div className="mt-3">{resourceLink(clinicalResources.sleep, "Explore the sleep test →")}</div>
-            </div>
-          )}
-
-          {triage.oralFlag && (
-            <div className="border-t border-white/10 pt-4">
-              <h3 className="text-white font-semibold mb-1">The mouth may offer early clues about the wider system</h3>
-              <p className="text-white/75 text-sm leading-relaxed">
-                Your tongue and oral ecosystem are not separate from the rest of you. Nitrate-reducing bacteria, including groups such as Rothia and Neisseria, participate in the nitrate–nitrite–nitric-oxide pathway; oral inflammation and microbial patterns can also be useful clues to discuss in a broader health assessment. This quiz cannot diagnose an oral-health condition or determine what is behind a symptom.
-              </p>
-              <p className="text-white/65 text-sm leading-relaxed mt-3">
-                An oral-health test gives our team a more specific map of the oral ecosystem, so you can move from vague concern to a better conversation about which signals deserve attention. Persistent mouth, gum, breathing, or function concerns should be discussed with an appropriate dental or medical clinician.
-              </p>
-              <div className="mt-3">{resourceLink(clinicalResources.oral, "Explore the oral-health test →")}</div>
-            </div>
-          )}
-        </div>
-
-        <p className="text-white/45 text-xs mt-5">
-          Your quiz record is assigned to the {segmentation.primaryPath.replace("_", " ")} pathway so the appropriate follow-up team can review the next step.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function ResultsScreen({
-  product,
-  upsells,
-  triage,
-  segmentation,
-  clinicalResources,
-  result,
-  tantraCourse,
-  lightsOn,
-  coupleProducts,
-  onCheckoutIntent,
-}: {
-  product: ProductInfo;
-  upsells: UpsellInfo[];
-  triage: TriageFlags;
-  segmentation: SegmentationInfo;
-  clinicalResources: ClinicalResources;
-  result: string | null;
-  tantraCourse: CourseInfo | null;
-  lightsOn: CourseInfo | null;
-  coupleProducts: CoupleProducts | null;
-  onCheckoutIntent: (offer: TantraTrackableOffer) => void;
-}) {
-  const isCouple = !!coupleProducts;
-  const accentColor = result === "tantra_her" ? "#9B59B6" : "#B8860B";
-  const hasClinicalFlags = triage.hormoneFlag || triage.gutFlag || triage.sleepFlag || triage.oralFlag;
-
-  // ── Urgency timer (20 minutes) ──────────────────────────────────────────────
-  const [timeLeft, setTimeLeft] = useState(20 * 60); // 20 min in seconds
-  useEffect(() => {
-    const t = setInterval(() => setTimeLeft(s => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(t);
-  }, []);
-  const timerMins = String(Math.floor(timeLeft / 60)).padStart(2, "0");
-  const timerSecs = String(timeLeft % 60).padStart(2, "0");
-  const timerExpired = timeLeft === 0;
-
-  // ── Exit intent popup ───────────────────────────────────────────────────────
-  const [showExitPopup, setShowExitPopup] = useState(false);
-  const exitFired = useRef(false);
-  const handleMouseLeave = useCallback((e: MouseEvent) => {
-    if (!exitFired.current && e.clientY <= 0) {
-      exitFired.current = true;
-      setShowExitPopup(true);
-    }
-  }, []);
-  useEffect(() => {
-    document.addEventListener("mouseleave", handleMouseLeave);
-    // Mobile: show after 45s of no interaction
-    const mobileTimer = setTimeout(() => {
-      if (!exitFired.current) {
-        exitFired.current = true;
-        setShowExitPopup(true);
-      }
-    }, 45000);
-    return () => {
-      document.removeEventListener("mouseleave", handleMouseLeave);
-      clearTimeout(mobileTimer);
-    };
-  }, [handleMouseLeave]);
-
-  return (
-    <div className="min-h-screen bg-[#0d0d0d] pb-32">
-
-      {/* ── EXIT INTENT POPUP ── */}
-      {showExitPopup && !hasClinicalFlags && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.85)" }}>
-          <div className="bg-[#141414] border border-amber-700/40 rounded-2xl p-8 max-w-md w-full text-center relative shadow-2xl">
-            <button onClick={() => setShowExitPopup(false)} className="absolute top-4 right-4 text-white/40 hover:text-white/70 text-xl leading-none">✕</button>
-            <div className="w-14 h-14 rounded-full bg-amber-900/30 border border-amber-700/40 flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl">🌿</span>
-            </div>
-            <h3 className="text-white font-bold text-xl mb-2">Before you go…</h3>
-            <p className="text-white/80 text-sm mb-4 leading-relaxed">
-              The campfire between you is still there. Your quiz results show exactly what's dimming it — and the formula Dr. Shojai developed to bring it back. Don't leave without seeing what's possible.
-            </p>
-            <p className="text-amber-400 text-sm font-semibold mb-5">Your protocol is still reserved for the next {timerMins}:{timerSecs}.</p>
-            <a href={product.shopifyUrl} target="_blank" rel="noopener noreferrer" onClick={() => { onCheckoutIntent(product); setShowExitPopup(false); }}
-              className="block w-full text-center font-bold text-base py-4 rounded-xl text-black mb-3" style={{ background: accentColor }}>
-             Try It for 30 Days — {product.price} →
-            </a>
-            <p className="text-white/50 text-xs mb-2">Try it for 30 days, then decide whether it is right for you.</p>
-            <button onClick={() => setShowExitPopup(false)} className="text-white/45 text-xs hover:text-white/65">
-              No thanks, I'll pass on coming back to each other
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── STICKY URGENCY BAR ── */}
-      {!hasClinicalFlags && (
-      <div className="fixed bottom-0 left-0 right-0 z-50 px-4 py-3 flex items-center justify-between gap-4"
-        style={{ background: "#0d0d0d", borderTop: `1px solid ${accentColor}40` }}>
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm"
-            style={{ background: `${accentColor}30`, border: `1px solid ${accentColor}60` }}>⏱</div>
-          <p className="text-white/85 text-xs">
-            {timerExpired
-              ? "Your results are still available — start your protocol today."
-              : <><span className="font-bold" style={{ color: accentColor }}>{timerMins}:{timerSecs}</span>{" — Your path back to each other is reserved"}</>}
-          </p>
-        </div>
-        <a href={product.shopifyUrl} target="_blank" rel="noopener noreferrer" onClick={() => onCheckoutIntent(product)}
-          className="flex-shrink-0 font-bold text-xs px-4 py-2 rounded-full text-black whitespace-nowrap"
-          style={{ background: accentColor }}>Start Now →</a>
-      </div>
-      )}
-
-      {/* Hero result banner */}
-      <div
-        className="py-16 px-6 text-center relative overflow-hidden"
-        style={{ background: `linear-gradient(135deg, ${accentColor}22 0%, #0d0d0d 60%)` }}
-      >
-        <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] rounded-full blur-[100px] opacity-30 pointer-events-none"
-          style={{ background: accentColor }}
-        />
-        <div className="relative z-10 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-white/90 text-sm mb-6">
-            <CheckCircle2 className="w-4 h-4 text-green-400" />
-            Your personalized results are ready
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
-            {hasClinicalFlags ? "Your answers point to a more considered path forward." : product.headline}
-          </h1>
-          <p className="text-white/90 text-lg mb-8 max-w-xl mx-auto">
-            {hasClinicalFlags
-              ? "A few responses may be worth discussing with a licensed clinician. Here is a practical, non-diagnostic next step before you consider any optional product path."
-              : product.subheadline}
-          </p>
-
-          {hasClinicalFlags && (
-            <ClinicalTriageSection
-              triage={triage}
-              segmentation={segmentation}
-              clinicalResources={clinicalResources}
-              onCheckoutIntent={onCheckoutIntent}
-            />
-          )}
-
-          {hasClinicalFlags && (
-            <div className="max-w-2xl mx-auto mb-5 text-left bg-white/5 border border-white/10 rounded-xl px-5 py-4">
-              <p className="text-amber-300 text-sm font-semibold mb-1">A separate, optional next step for connection</p>
-              <p className="text-white/80 text-sm leading-relaxed">
-                In the meantime, if you would like a jump start on reconnecting with your partner while you address these underlying factors, this physician-guided intake is an optional path to explore.
-              </p>
-            </div>
-          )}
-
-          {/* ── PERSONALIZED RESULTS VIDEO ── */}
-          {(() => {
-            // Intro: sq2gcr1ggd | Him: 89uaizbbp7 | Her: 32lqci0nzk | Both: nxh6n82ax4
-            const videoId = result === "tantra_her"
-              ? "32lqci0nzk"
-              : isCouple
-              ? "nxh6n82ax4" // Both / couple path
-              : "89uaizbbp7"; // Him path
-            return (
-              <div className="mb-8 rounded-2xl overflow-hidden border border-white/10 max-w-2xl mx-auto" style={{aspectRatio:'16/9'}}>
-                <script src="https://fast.wistia.com/assets/external/E-v1.js" async></script>
-                <div className={`wistia_embed wistia_async_${videoId} videoFoam=true`} style={{height:'100%',position:'relative'}}>&nbsp;</div>
-              </div>
-            );
-          })()}
-
-          {/* Product card */}
-          {isCouple && coupleProducts ? (
-            /* ── COUPLE: show Him + Her as two separate cards ── */
-            <div className="max-w-2xl mx-auto mb-8">
-              <div className="bg-amber-900/20 border border-amber-700/40 rounded-xl px-5 py-3 mb-5 text-sm text-amber-200 text-center">
-                ⚕️ <strong>Each person completes their own intake separately</strong> — required for HIPAA-compliant telemedicine prescribing.
-              </div>
-              <div className="grid md:grid-cols-2 gap-4">
+            <aside className="border border-[#183334]/10 bg-[#183334] p-7 text-[#f4f0e7] shadow-[20px_20px_0_#d9e7dc] sm:p-9">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b6d7c9]">The Urban Monk approach</p>
+              <div className="mt-8 space-y-7">
                 {[
-                  { p: coupleProducts.him, accent: "#B8860B", tadalafil: "Tadalafil 20mg" },
-                  { p: coupleProducts.her, accent: "#9B59B6", tadalafil: "Tadalafil 5mg" },
-                ].map(({ p, accent, tadalafil }) => (
-                  <div key={p.name} className="bg-white/5 border rounded-2xl p-5 text-left" style={{ borderColor: `${accent}60` }}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h2 className="text-lg font-bold text-white">{p.name}</h2>
-                        <p className="text-white/70 text-xs">{p.tagline}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xl font-bold" style={{ color: accent }}>{p.price}</p>
-                        <p className="text-white/55 text-xs">Try it for 30 days</p>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5 mb-4">
-                      {[
-                        { name: "Oxytocin 40IU", role: "Bonding molecule" },
-                        { name: "Bremelanotide 2mg", role: "Arousal activator" },
-                        { name: tadalafil, role: "Circulation enhancer" },
-                      ].map((ing, i) => (
-                        <div key={i} className="flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: accent }} />
-                          <span className="text-white/85 text-xs"><strong>{ing.name}</strong> — {ing.role}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-2.5 mb-4">
-                      <p className="text-white/65 text-xs">📦 Ships under <strong className="text-white/80">Olympus</strong> brand from Strive Pharmacy.</p>
-                    </div>
-                    <a
-                      href={p.shopifyUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => onCheckoutIntent(p)}
-                      className="block w-full text-center font-bold text-sm py-3.5 rounded-xl text-black"
-                      style={{ background: accent }}
-                    >
-                      Try It for 30 Days — {p.price} →
-                    </a>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            /* ── SINGLE: standard individual product card ── */
-            <div className="bg-white/5 border rounded-2xl p-6 text-left max-w-lg mx-auto mb-8" style={{ borderColor: `${accentColor}60` }}>
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h2 className="text-xl font-bold text-white">{product.name}</h2>
-                  <p className="text-white/75 text-sm">{product.tagline}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold" style={{ color: accentColor }}>{product.price}</p>
-                  <p className="text-white/65 text-xs">Try it for 30 days</p>
-                </div>
-              </div>
-              <p className="text-white/90 text-sm leading-relaxed mb-5">{product.description}</p>
-              <div className="space-y-2 mb-5">
-                {[
-                  { name: "Oxytocin 40IU", role: "The bonding molecule — restores emotional connection and trust" },
-                  { name: "Bremelanotide 2mg", role: "The arousal activator — reawakens desire at the neurological level" },
-                  { name: result === "tantra_her" ? "Tadalafil 5mg" : "Tadalafil 20mg", role: "The circulation enhancer — supports physical response and sensitivity" },
-                ].map((ingredient, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ background: accentColor }} />
+                  ["01", "Look at the foundations", "Sleep, stress regulation, nourishment, movement, and recovery shape the context in which desire lives."],
+                  ["02", "Name the real intention", "The goal may be greater presence, confidence, connection, or a more resilient sense of vitality."],
+                  ["03", "Choose a responsible next step", "A quiz never determines treatment. A qualified clinician determines suitability for any prescription product."],
+                ].map(([number, title, description]) => (
+                  <div key={number} className="grid grid-cols-[2.5rem_1fr] gap-4 border-t border-white/15 pt-5 first:border-t-0 first:pt-0">
+                    <span className="font-serif text-2xl text-[#b6d7c9]">{number}</span>
                     <div>
-                      <span className="text-white text-sm font-semibold">{ingredient.name}</span>
-                      <span className="text-white/75 text-sm"> — {ingredient.role}</span>
+                      <h2 className="text-base font-semibold">{title}</h2>
+                      <p className="mt-2 text-sm leading-6 text-white/70">{description}</p>
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="bg-white/5 rounded-lg p-3 mb-5">
-                <p className="text-white/75 text-xs">
-                  📦 <strong className="text-white/90">Shipping note:</strong> Your order ships under the <strong className="text-white/90">Olympus</strong> brand name from Strive Pharmacy — same formula, same quality.
-                </p>
+            </aside>
+          </div>
+        </section>
+      )}
+
+      {screen === "questions" && currentQuestion && (
+        <section className="mx-auto flex min-h-[calc(100vh-82px)] max-w-3xl flex-col justify-center px-5 py-12 sm:px-8">
+          <div className="mb-10">
+            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.14em] text-[#52706b]">
+              <span>Question {questionIndex + 1} of {QUESTIONS.length}</span>
+              <span>{progress}% complete</span>
+            </div>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#183334]/10">
+              <div className="h-full rounded-full bg-[#4e7b6e] transition-all duration-300" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+
+          <div className="border border-[#183334]/10 bg-white/75 p-6 shadow-[10px_10px_0_#d9e7dc] sm:p-10">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#52706b]">{currentQuestion.eyebrow}</p>
+            <h1 className="mt-4 max-w-2xl font-serif text-3xl font-semibold leading-tight tracking-[-0.02em] text-[#183334] sm:text-4xl">{currentQuestion.question}</h1>
+            {currentQuestion.helper && <p className="mt-4 max-w-2xl text-base leading-7 text-[#52706b]">{currentQuestion.helper}</p>}
+
+            <div className="mt-8 space-y-3">
+              {currentQuestion.options.map((option) => {
+                const isSelected = Array.isArray(selected) ? selected.includes(option.id) : selected === option.id;
+                return (
+                  <button
+                    type="button"
+                    key={option.id}
+                    onClick={() => currentQuestion.type === "single" ? selectSingle(option.id) : toggleMulti(option.id)}
+                    className={`flex w-full items-center gap-4 border px-5 py-4 text-left text-base transition ${
+                      isSelected
+                        ? "border-[#183334] bg-[#d9e7dc] text-[#183334]"
+                        : "border-[#183334]/15 bg-[#fdfbf6] text-[#365552] hover:border-[#4e7b6e] hover:bg-[#eff5ee]"
+                    }`}
+                  >
+                    <span className={`grid h-5 w-5 shrink-0 place-items-center border ${isSelected ? "border-[#183334] bg-[#183334]" : "border-[#7c9690] bg-white"}`}>
+                      {isSelected && <CheckCircle2 className="h-4 w-4 text-white" />}
+                    </span>
+                    <span>{option.text}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-9 flex flex-wrap items-center justify-between gap-4">
+              <button type="button" onClick={back} className="inline-flex items-center gap-2 text-sm font-bold text-[#365552] hover:text-[#183334]">
+                <ChevronLeft className="h-4 w-4" /> Back
+              </button>
+              <button
+                type="button"
+                onClick={advance}
+                disabled={!canContinue || submitAnswers.isPending}
+                className="inline-flex items-center gap-2 rounded-full bg-[#183334] px-6 py-3 font-bold text-white transition hover:bg-[#244744] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {questionIndex === QUESTIONS.length - 1 ? (submitAnswers.isPending ? "Preparing results…" : "See my check-in") : "Continue"}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {screen === "results" && (
+        <section className="mx-auto max-w-5xl px-5 py-12 sm:px-8 sm:py-16">
+          <div className="mx-auto max-w-3xl text-center">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#d9e7dc] text-[#183334]"><Sparkles className="h-6 w-6" /></div>
+            <p className="mt-6 text-xs font-bold uppercase tracking-[0.16em] text-[#52706b]">Your starting point</p>
+            <h1 className="mt-3 font-serif text-4xl font-semibold tracking-[-0.03em] text-[#183334] sm:text-5xl">
+              {requiresClinicalReview ? "Begin with a clinical conversation." : "Start with your whole-system context."}
+            </h1>
+            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-[#365552]">
+              {requiresClinicalReview
+                ? "Based on the information you chose, it is more responsible to speak with a qualified clinician before considering a product. This check-in cannot determine eligibility or diagnose a condition."
+                : "The answers you selected point back to the same starting place: desire is shaped by the wider system. Recovery, stress regulation, connection, and a suitable clinical conversation can all be part of the picture."}
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-6 lg:grid-cols-[1.2fr_.8fr]">
+            <article className="border border-[#183334]/10 bg-white p-7 shadow-[12px_12px_0_#d9e7dc] sm:p-9">
+              <div className="flex items-start gap-4">
+                <Leaf className="mt-1 h-6 w-6 shrink-0 text-[#4e7b6e]" />
+                <div>
+                  <h2 className="font-serif text-2xl font-semibold text-[#183334]">What to carry forward</h2>
+                  <p className="mt-3 leading-7 text-[#365552]">
+                    You do not have to reduce this to one symptom or one answer. Start with the foundations that make the body more resilient, then make room for an honest clinical conversation when it is appropriate.
+                  </p>
+                  {focusSummary.length > 0 && <p className="mt-5 border-l-2 border-[#8eaa9f] pl-4 text-sm leading-6 text-[#52706b]">You named: {focusSummary.join(", ")}.</p>}
+                </div>
               </div>
+            </article>
+
+            <aside className="border border-[#183334]/10 bg-[#183334] p-7 text-[#f4f0e7] sm:p-9">
+              <ShieldCheck className="h-7 w-7 text-[#b6d7c9]" />
+              <h2 className="mt-5 font-serif text-2xl font-semibold">A clear boundary</h2>
+              <p className="mt-3 text-sm leading-6 text-white/75">This is an educational check-in. It does not diagnose, prescribe, or determine whether any product is appropriate for you.</p>
+              <p className="mt-4 text-sm leading-6 text-white/75">Prescription products require a qualified clinician’s independent review of your history.</p>
+            </aside>
+          </div>
+
+          {!requiresClinicalReview && product && (
+            <section className="mt-8 border border-[#183334]/10 bg-[#eaf2eb] p-7 sm:p-9" style={{ borderTopWidth: 5, borderTopColor: product.primaryColor }}>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#52706b]">Your selected pathway</p>
+              <h2 className="mt-3 font-serif text-3xl font-semibold text-[#183334]">{product.name}</h2>
+              <p className="mt-2 font-semibold text-[#365552]">{product.tagline}</p>
+              <p className="mt-5 max-w-3xl leading-7 text-[#365552]">{product.subheadline}</p>
+              <p className="mt-4 max-w-3xl text-sm leading-6 text-[#52706b]">{product.description}</p>
               <a
                 href={product.shopifyUrl}
                 target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => onCheckoutIntent(product)}
-                className="block w-full text-center font-bold text-base py-4 rounded-xl transition-all duration-200 text-black"
-                style={{ background: accentColor }}
+                rel="noreferrer"
+                className="mt-7 inline-flex items-center gap-3 rounded-full bg-[#183334] px-6 py-3.5 font-bold text-white transition hover:bg-[#244744]"
               >
-                Try It for 30 Days — {product.price} →
+                Explore {product.name} with the clinical team <ArrowRight className="h-4 w-4" />
               </a>
-            </div>
+              <p className="mt-4 text-xs leading-5 text-[#52706b]">Prescription required. Product suitability is determined by a qualified clinician—not this quiz.</p>
+            </section>
           )}
 
-          {/* Doctor credibility */}
-          <div className="text-center text-white/65 text-sm">
-            <p>Formulated by Dr. Pedram Shojai, OMD</p>
-            <p className="text-xs mt-1">Physician · Former Taoist Monk · Author of The Urban Monk · Trained in Tantric Traditions</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Tantra Course upsell */}
-      <div className="px-6 py-12 max-w-2xl mx-auto">
-        <div className="bg-gradient-to-br from-amber-900/20 to-transparent border border-amber-700/30 rounded-2xl p-6 mb-8">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-amber-900/40 border border-amber-700/40 flex items-center justify-center flex-shrink-0">
-              <Heart className="w-6 h-6 text-amber-400" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-white font-bold text-lg">The Tantra Course</h3>
-              </div>
-              <p className="text-white/85 text-sm mb-3">
-                The ancient practices that amplify everything the formula does. Breathwork, meditation, and the Taoist principles of sexual vitality — taught by Dr. Shojai from 20 years of study.
-              </p>
-              <p className="text-white/65 text-xs mb-3">$199</p>
-              <a
-                href={(tantraCourse?.shopifyUrl) ?? "https://shop.theurbanmonk.com/products/1710780"}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => onCheckoutIntent(tantraCourse ?? { name: "Tantra Course", price: "$199" })}
-                className="inline-flex items-center gap-2 text-amber-400 text-sm font-semibold hover:text-amber-300 transition-colors"
-              >
-                Learn more about The Tantra Course <ChevronRight className="w-4 h-4" />
+          {requiresClinicalReview && (
+            <section className="mt-8 border border-[#183334]/10 bg-[#eaf2eb] p-7 sm:p-9">
+              <h2 className="font-serif text-3xl font-semibold text-[#183334]">The responsible next step is clarity.</h2>
+              <p className="mt-4 max-w-3xl leading-7 text-[#365552]">Please do not use this quiz to decide whether a prescription product is appropriate. Review your history, medications, and questions with a qualified clinician before you explore either pathway.</p>
+              <a href="mailto:support@theurbanmonk.com?subject=Desire%20%26%20Vitality%20Check-In%20Question" className="mt-6 inline-flex items-center gap-3 rounded-full border border-[#183334] px-6 py-3.5 font-bold text-[#183334] transition hover:bg-[#183334] hover:text-white">
+                Ask the clinical team a question <ArrowRight className="h-4 w-4" />
               </a>
-            </div>
-          </div>
-        </div>
+            </section>
+          )}
 
-        {/* Conditional upsells */}
-        {!hasClinicalFlags && upsells.length > 0 && (
-          <div className="mb-8">
-            <h3 className="text-white font-bold text-lg mb-2">Based on your symptoms, we also recommend:</h3>
-            <p className="text-white/75 text-sm mb-5">Your quiz answers flagged some root-cause issues that the Tantra formula alone won't address. These tests identify exactly what's driving your symptoms.</p>
-            <div className="space-y-4">
-              {upsells.map((upsell, i) => (
-                <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-5">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="text-white font-semibold mb-1">{upsell.name}</h4>
-                      <p className="text-white/85 text-sm mb-3">{upsell.description}</p>
-                      {upsell.shopifyUrl && (
-                        <a
-                          href={upsell.shopifyUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={() => onCheckoutIntent(upsell)}
-                          className="inline-flex items-center gap-1 text-amber-400 text-sm font-semibold hover:text-amber-300 transition-colors"
-                        >
-                          Order {upsell.name} <ChevronRight className="w-4 h-4" />
-                        </a>
-                      )}
-                    </div>
-                    <div className="text-right ml-4 flex-shrink-0">
-                      <p className="text-white font-bold">{upsell.price}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+          <section className="mt-10 border-t border-[#183334]/10 pt-10">
+            <div className="max-w-2xl">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#52706b]">Optional</p>
+              <h2 className="mt-3 font-serif text-3xl font-semibold text-[#183334]">Save this check-in for yourself</h2>
+              <p className="mt-3 leading-7 text-[#365552]">Your results are already on screen. If you would like us to retain a simple record of this check-in, you may enter your email below. We will not automatically enroll you in a campaign or use your answers in advertising.</p>
             </div>
-          </div>
-        )}
 
-        {/* Lights On upsell */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
-              <Zap className="w-6 h-6 text-amber-400" />
-            </div>
-            <div>
-              <h3 className="text-white font-bold text-lg mb-1">{lightsOn?.name ?? "Lights On"}</h3>
-              <p className="text-white/75 text-xs mb-1 uppercase tracking-wide">{lightsOn?.tagline ?? "The Complete Vitality System"}</p>
-              <p className="text-white/85 text-sm mb-3">
-                {lightsOn?.description ?? "Everything works better when your energy system is optimized. Lights On is Dr. Shojai's complete program for rebuilding your life force from the ground up — sleep, gut, hormones, mindset, and sexual vitality all in one place."}
-              </p>
-              <p className="text-white/65 text-xs mb-3">{lightsOn?.price ?? "$369/year"} · 30-day money-back guarantee</p>
-              <a
-                href={(lightsOn?.shopifyUrl) ?? "https://shop.theurbanmonk.com/products/lights-on"}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => onCheckoutIntent(lightsOn ?? { name: "Lights On", price: "$369/year" })}
-                className="inline-flex items-center gap-2 text-amber-400 text-sm font-semibold hover:text-amber-300 transition-colors"
-              >
-                Learn more about Lights On <ChevronRight className="w-4 h-4" />
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* ── SOCIAL PROOF ── */}
-        <div className="mb-8">
-          <h3 className="text-white/60 text-xs font-semibold uppercase tracking-widest text-center mb-5">What others are experiencing</h3>
-          <div className="space-y-4">
-            {[
-              { name: "Michael R., 52", text: "I was skeptical — I've tried everything. Three weeks in and I feel like myself again. The difference is real.", stars: 5 },
-              { name: "Sandra K., 47", text: "I didn't realize how disconnected I'd become until I started feeling connected again. This changed something fundamental.", stars: 5 },
-              { name: "David T., 58", text: "My wife noticed before I did. That says everything.", stars: 5 },
-            ].map((t, i) => (
-              <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-4">
-                <div className="flex items-center gap-1 mb-2">
-                  {Array.from({ length: t.stars }).map((_, j) => (
-                    <Star key={j} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  ))}
-                </div>
-                <p className="text-white/85 text-sm italic mb-2">"{t.text}"</p>
-                <p className="text-white/50 text-xs">— {t.name}</p>
+            {emailSaved ? (
+              <div className="mt-6 flex items-start gap-3 border border-[#8eaa9f] bg-[#eff5ee] p-5 text-[#183334]">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+                <p className="text-sm leading-6">Saved. Your check-in details were recorded without triggering an email, purchase, CRM enrollment, or advertising audience update.</p>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Final CTA */}
-        <div className="text-center">
-          <a
-            href={product.shopifyUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => onCheckoutIntent(product)}
-            className="inline-flex items-center gap-2 font-bold text-lg px-10 py-5 rounded-full text-black transition-all duration-200 shadow-lg"
-            style={{ background: accentColor, boxShadow: `0 8px 32px ${accentColor}40` }}
-          >
-            Start My First Month — {product.price} <ArrowRight className="w-5 h-5" />
-          </a>
-          <p className="text-white/75 text-xs mt-3">Prescription required · Compounded by Strive Pharmacy · Ships discreetly</p>
-          <p className="text-white/50 text-xs mt-1">Your protocol expires in {timerMins}:{timerSecs}</p>
-        </div>
-      </div>
-    </div>
+            ) : (
+              <form onSubmit={saveEmail} className="mt-6 grid max-w-2xl gap-4 rounded-none border border-[#183334]/10 bg-white p-6 sm:grid-cols-2">
+                <label className="grid gap-2 text-sm font-semibold text-[#365552]">
+                  First name <span className="font-normal text-[#52706b]">(optional)</span>
+                  <input value={name} onChange={(event) => setName(event.target.value)} className="border border-[#183334]/20 bg-[#fdfbf6] px-3 py-3 font-normal outline-none focus:border-[#4e7b6e]" autoComplete="given-name" />
+                </label>
+                <label className="grid gap-2 text-sm font-semibold text-[#365552]">
+                  Email address
+                  <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="border border-[#183334]/20 bg-[#fdfbf6] px-3 py-3 font-normal outline-none focus:border-[#4e7b6e]" autoComplete="email" />
+                </label>
+                <label className="sm:col-span-2 flex items-start gap-3 text-sm leading-6 text-[#52706b]">
+                  <input type="checkbox" checked={newsletterConsent} onChange={(event) => setNewsletterConsent(event.target.checked)} className="mt-1 h-4 w-4 accent-[#183334]" />
+                  <span>I would also like the Urban Monk newsletter. This checkbox records my preference only; it does not automatically enroll me in an email flow.</span>
+                </label>
+                <div className="sm:col-span-2 flex flex-wrap items-center gap-4">
+                  <button type="submit" disabled={captureEmail.isPending} className="inline-flex items-center gap-2 rounded-full bg-[#183334] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#244744] disabled:opacity-60">
+                    {captureEmail.isPending ? "Saving…" : "Save my check-in"} <ArrowRight className="h-4 w-4" />
+                  </button>
+                  <p className="text-xs leading-5 text-[#52706b]">No health-response details are sent to advertising platforms.</p>
+                </div>
+              </form>
+            )}
+          </section>
+        </section>
+      )}
+    </main>
   );
 }

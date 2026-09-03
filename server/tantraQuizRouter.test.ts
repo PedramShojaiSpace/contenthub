@@ -1,92 +1,67 @@
-import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { buildTantraSegmentation, routeToProduct } from "./tantraQuizRouter";
+import { describe, expect, it } from "vitest";
+import { buildTantraSegmentation, routeToProduct, TANTRA_QUIZ_QUESTIONS } from "./tantraQuizRouter";
 
-describe("Tantra quiz clinical-pathway routing", () => {
-  it("keeps the intimacy product route while routing hormone context into the Fit22 gut path", () => {
-    const route = routeToProduct({
-      q_who: "me_female",
-      q_symptoms: ["low_libido"],
-      q_hormone_symptoms: ["hot_flashes", "mood_changes"],
-    });
+describe("Tantra desire and vitality check-in routing", () => {
+  it("routes the explicitly selected women’s pathway to Tantra Her", () => {
+    const route = routeToProduct({ q_pathway: "women", q_safety: ["none"] });
 
     expect(route.result).toBe("tantra_her");
-    expect(route.hormoneFlag).toBe(true);
-    expect(route.segmentation).toMatchObject({
-      primaryPath: "gut_health",
-      clinicianFollowUp: true,
-    });
-    expect(route.segmentation.carePaths).toEqual(["intimacy", "gut_health"]);
-    expect(route.segmentation.kajabiTags).toContain("tantra-path-gut-health");
-    expect(route.segmentation.kajabiTags).toContain("tantra-context-hormone");
-    expect(route.segmentation.kajabiTags).toContain("tantra-clinician-follow-up");
-  });
-
-  it("does not assign a hormone pathway when the relevant response is none", () => {
-    const route = routeToProduct({
-      q_who: "me_male",
-      q_symptoms: ["low_libido"],
-      q_hormone_male: ["none"],
-    });
-
-    expect(route.hormoneFlag).toBe(false);
-    expect(route.segmentation).toMatchObject({
-      primaryPath: "intimacy",
+    expect(route.gender).toBe("female");
+    expect(route.requiresClinicalReview).toBe(false);
+    expect(route.segmentation).toEqual({
+      primaryPath: "functional_foundations",
+      carePaths: ["functional_foundations"],
       clinicianFollowUp: false,
-      carePaths: ["intimacy"],
     });
   });
 
-  it("keeps unflagged visitors on a direct intimacy recommendation", () => {
-    const route = routeToProduct({
-      q_who: "me_male",
-      q_symptoms: ["low_libido"],
-      q_hormone_male: ["none"],
-    });
+  it("routes the explicitly selected men’s pathway to Tantra Him", () => {
+    const route = routeToProduct({ q_pathway: "men", q_safety: ["none"] });
 
     expect(route.result).toBe("tantra_him");
-    expect(route.segmentation).toMatchObject({
-      primaryPath: "intimacy",
-      clinicianFollowUp: false,
-    });
+    expect(route.gender).toBe("male");
+    expect(route.requiresClinicalReview).toBe(false);
   });
 
-  it("assigns a multifactor care pathway when several clinical signals are present", () => {
-    const segmentation = buildTantraSegmentation({
-      hormoneFlag: true,
-      gutFlag: true,
-      sleepFlag: true,
-      oralFlag: true,
-    });
+  it("does not recommend a product when the visitor selects an uncertain pathway or a clinical-review answer", () => {
+    const uncertainRoute = routeToProduct({ q_pathway: "not_sure", q_safety: ["none"] });
+    const safetyRoute = routeToProduct({ q_pathway: "men", q_safety: ["nitrate_medication"] });
 
-    expect(segmentation.primaryPath).toBe("multifactor");
-    expect(segmentation.carePaths).toEqual([
-      "intimacy",
-      "gut_health",
-      "sleep_health",
-      "oral_health",
+    expect(uncertainRoute.result).toBe("pending");
+    expect(uncertainRoute.requiresClinicalReview).toBe(true);
+    expect(safetyRoute.result).toBe("pending");
+    expect(safetyRoute.segmentation.primaryPath).toBe("clinical_review");
+    expect(safetyRoute.segmentation.clinicianFollowUp).toBe(true);
+  });
+
+  it("uses a five-question non-diagnostic sequence without Taoist positioning", () => {
+    expect(TANTRA_QUIZ_QUESTIONS).toHaveLength(5);
+    expect(TANTRA_QUIZ_QUESTIONS.map((question) => question.id)).toEqual([
+      "q_pathway",
+      "q_focus",
+      "q_recovery",
+      "q_goal",
+      "q_safety",
     ]);
-    expect(segmentation.kajabiTags).toEqual(expect.arrayContaining([
-      "tantra-path-intimacy",
-      "tantra-path-gut-health",
-      "tantra-path-sleep-health",
-      "tantra-path-oral-health",
-      "tantra-context-hormone",
-      "tantra-path-multifactor",
-      "tantra-clinician-follow-up",
-    ]));
+    expect(JSON.stringify(TANTRA_QUIZ_QUESTIONS).toLowerCase()).not.toContain("taoist");
+    expect(JSON.stringify(TANTRA_QUIZ_QUESTIONS).toLowerCase()).not.toContain("diagnose");
   });
 
-  it("keeps every clinical result narrative educational, test-oriented, and non-diagnostic", () => {
-    const quizSource = readFileSync(
-      resolve(import.meta.dirname, "../client/src/pages/TantraQuiz.tsx"),
-      "utf8",
-    );
+  it("keeps the server contract free of automatic CRM, outbound email, CAPI, and owner-notification side effects", () => {
+    const routerSource = readFileSync(resolve(import.meta.dirname, "tantraQuizRouter.ts"), "utf8");
 
-    expect(quizSource).toContain("Fit22 gives our team a practical baseline");
-    expect(quizSource).toContain("Sleep is often where the whole system tells the truth");
-    expect(quizSource).toContain("nitrate–nitrite–nitric-oxide pathway");
-    expect(quizSource).toContain("This quiz cannot diagnose an oral-health condition");
+    expect(routerSource).not.toContain("pushTantraQuizLead");
+    expect(routerSource).not.toContain("sendGmailOutreach");
+    expect(routerSource).not.toContain("sendCapiEvent");
+    expect(routerSource).not.toContain("notifyOwner");
+    expect(routerSource).toContain("Intentionally no email, CRM, ad platform, webhook, or owner-notification side effect.");
+  });
+
+  it("marks only the safety-review answers as a clinician-review pathway", () => {
+    expect(buildTantraSegmentation(["none"]).clinicianFollowUp).toBe(false);
+    expect(buildTantraSegmentation(["pregnant_or_nursing"]).primaryPath).toBe("clinical_review");
+    expect(buildTantraSegmentation(["not_sure"]).carePaths).toEqual(["clinical_review"]);
   });
 });

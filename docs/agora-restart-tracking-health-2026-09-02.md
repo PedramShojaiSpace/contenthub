@@ -42,8 +42,26 @@ The earlier two-day figure of six transactions / $666.00 combined September 1 an
 
 The Command Center and its exact-offer Kajabi reader now convert timestamps to the operational `America/Chicago` date before applying `Today`, `Yesterday`, and range boundaries. A focused regression test proves that a September 1 late-evening Central transaction represented after UTC midnight is excluded from the September 2 report, while a late September 2 Central transaction is included. The production build completed successfully.
 
+## Fresh same-day operating read — 2026-09-03T00:02:57Z
+
+The current **September 2 only** Central-time read confirms that ad delivery and first-party transaction tracking are both working. Twelve currently active Agora/Interconnected campaigns are included in the broader historical campaign-name set; the other 46 matched campaigns are paused and contribute no current delivery.
+
+| Current same-day signal | Value |
+|---|---:|
+| Meta spend | $325.24 |
+| Impressions / link clicks | 6,264 / 417 |
+| Link click-through rate | 6.65% |
+| Meta leads / cost per lead | 204 / $1.59 |
+| Meta checkout events | 16 |
+| Exact-offer cleared Kajabi orders / revenue | 4 / $400.00 |
+| First-party revenue ÷ Meta spend | 1.2299x |
+| Meta-reported purchase events / value | 10 / $934.00 |
+| Meta-reported ROAS | 2.8717x |
+
+The lead, checkout, Meta spend, and cleared Kajabi-order signals all updated in the current-day window, so there is no evidence of a delivery or transaction-ingestion outage. The **$400.00 / 4-order** Kajabi result is the operating first-party revenue figure for the funnel. Meta’s $934.00 reported purchase value is not additive and remains a material attribution difference from Kajabi; it should be monitored as a reporting reconciliation item rather than used alone as revenue.
+
 ## Sources
 
-1. Read-only execution of `scripts/report-agora-restart-health-2026-09-02.mjs` at 2026-09-02T16:23:28Z and 2026-09-02T17:52:36Z, using the current Interconnected $67 and $199 Kajabi offer IDs rather than price matching alone.
+1. Read-only execution of `scripts/report-agora-restart-health-2026-09-02.mjs` at 2026-09-02T16:23:28Z, 2026-09-02T17:52:36Z, and 2026-09-03T00:02:57Z, using the current Interconnected $67 and $199 Kajabi offer IDs rather than price matching alone.
 2. Production Content Hub: `https://content.theurbanmonk.com/hub/analytics/interconnected-command`, owner-triggered read-only refresh on September 2, 2026.
 3. Read-only Shopify Admin MCP product lookup on September 2, 2026.

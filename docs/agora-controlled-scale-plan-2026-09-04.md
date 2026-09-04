@@ -1,7 +1,7 @@
 # Agora Funnel: Controlled Scale Plan to $4.7K per Day
 
 **Status:** Draft for owner and ad-buyer review; no advertising changes made.  
-**Planning basis:** Kajabi cleared transactions are the sole revenue source of truth. Meta is used only for spend, impressions, link clicks, leads, and checkout signals.[1]
+**Planning basis:** Kajabi cleared transactions are the direct-revenue source of truth. Meta is used only for spend, impressions, link clicks, leads, and checkout signals. A separate mature-cohort report may add only verified downstream Shopify purchases matched to new Agora leads; it never adds unresolved or pre-existing Shopify revenue.[1] [2]
 
 > **Decision boundary:** This is a risk-managed operating plan, not a guarantee of results or a direction to change spend. No stage advances unless the stated Kajabi and delivery gates are met using completed Central-time days.
 
@@ -17,7 +17,8 @@ At those early-cohort rates, ten $199 upgrades daily model to 55 $67 base purcha
 | Link CTR | 5.75% | Promote only at or above **4.90%** on a trailing completed-day view |
 | $67 purchases per link click | 0.958% | Promote only at or above **0.85%** |
 | $199 take rate | 18.18% | Hold below **12%**; hard gross-media floor **9.22%** |
-| Kajabi revenue ÷ Meta spend | 1.21x modeled | Promote only at or above **1.10x**; hold below **1.00x** |
+| Direct Kajabi revenue ÷ Meta spend | 1.21x modeled | Promote only at or above **1.10x**; hold below **1.00x** |
+| Matured cohort blended ROAS | 1.2362x observed August 1–September 4 | Validate only verified delayed revenue after 14 days; never use unresolved/pre-existing Shopify revenue to override direct gates |
 
 The 1.10x promotion floor leaves a small operating buffer above the 1.00x gross media break-even floor. It does **not** include payment fees, refunds, support, fulfillment, clinical costs, agency costs, taxes, or other operating expenses. Those costs need a separate contribution-margin model before treating 1.10x as business-level break-even.
 
@@ -27,10 +28,11 @@ All reporting uses **America/Chicago calendar days**. Evaluate performance only 
 
 ```text
 $199 take rate = cleared $199 upgrades ÷ cleared $67 base purchases
-First-party revenue ROAS = (cleared $67 revenue + cleared $199 revenue) ÷ Meta spend
+Direct cash-conversion ROAS = (cleared $67 revenue + cleared $199 revenue) ÷ Meta spend
+Matured cohort blended ROAS = (direct revenue + verified downstream Agora-linked Shopify revenue) ÷ matched Meta spend
 ```
 
-Meta purchase value and Meta-reported ROAS are deliberately excluded from the decision scorecard. They can be retained as diagnostic signals, but they must not be used to promote spend or determine profitability.
+Meta purchase value and Meta-reported ROAS are deliberately excluded from the decision scorecard. They can be retained as diagnostic signals, but they must not be used to promote spend or determine profitability. Because the verified downstream Shopify cohort has a median nine-day lead-to-purchase period, it is a 14-day mature-cohort validation metric—not a same-day promotion override.[2]
 
 Before each budget step, confirm that the Kajabi order reader, Meta spend reader, opt-in page, thank-you path, checkout, and one-click-upgrade presentation all return normally. A tracking, page, checkout, or database error is an automatic **hold**—not a reason to guess from platform metrics.
 
@@ -77,9 +79,9 @@ Use the table below at the same morning decision point each day, after Kajabi cl
 
 | Decision | Trigger | Required action |
 |---|---|---|
-| **Promote** | 72 completed hours, at least 25 $67 base purchases, CPC ≤ $0.90, CTR ≥ 4.90%, $67 conversion ≥ 0.85%, $199 take rate ≥ 12%, and Kajabi revenue ÷ spend ≥ 1.10x | Raise only the qualified budget bucket by one ladder rung; keep all other variables unchanged |
-| **Hold** | Any promotion criterion is unavailable, sample is below 25 $67 purchasers, CPC is $0.91–$0.98, take rate is 9.22%–11.99%, or first-party ROAS is 1.00x–1.09x | Do not raise budgets; inspect creative fatigue, audience saturation, page/checkout health, and transaction timing |
-| **Rollback one rung** | CPC exceeds $0.99 for two completed days, CTR is below 4.90% for two completed days, $67 conversion is below 0.85% for two completed days, or first-party ROAS is below 1.00x for two completed days | Return the affected bucket to its last qualified ceiling; do not touch unrelated winners |
+| **Promote** | 72 completed hours, at least 25 $67 base purchases, CPC ≤ $0.90, CTR ≥ 4.90%, $67 conversion ≥ 0.85%, $199 take rate ≥ 12%, and direct Kajabi revenue ÷ spend ≥ 1.10x | Raise only the qualified budget bucket by one ladder rung; keep all other variables unchanged. Matured-cohort blended ROAS is a required later validation, not a replacement for this gate. |
+| **Hold** | Any promotion criterion is unavailable, sample is below 25 $67 purchasers, CPC is $0.91–$0.98, take rate is 9.22%–11.99%, or direct Kajabi ROAS is 1.00x–1.09x | Do not raise budgets; inspect creative fatigue, audience saturation, page/checkout health, and transaction timing |
+| **Rollback one rung** | CPC exceeds $0.99 for two completed days, CTR is below 4.90% for two completed days, $67 conversion is below 0.85% for two completed days, or direct Kajabi ROAS is below 1.00x for two completed days | Return the affected bucket to its last qualified ceiling; do not touch unrelated winners |
 | **Immediate stop and investigate** | Checkout, thank-you, offer, lead capture, Kajabi transaction reader, or Meta spend reader is broken or materially unavailable | Freeze all increases; do not interpret unavailable data as a performance outcome |
 
 The $199 take rate deserves special caution. The observed 18.18% comes from only two upgrades, so it has high sampling variability. A 12% promotion threshold, a 9.22% hard gross-media floor, and the 25-base-purchase minimum create a more reliable decision structure than reacting to each new order.
@@ -96,7 +98,8 @@ The operator should keep a single completed-day scorecard. Each row is an observ
 | Cleared $67 orders / revenue | Kajabi | Base conversion and revenue | Required |
 | Cleared $199 upgrades / revenue | Kajabi | Take-rate calculation | Required |
 | $199 take rate | Calculated | Determines upgrade contribution | Required |
-| Kajabi revenue ÷ Meta spend | Calculated | First-party gross media economics | Required |
+| Direct Kajabi revenue ÷ Meta spend | Calculated | Short-lag first-party gross media economics | Required for promotion / hold / rollback |
+| Matured cohort blended ROAS | Calculated | Cohort-level first-party revenue including verified delayed Shopify purchases | 14-day validation; not a same-day override |
 | Page, thank-you, checkout, and reader health | Read-only verification | Prevents false performance interpretation | Required |
 | Decision and rationale | Manual | Makes actions reversible and auditable | Required |
 
@@ -104,7 +107,7 @@ The operator should keep a single completed-day scorecard. Each row is an observ
 
 The ad buyer should execute only a written, owner-approved stage change that names the affected budget bucket, current ceiling, next ceiling, start time, and expected 72-hour review time. The operator should not make a second variable change—such as audience, creative, copy, bid strategy, destination, or attribution setting—inside the same observation window. If a new creative is introduced, it belongs in the capped discovery bucket and gets a separate readout.
 
-Keep Agora and VIBE reporting separate. Do not borrow VIBE results to justify Agora spend or merge their conversions in the same scorecard. Maintain the current Kajabi-only revenue rule and do not allow Meta purchase value to overrule a cleared Kajabi count.
+Keep Agora and VIBE reporting separate. Do not borrow VIBE results to justify Agora spend or merge their conversions in the same scorecard. Do not allow Meta purchase value to overrule first-party revenue. Include Shopify only where the purchase is privately matched to a verified Agora lead and only after the cohort has matured.
 
 ## 8. Bottom line
 
@@ -113,3 +116,5 @@ The early observed economics make a $4.7K/day capacity plan **plausible** on a g
 ## References
 
 [1]: ./agora-199-ocus-take-rate-and-break-even-2026-09-04.md "Kajabi-only $199 one-click upgrade take-rate and break-even calculation"
+
+[2]: ./agora-blended-first-party-roas-2026-09-04.md "Conservative cohort-aligned blended ROAS"

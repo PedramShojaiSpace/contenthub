@@ -171,6 +171,7 @@ import { funnelsRouter } from "./funnelsRouter";
 import { funnelEconomicsRouter } from "./funnelEconomicsRouter";
 import { metaFunnelMetricsRouter } from "./metaFunnelMetricsRouter";
 import { kajabiSalesRouter } from "./kajabiSalesRouter";
+import { agoraPriceTestRouter } from "./agoraPriceTestRouter";
 import { funnelAdvisorRouter } from "./funnelAdvisorRouter";
 import { funnelReconciliationRouter } from "./funnelReconciliationRouter";
 import { orobiomeFunnelRouter } from "./orobiomeFunnelRouter";
@@ -564,6 +565,7 @@ export const appRouter = router({
   funnelEconomics: funnelEconomicsRouter,
   metaFunnelMetrics: metaFunnelMetricsRouter,
   kajabiSales: kajabiSalesRouter,
+  agoraPriceTest: agoraPriceTestRouter,
   funnelAdvisor: funnelAdvisorRouter,
   funnelRecon: funnelReconciliationRouter,
   mofContent: mofContentRouter,

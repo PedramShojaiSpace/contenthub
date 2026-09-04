@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>The Urban Monk Academy — Kajabi Price-Test VA Manual</title>
+  <style>
+    @page { size: letter; margin: 0.65in 0.72in; }
+    body { font-family: Aptos, Arial, sans-serif; font-size: 10.5pt; color: #1b2822; line-height: 1.38; }
+    h1 { color: #1f4f3d; font-size: 25pt; line-height: 1.08; margin: 0 0 9pt; }
+    h2 { color: #1f4f3d; font-size: 16pt; border-bottom: 1px solid #b8cfc0; margin: 20pt 0 8pt; padding-bottom: 3pt; }
+    h3 { color: #2c624c; font-size: 12pt; margin: 14pt 0 5pt; }
+    p { margin: 0 0 8pt; }
+    ul, ol { margin: 3pt 0 10pt 22pt; padding: 0; }
+    li { margin: 0 0 5pt; }
+    .cover { text-align: center; padding-top: 58pt; page-break-after: always; }
+    .brand { color: #9d7a33; font-weight: bold; letter-spacing: 0.7pt; font-size: 11pt; }
+    .subtitle { color: #4b5952; font-size: 13pt; font-style: italic; margin: 10pt auto 22pt; max-width: 410pt; }
+    .meta { width: 80%; margin: 12pt auto; border-collapse: collapse; text-align: left; }
+    .meta td { border: 1px solid #b8cfc0; padding: 8pt; }
+    .meta td:first-child { width: 34%; background: #eaf3ec; color: #1f4f3d; font-weight: bold; }
+    .callout { background: #eaf3ec; border-left: 5px solid #1f4f3d; margin: 12pt 0; padding: 9pt 12pt; }
+    .callout.warning { background: #fff1ef; border-left-color: #98322b; }
+    .callout strong { color: #1f4f3d; }
+    .callout.warning strong { color: #98322b; }
+    table { width: 100%; border-collapse: collapse; margin: 8pt 0 12pt; page-break-inside: avoid; }
+    th { background: #1f4f3d; color: #fff; font-weight: bold; padding: 6pt; border: 1px solid #315f4d; text-align: left; vertical-align: top; }
+    td { border: 1px solid #b8cfc0; padding: 6pt; vertical-align: top; }
+    .label { background: #eaf3ec; color: #1f4f3d; font-weight: bold; }
+    .no { background: #fff1ef; }
+    .small { font-size: 8.5pt; color: #53645a; }
+    .handoff td { height: 20pt; }
+    .footer-note { color: #98322b; font-weight: bold; text-align: center; margin-top: 18pt; }
+    .page-break { page-break-before: always; }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <p class="brand">THE URBAN MONK ACADEMY</p>
+    <h1>Kajabi Price-Test Setup<br>VA Operating Manual</h1>
+    <p class="subtitle">Draft-only configuration for the $49 / $67 / $99 Interconnected entry-price test</p>
+    <table class="meta">
+      <tr><td>Prepared for</td><td>Virtual Assistant / Kajabi operator</td></tr>
+      <tr><td>Operating mode</td><td>Manual execution only — no AI or automation action</td></tr>
+      <tr><td>Status</td><td>Draft preparation only; traffic test is <strong>not authorized</strong></td></tr>
+      <tr><td>Document date</td><td>September 4, 2026</td></tr>
+    </table>
+    <div class="callout warning">
+      <strong>STOP BEFORE YOU START</strong><br>
+      This manual authorizes only the creation and configuration of two <strong>draft</strong> Offers. It does not authorize publishing, sharing checkout links, activating a traffic split, exposing a test price, sending any email or SMS, changing Meta, changing a landing page, or taking a test payment.
+    </div>
+    <p><em>If any screen appears different from this guide, stop and ask the owner for direction.</em></p>
+  </section>
+
+  <h2>1. Purpose and non-negotiable boundaries</h2>
+  <p>The Academy is preparing a controlled entry-price experiment for the Interconnected offer. This manual shows how to create two draft Offers at <strong>$49</strong> and <strong>$99</strong> while preserving the existing <strong>$67</strong> control. The only intended difference across the three arms is the entry price. Do not make a customer-facing copy, product-access, checkout, upsell, email, automation, or channel change while completing this work.</p>
+  <table>
+    <tr><th>You MAY do</th><th>You MUST NOT do</th></tr>
+    <tr><td>• Create a new Kajabi Offer in <strong>Draft</strong> status.<br>• Attach the same Interconnected product as the $67 control.<br>• Set a one-time USD price of $49 or $99.<br>• Mirror the $67 control’s purchase flow only where the screens clearly confirm the same setting.<br>• Capture Offer IDs, URLs, and screenshots for owner review.</td><td class="no">• Publish either new Offer or change the live $67 control.<br>• Click <strong>Activate New Checkouts</strong>, Enable, Publish, Go Live, or Share.<br>• Create a coupon or a multi-price choice on one Offer.<br>• Activate a split, route traffic, change a landing page, or edit UTM/tracking/pixel settings.<br>• Edit Klaviyo, email, SMS, Meta campaigns, audiences, ads, or budgets.<br>• Place a test purchase without separate explicit owner approval.</td></tr>
+  </table>
+  <div class="callout warning"><strong>Hard stop rule</strong><br>If Kajabi asks you to activate a checkout template, publish an Offer, make a payment, send a message, enroll a contact, or turn on a traffic experience, do not proceed. Take a screenshot and send it to the owner.</div>
+
+  <h2>2. Current confirmed baseline — do not edit</h2>
+  <p>The following items were verified in the owner’s authenticated Kajabi workspace. They are the control settings to observe and mirror; the VA should not change them.</p>
+  <table>
+    <tr><th>Control element</th><th>Verified current state</th></tr>
+    <tr><td class="label">Kajabi site</td><td>The Urban Monk Academy</td></tr>
+    <tr><td class="label">Control Offer ID</td><td>2151314475</td></tr>
+    <tr><td class="label">Control Offer internal title</td><td>Interconnected $67 Bundle OTO</td></tr>
+    <tr><td class="label">Control customer-facing title</td><td>Interconnected: The Complete Healing Protocol</td></tr>
+    <tr><td class="label">Control price</td><td>$67.00 USD; one-time payment; Published</td></tr>
+    <tr><td class="label">Control product access</td><td>Interconnected Series Self Guided — one product</td></tr>
+    <tr><td class="label">Control post-purchase page</td><td>Existing Landing Page: Interconnected Purchased — Redirect</td></tr>
+    <tr><td class="label">Control $199 upsell</td><td>Gut Permeability and Food Sensitivity Testing w/ Coach Consultation [OCUS DISCOUNT] New Upsell — $199.00 one-time payment; Published</td></tr>
+    <tr><td class="label">Control purchaser automation</td><td>Offer is purchased → add tag: Interconnected Purchased —</td></tr>
+  </table>
+  <p><strong>Important:</strong> the $199 upsell relationship is confirmed for the existing $67 control only. The new $49 and $99 draft Offers do not inherit it automatically. You must compare their Purchase flow tabs against the control after creating each draft.</p>
+
+  <h2>3. Test structure and exact naming</h2>
+  <p>Use a separate Kajabi Offer for each price. Do not put multiple prices on a single Offer and do not use a coupon to simulate a price arm. The customer-facing title should remain identical so that the price test does not become a messaging test.</p>
+  <table>
+    <tr><th>Test arm</th><th>Customer-facing Offer title</th><th>Internal title</th><th>Price / status</th></tr>
+    <tr><td>$49 treatment — P1</td><td>Interconnected: The Complete Healing Protocol</td><td>Interconnected $49 Bundle OTO — Price Test P1</td><td>$49.00 USD; Draft</td></tr>
+    <tr><td>$67 control — do not edit</td><td>Interconnected: The Complete Healing Protocol</td><td>Interconnected $67 Bundle OTO</td><td>$67.00 USD; Published</td></tr>
+    <tr><td>$99 treatment — P2</td><td>Interconnected: The Complete Healing Protocol</td><td>Interconnected $99 Bundle OTO — Price Test P2</td><td>$99.00 USD; Draft</td></tr>
+  </table>
+  <div class="callout"><strong>Why the $99 Offer stays draft</strong><br>The documented plan runs $49 versus $67 first. The $99 arm is prepared only as a future draft. It must remain off until the owner reviews the Phase 1 result and explicitly authorizes Phase 2.</div>
+
+  <h2>4. Work sequence at a glance</h2>
+  <table>
+    <tr><th>Step</th><th>Action</th><th>Expected state</th><th>Stop if</th></tr>
+    <tr><td>A</td><td>Open the Pricing workspace</td><td>Sales → Pricing; locate control Offer</td><td>You are in a different Kajabi site or cannot see the control</td></tr>
+    <tr><td>B</td><td>Record control settings</td><td>$67 Offer remains unchanged</td><td>Any unsaved control change appears</td></tr>
+    <tr><td>C</td><td>Create $49 Offer</td><td>New Offer is Draft, same product, $49 only</td><td>The system proposes publishing or activating</td></tr>
+    <tr><td>D</td><td>Mirror $67 purchase flow</td><td>Same redirect, $199 upsell, tag—if clearly available</td><td>Any setting differs or is unclear</td></tr>
+    <tr><td>E</td><td>Create $99 Offer</td><td>New Offer is Draft, same product, $99 only</td><td>The system proposes publishing or activating</td></tr>
+    <tr><td>F</td><td>Capture records and screenshots</td><td>Owner has evidence for review</td><td>You are asked to share a public checkout</td></tr>
+    <tr><td>G</td><td>Stop and hand off</td><td>No price test is active</td><td>Anyone requests live routing without owner approval</td></tr>
+  </table>
+
+  <h2>5. Detailed procedure — create the $49 draft Offer</h2>
+  <ol>
+    <li>Log in to Kajabi and confirm the selected site is <strong>The Urban Monk Academy</strong>.</li>
+    <li>Go to <strong>Sales → Pricing</strong>. Do not use the global <strong>Activate New Checkouts</strong> button.</li>
+    <li>Find the existing published control, <strong>Interconnected $67 Bundle OTO</strong>. Open it only to read the Details, Pricing, and Purchase flow settings. Do not press Save.</li>
+    <li>Return to Sales → Pricing and choose <strong>New Offer</strong>.</li>
+    <li>For the customer-facing Offer title, enter: <strong>Interconnected: The Complete Healing Protocol</strong>. Do not include “test,” “$49,” or “P1” in the customer-facing title.</li>
+    <li>Select <strong>Interconnected Series Self Guided</strong> as the only product. Confirm the product count is one before continuing.</li>
+    <li>Set the internal title to: <strong>Interconnected $49 Bundle OTO — Price Test P1</strong>.</li>
+    <li>Set payment type to <strong>One-time Payment</strong>, currency to <strong>USD</strong>, and price to <strong>49.00</strong>. Do not add another pricing option, coupon, subscription, payment plan, or pay-what-you-want setting.</li>
+    <li>Compare remaining pricing and checkout options to the $67 control. Match the control exactly. If you cannot verify a setting, leave the new Offer in Draft and flag it for the owner instead of guessing.</li>
+    <li>Keep Offer Status set to <strong>Draft</strong>. Save the draft only. Do not publish, activate a checkout template, copy/share a customer link, or route traffic.</li>
+  </ol>
+
+  <h2>6. Mirror the $67 control’s purchase flow — $49 Offer</h2>
+  <p>The price test is valid only if the post-purchase experience remains comparable. From the new $49 draft Offer, open <strong>Purchase flow</strong> and compare every visible item against the $67 control.</p>
+  <table>
+    <tr><th>Check</th><th>Control setting</th><th>What the VA should do</th><th>Stop condition</th></tr>
+    <tr><td>Post-purchase destination</td><td>Existing Landing Page: Interconnected Purchased — Redirect</td><td>Select the identical existing landing page if it is clearly available.</td><td>Different page name, missing option, or uncertain selection</td></tr>
+    <tr><td>Post-purchase email</td><td>Default email selected</td><td>Match the control preference only. Do not open or edit email content.</td><td>An email editor opens or any send/enrollment action is requested</td></tr>
+    <tr><td>$199 upsell</td><td>Gut Permeability and Food Sensitivity Testing w/ Coach Consultation [OCUS DISCOUNT] New Upsell; $199.00 one-time; Published</td><td>Add/select the exact same upsell and confirm the listed price is $199.00.</td><td>Different upsell, price, copy, sequence, or unavailable configuration</td></tr>
+    <tr><td>Purchaser automation</td><td>Offer is purchased → add tag: Interconnected Purchased —</td><td>Mirror only if it can be selected exactly and remains part of the draft Offer. Do not edit a live automation.</td><td>A change would edit a live automation or apply a tag to existing contacts</td></tr>
+  </table>
+  <div class="callout warning"><strong>Do not guess at upsell parity</strong><br>If the $199 upsell cannot be matched exactly, leave the $49 Offer as Draft and report “OCUS parity not verified.” Do not substitute another upsell and do not remove it from only one arm.</div>
+
+  <h2>7. Create the $99 draft Offer</h2>
+  <p>Repeat the same workflow for the $99 draft. The customer-facing title, product access, checkout configuration, post-purchase page, email preference, upsell, and automation must match the $67 control. The only intended differences are the entry price and internal title.</p>
+  <ol>
+    <li>Return to Sales → Pricing and select <strong>New Offer</strong>.</li>
+    <li>Use customer-facing title: <strong>Interconnected: The Complete Healing Protocol</strong>.</li>
+    <li>Attach only <strong>Interconnected Series Self Guided</strong>.</li>
+    <li>Set internal title: <strong>Interconnected $99 Bundle OTO — Price Test P2</strong>.</li>
+    <li>Set <strong>One-time Payment</strong>, <strong>USD</strong>, and price <strong>99.00</strong>.</li>
+    <li>Mirror the $67 control Purchase flow using the same verification table in Section 6.</li>
+    <li>Keep this Offer in <strong>Draft</strong>. This is preparation only; the $99 test does not run until Phase 1 completes and the owner separately approves Phase 2.</li>
+  </ol>
+
+  <h2>8. Required verification before you hand it back</h2>
+  <p>Complete this checklist for the $49 Offer and again for the $99 Offer. Do not change the status from Draft while completing these checks.</p>
+  <table>
+    <tr><th style="width:7%">Done</th><th>Verification item</th><th>Evidence to send the owner</th></tr>
+    <tr><td>☐</td><td>Offer status reads Draft.</td><td>Screenshot of Details showing Draft status.</td></tr>
+    <tr><td>☐</td><td>Customer-facing title matches the $67 control exactly.</td><td>Screenshot of title field.</td></tr>
+    <tr><td>☐</td><td>Internal title follows the $49 P1 or $99 P2 naming convention.</td><td>Screenshot of internal title field.</td></tr>
+    <tr><td>☐</td><td>Only product attached is Interconnected Series Self Guided.</td><td>Screenshot of Products in this Offer.</td></tr>
+    <tr><td>☐</td><td>Price is a one-time USD payment and equals exactly $49.00 or $99.00.</td><td>Screenshot of Pricing tab.</td></tr>
+    <tr><td>☐</td><td>All non-price checkout/payment settings match the $67 control, or a mismatch is explicitly listed.</td><td>Notes plus a control comparison screenshot if needed.</td></tr>
+    <tr><td>☐</td><td>Purchase flow has the same redirect, default email setting, $199 upsell, and purchaser tag—or a precise blocker is listed.</td><td>Screenshot of Purchase flow tab.</td></tr>
+    <tr><td>☐</td><td>No public checkout link has been shared; no traffic, test purchase, Meta, Klaviyo, or SMS action occurred.</td><td>Written confirmation in handoff note.</td></tr>
+  </table>
+
+  <h2>9. Handoff record — complete this and send it to the owner</h2>
+  <p>Complete the following table in your handoff message or in this document.</p>
+  <table class="handoff">
+    <tr><th>Field</th><th>$49 P1 Offer</th><th>$99 P2 Offer</th></tr>
+    <tr><td class="label">Exact Kajabi Offer ID</td><td></td><td></td></tr>
+    <tr><td class="label">Offer status (must be Draft)</td><td></td><td></td></tr>
+    <tr><td class="label">Customer-facing title</td><td></td><td></td></tr>
+    <tr><td class="label">Internal title</td><td></td><td></td></tr>
+    <tr><td class="label">Attached product(s)</td><td></td><td></td></tr>
+    <tr><td class="label">One-time price and currency</td><td></td><td></td></tr>
+    <tr><td class="label">Checkout URL (record only; do not share publicly)</td><td></td><td></td></tr>
+    <tr><td class="label">Post-purchase landing page</td><td></td><td></td></tr>
+    <tr><td class="label">$199 upsell name and displayed price</td><td></td><td></td></tr>
+    <tr><td class="label">Purchaser automation/tag</td><td></td><td></td></tr>
+    <tr><td class="label">Any mismatch / blocker</td><td></td><td></td></tr>
+    <tr><td class="label">Screenshots attached (Details, Pricing, Purchase flow)</td><td></td><td></td></tr>
+    <tr><td class="label">VA name and completion date</td><td></td><td></td></tr>
+  </table>
+
+  <h2>10. What happens next — not the VA’s action</h2>
+  <p>After the owner reviews the completed handoff record, a separate approval is required before any test becomes customer-facing. The owner must approve the exact $49 Offer ID and checkout URL, the intended $199 upsell treatment, the 50/50 $49-versus-$67 Phase 1 allocation, the test start/end window, the tracking/attribution setup, and the person responsible for activation.</p>
+  <p>The $99 Offer remains draft-only until the owner reviews the $49-versus-$67 result and separately approves a second phase. The VA must not activate a split, publish an Offer, turn on a new checkout, share a customer checkout link, or tell the ad buyer to change spend.</p>
+
+  <h2>11. Questions to ask the owner instead of making an assumption</h2>
+  <ul>
+    <li>I cannot find the exact <strong>Interconnected Series Self Guided</strong> product.</li>
+    <li>Kajabi shows more than one $199 upsell or a different upsell name/price.</li>
+    <li>A setting on the $67 control is unclear or unavailable on the new draft Offer.</li>
+    <li>The page asks me to activate a checkout template or publish the Offer.</li>
+    <li>The new Offer appears to have different tax, payment, quantity, or custom-price-text settings.</li>
+    <li>I cannot prove the post-purchase page, email preference, upsell, or automation matches the control.</li>
+    <li>Anyone asks me to send a link, share a price, add people to a list, change Klaviyo/SMS, or adjust Meta traffic.</li>
+  </ul>
+
+  <h2>12. Sources and document basis</h2>
+  <p>This manual is based on a read-only inspection of the owner’s authenticated Kajabi workspace on September 4, 2026, including the published $67 control Offer, its product access, and its Purchase flow. The workflow aligns with Kajabi’s guidance that separate Offers can carry different pricing for the same underlying product. This document is an operating checklist, not authority to activate a commercial test.</p>
+  <ul class="small">
+    <li>Kajabi Help Center — Create an Offer checkout page with different pricing: https://help.kajabi.com/articles/sales/checkout/can-i-create-an-offer-checkout-page-with-different-pricing</li>
+    <li>Kajabi Help Center — Landing page A/B testing overview: https://help.kajabi.com/articles/website/pages/landing-page-ab-testing-overview</li>
+    <li>Internal — Agora Kajabi Entry-Price Test Operator QA Checklist, September 4, 2026.</li>
+  </ul>
+  <p class="footer-note">END OF MANUAL — STOP HERE UNTIL THE OWNER REVIEWS THE HANDOFF RECORD</p>
+</body>
+</html>

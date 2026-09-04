@@ -114,6 +114,7 @@ const ownerItems = [
   { icon: Microscope, label: "Orobiome Funnel", path: "/orobiome-funnel" },
   { icon: Activity, label: "System Health", path: "/system-health" },
   { icon: FlaskConical, label: "A/B Tests", path: "/ab-tests" },
+  { icon: FlaskConical, label: "Price-Test Tracker", path: "/interconnected-price-test" },
   { icon: ShieldCheck, label: "Claims Review", path: "/claims-review" },
 ];
 

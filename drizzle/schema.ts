@@ -3508,6 +3508,39 @@ export const abConversions = mysqlTable("ab_conversions", {
 export type AbConversion = typeof abConversions.$inferSelect;
 export type InsertAbConversion = typeof abConversions.$inferInsert;
 
+// ─── Agora Kajabi Price-Test Tracking ───────────────────────────────────────
+// Internal tracking configuration only. These tables do not create Kajabi
+// Offers, publish checkout links, assign visitors, or change traffic.
+export const agoraPriceTestTrackers = mysqlTable("agora_price_test_trackers", {
+  id: int("id").autoincrement().primaryKey(),
+  testKey: varchar("test_key", { length: 100 }).notNull().unique(),
+  status: mysqlEnum("status", ["draft", "ready_for_activation", "running", "concluded"])
+    .notNull()
+    .default("draft"),
+  ocusOfferId: varchar("ocus_offer_id", { length: 64 }),
+  ocusParityP49Verified: boolean("ocus_parity_p49_verified").notNull().default(false),
+  ocusParityP67Verified: boolean("ocus_parity_p67_verified").notNull().default(true),
+  ocusParityP99Verified: boolean("ocus_parity_p99_verified").notNull().default(false),
+  trafficAllocationActive: boolean("traffic_allocation_active").notNull().default(false),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type AgoraPriceTestTracker = typeof agoraPriceTestTrackers.$inferSelect;
+
+export const agoraPriceTestTrackerArms = mysqlTable("agora_price_test_tracker_arms", {
+  id: int("id").autoincrement().primaryKey(),
+  trackerId: int("tracker_id").notNull(),
+  armId: mysqlEnum("arm_id", ["p49", "p67", "p99"]).notNull(),
+  label: varchar("label", { length: 100 }).notNull(),
+  priceCents: int("price_cents").notNull(),
+  isControl: boolean("is_control").notNull().default(false),
+  offerId: varchar("offer_id", { length: 64 }),
+  checkoutUrl: text("checkout_url"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+export type AgoraPriceTestTrackerArm = typeof agoraPriceTestTrackerArms.$inferSelect;
+
 
 // ─── Claims Review Gate ───────────────────────────────────────────────────────
 export const claimsReviews = mysqlTable("claims_reviews", {

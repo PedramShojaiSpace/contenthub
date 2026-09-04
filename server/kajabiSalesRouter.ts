@@ -267,6 +267,47 @@ async function fetchCurrentInterconnectedSales(
   };
 }
 
+/**
+ * Read aggregate transaction rows for an internal, exact-offer tracking report.
+ * Callers must still filter locally by both Offer ID and expected cents because
+ * Kajabi ignores offer-level API filters. This reader exposes no contact or
+ * purchaser PII and performs no external write.
+ */
+export async function fetchKajabiTransactionsForExactOfferTracking(
+  startDate: string,
+  endDate: string,
+): Promise<{ rows: KajabiTransactionRow[]; pagesScanned: number; fetchedAt: number }> {
+  const token = await getToken();
+  const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
+  const rows: KajabiTransactionRow[] = [];
+  let pagesScanned = 0;
+  let hitOldData = false;
+
+  for (let page = 1; page <= 60 && !hitOldData; page++) {
+    const url = `${KAJABI_API_BASE}/transactions?filter[site_id]=${SITE_ID}&page[number]=${page}`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) throw new Error(`Kajabi transaction read failed with HTTP ${res.status}`);
+
+    const data = await res.json() as { data?: KajabiTransactionRow[]; links?: { next?: string } };
+    const pageRows = data.data || [];
+    pagesScanned = page;
+    if (pageRows.length === 0) break;
+
+    for (const row of pageRows) {
+      const dateStr = operationalDate(row.attributes?.created_at || "");
+      if (dateStr < startDate) {
+        hitOldData = true;
+        break;
+      }
+      rows.push(row);
+    }
+
+    if (!data.links?.next) break;
+  }
+
+  return { rows, pagesScanned, fetchedAt: Date.now() };
+}
+
 async function fetchKajabiSalesCustomRange(startDate: string, endDate: string): Promise<KajabiSalesMetrics & { startDate: string; endDate: string; individualSales: Array<{ time: string; amountCents: number; label: string; offerId: string }> }> {
   const token = await getToken();
   const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };

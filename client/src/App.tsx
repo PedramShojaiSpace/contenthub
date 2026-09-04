@@ -117,6 +117,7 @@ const FunnelAdvisor = lazy(() => import("./pages/FunnelAdvisor"));
 const MofContentEngine = lazy(() => import("./pages/MofContentEngine"));
 const Reconciliation = lazy(() => import("./pages/Reconciliation"));
 const InterconnectedCommandCenter = lazy(() => import("./pages/InterconnectedCommandCenter"));
+const AgoraPriceTestTracker = lazy(() => import("./pages/AgoraPriceTestTracker"));
 const InterconnectedEmailRevenue = lazy(() => import("./pages/InterconnectedEmailRevenue"));
 const OrobiomeFunnelDashboard = lazy(() => import("./pages/OrobiomeFunnelDashboard"));
 const ApolloManualAudienceUpload = lazy(() => import("./pages/ApolloManualAudienceUpload"));
@@ -249,6 +250,7 @@ function Router() {
         <Route path={"/mof-content"} component={MofContentEngine} />
         <Route path={"/reconciliation"} component={Reconciliation} />
         <Route path={"/interconnected-command"} component={InterconnectedCommandCenter} />
+        <Route path={"/interconnected-price-test"} component={AgoraPriceTestTracker} />
         <Route path={"/interconnected-email-revenue"} component={InterconnectedEmailRevenue} />
         <Route path={"/orobiome-funnel"} component={OrobiomeFunnelDashboard} />
         <Route path={"/404"} component={NotFound} />

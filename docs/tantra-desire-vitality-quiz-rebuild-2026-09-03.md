@@ -17,3 +17,9 @@ The development preview served the rebuilt welcome page and advanced into Questi
 The non-personal preview path then selected the women’s pathway and advanced to Question 2. The route correctly displayed the whole-system focus question, its multi-select controls, the 40% progress state, and the explicit non-diagnostic reminder. No email, safety response, product link, or checkout was activated.
 
 The preview also confirmed that a selected multi-choice focus response enables the continuation control and that Question 3 renders the recovery-capacity context at the 60% progress state. The copy connects recovery to sleep, stress, nourishment, movement, and resilience without diagnosing a condition.
+
+## Production Verification Hold
+
+After checkpoint `97c80361`, the public custom-domain URL `https://content.theurbanmonk.com/quiz/tantra` was checked on September 3, 2026. It still served the retired dark Taoist-led quiz with the “Ancient Secret” headline, rather than the newly built Desire & Vitality Check-In. The code, focused tests, full staged build, and development preview are complete, but the custom domain’s currently served public asset is stale. No domain mapping, DNS record, or hosting-origin action has been taken in this verification pass. Do not describe the redesigned quiz as publicly live until the serving-bundle mismatch is resolved and rechecked.
+
+The project’s managed hostname, `https://lightsebook-iugsiz76.manus.space/quiz/tantra`, was checked immediately afterward and returned the same retired Taoist quiz. This confirms the mismatch is not isolated to `content.theurbanmonk.com`; both public hostnames currently point to a stale production application bundle. The next investigation must focus on the active production deployment/origin, not a DNS or custom-domain remapping action.

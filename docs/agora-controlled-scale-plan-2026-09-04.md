@@ -5,6 +5,8 @@
 
 > **Decision boundary:** This is a risk-managed operating plan, not a guarantee of results or a direction to change spend. No stage advances unless the stated Kajabi and delivery gates are met using completed Central-time days.
 
+> **CRO validation override — September 4, 2026:** No promotion on this scale ladder is proposed while the controlled Kajabi entry-price experiment and the distinct Klaviyo optional-SMS integrity validation are pending. Before any rung increase, the active/retained Kajabi price must have a mature controlled readout and then pass a fresh unchanged 72-hour baseline; the existing direct Kajabi, CPC, CTR, base-conversion, and $199 take-rate gates still all apply. Klaviyo/KO revenue is not pooled with Kajabi, and verified delayed Shopify revenue remains a 14-day cohort validation rather than a same-day promotion override. See `docs/agora-cro-validation-sprint-2026-09-04.md`.
+
 ## 1. Starting economics and scale objective
 
 The post-restart cohort recorded **11 cleared $67 base purchases** and **two cleared $199 one-click upgrades**, an observed 18.18% upgrade take rate. Matched delivery was $938.91 across 1,148 link clicks, equivalent to **$0.82 CPC**, 5.75% link CTR, 0.958% click-to-$67 conversion, and $85.36 observed media cost per $67 purchase.[1]

@@ -17,6 +17,7 @@ import { google } from "googleapis";
 import { userCredentials } from "../drizzle/schema";
 import { fetchSingleWpPost, updateWpPostContent, createWpPost } from "./wordpress";
 import { deriveWpDraftFocusKeyword, ensureWpDraftLinks, ensureWpDraftMetaDescription, injectFeaturedImageIntoWpHtml } from "./wpContentUtils";
+import { assertHeyGenOutboundEnabled } from "./heygenControl";
 
 const VIDEO_JOB_STATUSES = [
   "pending", "importing", "editing", "rendering",
@@ -45,6 +46,10 @@ export const videoPipelineRouter = router({
 
       const path = input.productionPath ?? "heygen_then_descript";
       const channels = input.outputChannels ?? ["youtube"];
+
+      if (path !== "descript_only") {
+        assertHeyGenOutboundEnabled();
+      }
 
       console.log(`[videoPipeline] startVideoJob called: title="${input.scriptTitle.substring(0, 60)}" path=${path} channels=${channels.join(",")} contentItemId=${input.contentItemId}`);
 
@@ -285,6 +290,7 @@ export const videoPipelineRouter = router({
                 console.log(`${jobLabel} No Descript data — using existing S3 URL: ${downloadUrl}`);
               } else if (jobAny.heygenVideoId) {
                 // Fetch the video URL directly from HeyGen
+                assertHeyGenOutboundEnabled();
                 console.log(`${jobLabel} No Descript data — fetching video URL from HeyGen...`);
                 const heygenRes = await fetch(
                   `https://api.heygen.com/v1/video_status.get?video_id=${jobAny.heygenVideoId}`,

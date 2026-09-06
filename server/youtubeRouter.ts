@@ -533,6 +533,10 @@ Write the complete script now:`;
       })
     )
     .mutation(async ({ input }) => {
+      if (input.destination === "heygen") {
+        const { assertHeyGenOutboundEnabled } = await import("./heygenControl");
+        assertHeyGenOutboundEnabled();
+      }
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       const { scripts, videoJobs } = await import("../drizzle/schema");

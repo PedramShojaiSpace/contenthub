@@ -32,7 +32,20 @@ function getVisitorId(): string {
 
 const LOGO = "/manus-storage/urban-monk-logo-white_bea7991f.png";
 
-const OTO_CHECKOUT_URL = "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout";
+const CONTROL_OTO_CHECKOUT_URL = "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout";
+
+export type InterconnectedThankYouPriceConfig = {
+  armId: "p49" | "p67" | "p99";
+  entryPriceCents: number;
+  /** Omitted for the unlinked draft pages until the VA supplies the Kajabi checkout. */
+  checkoutUrl?: string;
+};
+
+const CONTROL_PRICE_CONFIG: InterconnectedThankYouPriceConfig = {
+  armId: "p67",
+  entryPriceCents: 6700,
+  checkoutUrl: CONTROL_OTO_CHECKOUT_URL,
+};
 
 // CDN base for expert headshots (uploaded from Google Drive)
 const CDN = "/manus-storage/";
@@ -200,15 +213,6 @@ const EXPERTS = [
   },
 ];
 
-const REVIEWS = [
-  { name: "Sarah M., Austin TX", stars: 5, text: "I've watched dozens of health documentaries. This is the first one that gave me a complete picture AND a clear protocol to follow. My gut issues of 12 years are finally improving." },
-  { name: "David K., Portland OR", stars: 5, text: "Dr. Fassano's episode alone was worth 10× the price. I finally understand why my autoimmune condition keeps flaring — and what to actually do about it." },
-  { name: "Jennifer L., Nashville TN", stars: 5, text: "My functional medicine doctor recommended this series. After watching all 9 episodes I feel like I have a PhD in gut health. The companion guide is incredible." },
-  { name: "Michael R., Denver CO", stars: 5, text: "I was skeptical. I've been told 'your labs are normal' for years while feeling terrible. This series validated everything I suspected and gave me the language to advocate for myself." },
-  { name: "Amanda T., Seattle WA", stars: 5, text: "The episode on children's health made me cry. I wish I had seen this before my kids were born. Sharing it with every parent I know." },
-  { name: "Robert H., Chicago IL", stars: 5, text: "Dr. Kharrazian's episode on the brain-gut connection was mind-blowing. I've been treating my brain fog for years without addressing the gut. Starting the protocol tomorrow." },
-];
-
 const FAQS = [
   {
     q: "What exactly is Interconnected?",
@@ -330,23 +334,16 @@ function TyCountdownBlock() {
   );
 }
 
-const StarRating = ({ count = 5 }: { count?: number }) => (
-  <div className="flex gap-0.5">
-    {Array.from({ length: count }).map((_, i) => (
-      <svg key={i} className="w-4 h-4" fill={GOLD} viewBox="0 0 20 20">
-        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-      </svg>
-    ))}
-  </div>
-);
-
-export default function InterconnectedThankYouB() {
+export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CONFIG }: { priceConfig?: InterconnectedThankYouPriceConfig }) {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [headline, setHeadline] = useState(() => {
     if (typeof window === "undefined") return ORIGINAL_HEADLINE;
     return localStorage.getItem(HEADLINE_COPY_STORAGE_KEY) ?? ORIGINAL_HEADLINE;
   });
   const visitorId = useRef(getVisitorId());
+  const checkoutUrl = priceConfig.checkoutUrl;
+  const entryPrice = `$${(priceConfig.entryPriceCents / 100).toFixed(0)}`;
+  const savings = `$${((19700 - priceConfig.entryPriceCents) / 100).toFixed(0)}`;
 
   // A/B tracking: variant is already assigned by the Splitter before this page mounts.
   // The Splitter calls assignVariant (records exposure in DB) and passes the variant
@@ -356,6 +353,7 @@ export default function InterconnectedThankYouB() {
   const assignHeadlineVariant = trpc.abTest.assignVariant.useMutation();
 
   useEffect(() => {
+    if (priceConfig.armId !== "p67") return;
     // Read the variant assignment the Splitter already made
     const cachedVariant = localStorage.getItem('ty_ab_variant'); // 'A' or 'B'
     // Variant 1 = A (control), Variant 2 = B (treatment)
@@ -370,6 +368,7 @@ export default function InterconnectedThankYouB() {
   }, []);
 
   useEffect(() => {
+    if (priceConfig.armId !== "p67") return;
     const params = new URLSearchParams(window.location.search);
     let cancelled = false;
 
@@ -400,49 +399,53 @@ export default function InterconnectedThankYouB() {
   }, []);
 
   const handleBuyClick = () => {
+    // Draft treatment routes have no checkout mapping until the VA finishes the
+    // manual Kajabi setup. They must never redirect or emit checkout tracking.
+    if (!checkoutUrl) return;
     // Record A/B conversion
     const storedVariantId = sessionStorage.getItem('__ab_variant_id');
-    if (storedVariantId) {
+    if (priceConfig.armId === "p67" && storedVariantId) {
       recordConversion.mutate({
         testId: AB_TEST_ID,
         visitorId: visitorId.current,
         conversionType: "checkout_start",
-        revenueCents: 6700,
+        revenueCents: priceConfig.entryPriceCents,
       });
     }
     const storedHeadlineVariantId = sessionStorage.getItem(HEADLINE_VARIANT_STORAGE_KEY);
-    if (storedHeadlineVariantId) {
+    if (priceConfig.armId === "p67" && storedHeadlineVariantId) {
       recordConversion.mutate({
         testId: HEADLINE_AB_TEST_ID,
         visitorId: visitorId.current,
         conversionType: "checkout_start",
-        revenueCents: 6700,
+        revenueCents: priceConfig.entryPriceCents,
       });
     }
     // Generate a unique event_id for InitiateCheckout for CAPI deduplication
     const checkoutEventId = `ic_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     sessionStorage.setItem('__capi_checkout_event_id', checkoutEventId);
-    firePixel("InitiateCheckout", { value: 67, currency: "USD", content_name: "Interconnected All-Access Bundle" }, checkoutEventId);
-    window.location.href = OTO_CHECKOUT_URL;
+    firePixel("InitiateCheckout", { value: priceConfig.entryPriceCents / 100, currency: "USD", content_name: "Interconnected All-Access Bundle" }, checkoutEventId);
+    window.location.href = checkoutUrl;
   };
 
   const BuyButton = ({ label = "Yes — Give Me Instant Access to All 9 Episodes" }: { label?: string }) => (
     <div className="text-center">
       <button
         onClick={handleBuyClick}
+        disabled={!checkoutUrl}
         className="w-full max-w-xl px-8 py-5 rounded-xl font-black text-lg md:text-xl uppercase tracking-wide transition-all hover:scale-105 active:scale-95"
-        style={{ background: `linear-gradient(135deg, ${GOLD} 0%, #e8b800 100%)`, color: "#0a0a0a", boxShadow: `0 8px 32px rgba(245,200,66,0.4)` }}
+        style={{ background: checkoutUrl ? `linear-gradient(135deg, ${GOLD} 0%, #e8b800 100%)` : "#64748b", color: "#0a0a0a", boxShadow: checkoutUrl ? `0 8px 32px rgba(245,200,66,0.4)` : "none", cursor: checkoutUrl ? "pointer" : "not-allowed" }}
       >
-        {label}
+        {checkoutUrl ? label : "Checkout mapping pending"}
       </button>
       <p className="text-gray-500 text-xs mt-3">
-        🔒 Secure checkout · 30-day money-back guarantee · Instant access
+        {checkoutUrl ? "Secure checkout · 30-day money-back guarantee · Instant access" : "Draft page — checkout is not active"}
       </p>
     </div>
   );
 
   return (
-    <div className="min-h-screen text-white font-sans" style={{ background: BG_DARK }}>
+    <div className="min-h-screen text-white font-sans" style={{ background: BG_DARK }} data-price-test-arm={priceConfig.armId}>
 
             {/* ── STICKY TOP BAR — isolated component */}
       <TyStickyBar onBuyClick={handleBuyClick} />
@@ -503,7 +506,7 @@ export default function InterconnectedThankYouB() {
             </p>
             <div className="flex items-center justify-center gap-3 mb-4">
               <span className="text-gray-400 line-through text-lg">$97</span>
-              <span className="text-3xl font-bold text-white">$67</span>
+              <span className="text-3xl font-bold text-white">{entryPrice}</span>
               <span className="text-yellow-300 text-sm font-semibold">TODAY ONLY</span>
             </div>
             <button
@@ -511,7 +514,7 @@ export default function InterconnectedThankYouB() {
               className="w-full py-4 px-8 rounded-xl text-white font-bold text-lg transition-transform hover:scale-105"
               style={{ background: "linear-gradient(135deg, #e67e22, #f39c12)", boxShadow: "0 4px 20px rgba(230,126,34,0.5)" }}
             >
-              YES — Get All-Access for $67 Now →
+              YES — Get All-Access for {entryPrice} Now →
             </button>
             <p className="text-gray-500 text-xs mt-2">Secure checkout · Instant access · 30-day guarantee</p>
           </div>
@@ -613,8 +616,8 @@ export default function InterconnectedThankYouB() {
             <div className="p-8 md:p-10" style={{ background: BG_CARD }}>
               <div className="text-center mb-6">
                 <p className="text-gray-500 line-through text-xl mb-1">Normally $197</p>
-                <p className="font-black text-6xl text-white mb-1">$67</p>
-                <p className="text-sm font-semibold" style={{ color: GOLD }}>You save $130 — today only</p>
+                <p className="font-black text-6xl text-white mb-1">{entryPrice}</p>
+                <p className="text-sm font-semibold" style={{ color: GOLD }}>You save {savings} — today only</p>
               </div>
               <p className="text-center font-bold text-sm uppercase tracking-widest mb-6" style={{ color: BLUE }}>
                 Here's What You'll Receive:
@@ -715,29 +718,6 @@ export default function InterconnectedThankYouB() {
         </div>
       </section>
 
-      {/* ── REVIEWS ─────────────────────────────────────────────────────────────── */}
-      <section className="px-4 py-16" style={sectionStyle(BG_MID)}>
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <StarRating />
-            <p className="text-white font-black text-2xl">4.9 out of 5 Stars</p>
-          </div>
-          <p className="text-center text-gray-400 text-sm mb-12">Based on viewer ratings from the free series</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {REVIEWS.map((r, i) => (
-              <div key={i} className="rounded-xl p-6" style={{ background: BG_CARD, border: `1px solid rgba(46,145,252,0.15)` }}>
-                <StarRating count={r.stars} />
-                <p className="text-gray-200 text-sm leading-relaxed mt-3 mb-4 italic">"{r.text}"</p>
-                <p className="font-bold text-sm" style={{ color: BLUE }}>{r.name}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-12">
-            <BuyButton />
-          </div>
-        </div>
-      </section>
-
       {/* ── SECOND OFFER CARD ───────────────────────────────────────────────────── */}
       <section className="px-4 py-16" style={{ contentVisibility: "auto", containIntrinsicSize: "0 800px",  background: BG_DARK  }}>
         <div className="max-w-2xl mx-auto">
@@ -750,7 +730,7 @@ export default function InterconnectedThankYouB() {
             style={{ border: `2px solid ${BLUE}`, boxShadow: `0 0 60px ${BLUE_GLOW}` }}
           >
             <div className="py-4 px-6 text-center" style={{ background: BLUE }}>
-              <p className="font-black text-white text-sm uppercase tracking-widest">All-Access Bundle — $67 One-Time</p>
+              <p className="font-black text-white text-sm uppercase tracking-widest">All-Access Bundle — {entryPrice} One-Time</p>
             </div>
             <div className="p-8 md:p-10" style={{ background: BG_CARD }}>
               <ul className="space-y-3 mb-8">

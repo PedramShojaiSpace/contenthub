@@ -71,4 +71,49 @@ describe("Interconnected Thank You control routing", () => {
     expect(klaviyoSource).not.toContain("HEADLINE_AB_TEST_ID");
     expect(klaviyoSource).not.toContain("interconnected_ty_headline_variant_id");
   });
+
+  it("removes unsupported ratings and customer-review content from both live Kajabi control variants", () => {
+    const versionASource = readFileSync(
+      new URL("../client/src/pages/InterconnectedThankYou.tsx", import.meta.url),
+      "utf8"
+    );
+    const versionBSource = readFileSync(
+      new URL("../client/src/pages/InterconnectedThankYouB.tsx", import.meta.url),
+      "utf8"
+    );
+
+    expect(versionASource).not.toContain("const REVIEWS");
+    expect(versionBSource).not.toContain("const REVIEWS");
+    expect(versionASource).not.toContain("4.9 out of 5 Stars");
+    expect(versionBSource).not.toContain("4.9 out of 5 Stars");
+  });
+
+  it("keeps the $49 and $99 pages unlinked and checkout-inactive until verified Kajabi mappings are supplied", () => {
+    const appSource = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
+    const publicSource = readFileSync(new URL("../client/src/PublicApp.tsx", import.meta.url), "utf8");
+    const controlSource = readFileSync(
+      new URL("../client/src/pages/InterconnectedThankYouB.tsx", import.meta.url),
+      "utf8"
+    );
+    const p49Source = readFileSync(
+      new URL("../client/src/pages/InterconnectedThankYouPrice49.tsx", import.meta.url),
+      "utf8"
+    );
+    const p99Source = readFileSync(
+      new URL("../client/src/pages/InterconnectedThankYouPrice99.tsx", import.meta.url),
+      "utf8"
+    );
+
+    expect(appSource).toContain('path={"/interconnected/thank-you-p49-draft"}');
+    expect(appSource).toContain('path={"/interconnected/thank-you-p99-draft"}');
+    expect(publicSource).toContain('path="/interconnected/thank-you-p49-draft"');
+    expect(publicSource).toContain('path="/interconnected/thank-you-p99-draft"');
+    expect(p49Source).toContain('armId: "p49", entryPriceCents: 4900');
+    expect(p99Source).toContain('armId: "p99", entryPriceCents: 9900');
+    expect(p49Source).not.toContain("checkoutUrl:");
+    expect(p99Source).not.toContain("checkoutUrl:");
+    expect(controlSource).toContain("if (!checkoutUrl) return;");
+    expect(controlSource).toContain('priceConfig.armId !== "p67"');
+    expect(controlSource).toContain('data-price-test-arm={priceConfig.armId}');
+  });
 });

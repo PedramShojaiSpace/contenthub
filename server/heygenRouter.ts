@@ -23,12 +23,14 @@ import { uploadToYouTube } from "./youtubeUploader";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
 import { cleanScriptForHeyGen } from "./descriptPipeline";
+import { assertHeyGenOutboundEnabled } from "./heygenControl";
 
 const HEYGEN_API_BASE = "https://api.heygen.com";
 
 // ── HeyGen API helpers ────────────────────────────────────────────────────────
 
 async function heygenFetch(path: string, options: RequestInit = {}): Promise<Response> {
+  assertHeyGenOutboundEnabled();
   const apiKey = ENV.heygenApiKey;
   if (!apiKey) throw new Error("HEYGEN_API_KEY is not configured");
 

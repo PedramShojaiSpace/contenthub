@@ -50,12 +50,14 @@ import {
 import { gatherStockFootage, buildPexelsQueriesFromScript } from "./pexelsClient";
 import { storagePut } from "./storage";
 import { ENV } from "./_core/env";
+import { assertHeyGenOutboundEnabled, isHeyGenOutboundDisabled } from "./heygenControl";
 
 // ── HeyGen helpers (inline to avoid circular imports) ────────────────────────
 
 const HEYGEN_API_BASE = "https://api.heygen.com";
 
 async function heygenFetch(path: string, options: RequestInit = {}): Promise<Response> {
+  assertHeyGenOutboundEnabled();
   const apiKey = ENV.heygenApiKey;
   if (!apiKey) throw new Error("HEYGEN_API_KEY is not configured");
   return fetch(`${HEYGEN_API_BASE}${path}`, {
@@ -381,6 +383,16 @@ export async function processVideoJob(jobId: number): Promise<void> {
     // Determine effective path from productionPath (falls back to videoType for legacy)
     // ════════════════════════════════════════════════════════════════════════
     const effectivePath = job.productionPath ?? (job.videoType === "avatar" ? "heygen_then_descript" : "descript_only");
+
+    // Security containment: leave queued/in-flight HeyGen jobs untouched and
+    // return before any quota, render, or status request can reach HeyGen.
+    if (
+      isHeyGenOutboundDisabled() &&
+      (effectivePath === "heygen_only" || effectivePath === "heygen_then_descript" || job.videoType === "avatar")
+    ) {
+      console.warn(`${jobLabel} HeyGen processing skipped: outbound integration is security-disabled.`);
+      return;
+    }
 
     // ════════════════════════════════════════════════════════════════════════
     // HEYGEN_ONLY PIPELINE — HeyGen render → ready_for_review (no Descript)

@@ -17,6 +17,8 @@ const TantraContentFemaleOrgasm = lazy(() => import("./pages/TantraContentFemale
 const Interconnected = lazy(() => import("./pages/Interconnected"));
 const InterconnectedThankYou = lazy(() => import("./pages/InterconnectedThankYou"));
 const InterconnectedThankYouB = lazy(() => import("./pages/InterconnectedThankYouB"));
+const InterconnectedThankYouPrice49 = lazy(() => import("./pages/InterconnectedThankYouPrice49"));
+const InterconnectedThankYouPrice99 = lazy(() => import("./pages/InterconnectedThankYouPrice99"));
 const InterconnectedThankYouKlaviyo = lazy(() => import("./pages/InterconnectedThankYouKlaviyo"));
 const Interconnected199PostPurchaseKlaviyo = lazy(() => import("./pages/Interconnected199PostPurchaseKlaviyo"));
 const InterconnectedPurchased = lazy(() => import("./pages/InterconnectedPurchased"));
@@ -61,6 +63,8 @@ export default function PublicApp() {
             <Route path="/interconnected" component={Interconnected} />
             <Route path="/interconnected/thank-you" component={InterconnectedThankYouB} />
             <Route path="/interconnected/thank-you-b" component={InterconnectedThankYouB} />
+            <Route path="/interconnected/thank-you-p49-draft" component={InterconnectedThankYouPrice49} />
+            <Route path="/interconnected/thank-you-p99-draft" component={InterconnectedThankYouPrice99} />
             <Route path="/interconnected/thank-you-klaviyo" component={InterconnectedThankYouKlaviyo} />
             <Route path="/interconnected/post-purchase-199-klaviyo" component={Interconnected199PostPurchaseKlaviyo} />
             <Route path="/interconnected/thank-you-a" component={InterconnectedThankYou} />

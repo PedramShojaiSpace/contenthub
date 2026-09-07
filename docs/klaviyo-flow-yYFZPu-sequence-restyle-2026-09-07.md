@@ -37,6 +37,14 @@ All **11 SMS actions** were independently compared with the pre-change action in
 
 The post-update read-back confirms **20 restyled live email actions** and **11 unchanged SMS actions**. Each email's attached template includes the required light Interconnected color values and dedicated-template naming. The full action count remains 50.
 
+## CTA button-color correction
+
+During the owner’s Klaviyo review, the Day 0 CTA appeared correctly cyan-teal while the remaining email buttons appeared nearly black. Read-only template inspection identified the exact issue: the 19 later email templates still used the dark blue-green `#062B38` for the CTA anchor’s inline background and border. That color is appropriate for the Day 0 header but reads as black in the visible button treatment.
+
+The correction created and attached new dedicated **Teal CTA** versions of those 19 templates, replacing only the CTA anchor background and border with `#087E9D`. A final API read-back verified that all **20** live flow emails now have exactly one primary CTA with `#087E9D` fill and matching border, and no CTA anchor retains the dark `#062B38` fill. The visual browser preview remained unavailable because Klaviyo’s web-view route stayed on a loading surface; the rendered-template source and each live action/template attachment were verified through Klaviyo’s supported API.
+
+Every message’s plain-text body, sender, subject, preheader, delivery status/timing, routing destination, tracking settings, Smart Sending, flow structure, and Day 0 handoff remain unchanged. The same post-correction check reconfirmed the 50-action total and unchanged 11-action SMS inventory. No test or live email or SMS was sent.
+
 ## Operating boundary
 
 This was a visual/template and pre-approved Day 0 CTA-path update only. It did not alter subscribers, list membership, SMS consent, flow trigger/filter criteria, landing pages, Kajabi, Shopify products, pricing, offers, checkout configuration, Meta delivery, or ad spend.

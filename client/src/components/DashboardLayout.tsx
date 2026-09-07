@@ -115,6 +115,7 @@ const ownerItems = [
   { icon: Activity, label: "System Health", path: "/system-health" },
   { icon: FlaskConical, label: "A/B Tests", path: "/ab-tests" },
   { icon: FlaskConical, label: "Price-Test Tracker", path: "/interconnected-price-test" },
+  { icon: Layout, label: "Landing Pages Command", path: "/landing-pages-command" },
   { icon: ShieldCheck, label: "Claims Review", path: "/claims-review" },
 ];
 

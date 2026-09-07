@@ -173,6 +173,7 @@ import { metaFunnelMetricsRouter } from "./metaFunnelMetricsRouter";
 import { kajabiSalesRouter } from "./kajabiSalesRouter";
 import { agoraPriceTestRouter } from "./agoraPriceTestRouter";
 import { agoraPriceTestTrackingRouter } from "./agoraPriceTestTrackingRouter";
+import { landingPageCommandRouter } from "./landingPageCommandRouter";
 import { funnelAdvisorRouter } from "./funnelAdvisorRouter";
 import { funnelReconciliationRouter } from "./funnelReconciliationRouter";
 import { orobiomeFunnelRouter } from "./orobiomeFunnelRouter";
@@ -568,6 +569,7 @@ export const appRouter = router({
   kajabiSales: kajabiSalesRouter,
   agoraPriceTest: agoraPriceTestRouter,
   agoraPriceTestTracking: agoraPriceTestTrackingRouter,
+  landingPageCommand: landingPageCommandRouter,
   funnelAdvisor: funnelAdvisorRouter,
   funnelRecon: funnelReconciliationRouter,
   mofContent: mofContentRouter,

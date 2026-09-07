@@ -1823,6 +1823,113 @@ export type InsertHostedLandingPage = typeof hostedLandingPages.$inferInsert;
 
 // Unique constraint: campaign + slug must be unique (enforced at app level too)
 
+// ─── Landing Pages Command Center (internal control plane) ─────────────────────
+// These records govern campaign-page briefs, QA, and release requests for future
+// externally hosted pages. They do not create, publish, or route a public page.
+
+export const landingPageCommandStatusEnum = mysqlEnum("status", [
+  "brief_draft",
+  "copy_review",
+  "approved_for_framer_draft",
+  "framer_draft",
+  "preview_ready",
+  "qa_passed",
+  "release_requested",
+  "live",
+  "archived",
+  "blocked",
+  "needs_revision",
+  "rolled_back",
+]);
+
+export const landingPageCommandTypeEnum = mysqlEnum("page_type", [
+  "lead_magnet",
+  "webinar",
+  "offer_page",
+  "thank_you_offer",
+  "product_bridge",
+  "quiz",
+  "evergreen_resource",
+]);
+
+export const landingPageCommandLedgerEnum = mysqlEnum("checkout_ledger", ["none", "kajabi", "shopify"]);
+export const landingPageCommandSeoEnum = mysqlEnum("seo_policy", [
+  "paid_test_noindex",
+  "campaign_control_indexable",
+  "resource_indexable",
+  "redirect_migration",
+]);
+
+export const landingPageCommandPages = mysqlTable("landing_page_command_pages", {
+  id: int("id").autoincrement().primaryKey(),
+  campaignId: varchar("campaign_id", { length: 120 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  ownerName: varchar("owner_name", { length: 255 }),
+  pageType: landingPageCommandTypeEnum.notNull().default("offer_page"),
+  status: landingPageCommandStatusEnum.notNull().default("brief_draft"),
+
+  audienceSource: varchar("audience_source", { length: 120 }),
+  audienceDescription: text("audience_description"),
+  messageBrief: longtext("message_brief"),
+  claimReferences: longtext("claim_references"),
+  assetReferences: longtext("asset_references"),
+  disclosureText: longtext("disclosure_text"),
+
+  checkoutLedger: landingPageCommandLedgerEnum.notNull().default("none"),
+  offerName: varchar("offer_name", { length: 255 }),
+  exactOfferId: varchar("exact_offer_id", { length: 128 }),
+  displayPriceCents: int("display_price_cents"),
+  upsellPolicy: text("upsell_policy"),
+
+  ctaLabel: varchar("cta_label", { length: 255 }),
+  ctaDestinationKey: varchar("cta_destination_key", { length: 160 }),
+  pageKey: varchar("page_key", { length: 160 }),
+  utmSource: varchar("utm_source", { length: 160 }),
+  utmMedium: varchar("utm_medium", { length: 160 }),
+  utmCampaign: varchar("utm_campaign", { length: 160 }),
+  utmContent: varchar("utm_content", { length: 160 }),
+
+  seoPolicy: landingPageCommandSeoEnum.notNull().default("paid_test_noindex"),
+  canonicalUrl: text("canonical_url"),
+  seoTitle: varchar("seo_title", { length: 255 }),
+  metaDescription: varchar("meta_description", { length: 320 }),
+
+  // Phase 1 placeholders. No Framer API connection exists in this phase.
+  framerProjectName: varchar("framer_project_name", { length: 255 }),
+  framerBranchName: varchar("framer_branch_name", { length: 255 }),
+  framerTemplateKey: varchar("framer_template_key", { length: 160 }),
+  framerPreviewUrl: text("framer_preview_url"),
+  plannedPublicPath: varchar("planned_public_path", { length: 512 }),
+
+  qaClaimsApproved: boolean("qa_claims_approved").notNull().default(false),
+  qaAssetsApproved: boolean("qa_assets_approved").notNull().default(false),
+  qaSeoApproved: boolean("qa_seo_approved").notNull().default(false),
+  qaCtaApproved: boolean("qa_cta_approved").notNull().default(false),
+  qaTrackingApproved: boolean("qa_tracking_approved").notNull().default(false),
+  qaNotes: text("qa_notes"),
+
+  releaseRequestedAt: timestamp("release_requested_at"),
+  releaseRequestedBy: varchar("release_requested_by", { length: 255 }),
+  createdByOpenId: varchar("created_by_open_id", { length: 64 }).notNull(),
+  createdByName: varchar("created_by_name", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export const landingPageCommandAudit = mysqlTable("landing_page_command_audit", {
+  id: int("id").autoincrement().primaryKey(),
+  pageId: int("page_id").notNull(),
+  action: varchar("action", { length: 80 }).notNull(),
+  note: text("note"),
+  actorOpenId: varchar("actor_open_id", { length: 64 }).notNull(),
+  actorName: varchar("actor_name", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type LandingPageCommandPage = typeof landingPageCommandPages.$inferSelect;
+export type InsertLandingPageCommandPage = typeof landingPageCommandPages.$inferInsert;
+export type LandingPageCommandAudit = typeof landingPageCommandAudit.$inferSelect;
+
 // ─── Testimonials ─────────────────────────────────────────────────────────────
 // Stores testimonials imported from PPTX or entered manually.
 // campaign: which product they belong to (lo, gut, sleep, webinar, general)

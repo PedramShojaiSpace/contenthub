@@ -375,7 +375,7 @@ export default function InterconnectedThankYouKlaviyo() {
         {label}
       </button>
       <p className="text-gray-500 text-xs mt-3">
-        🔒 Secure Shopify checkout · no product-page detour · 30-day money-back guarantee · Instant access
+        🔒 Secure Shopify checkout · review the complete protocol · 30-day money-back guarantee · Instant access
       </p>
     </div>
   );
@@ -452,7 +452,7 @@ export default function InterconnectedThankYouKlaviyo() {
             >
               YES — Get All-Access for $67 Now →
             </button>
-            <p className="text-gray-500 text-xs mt-2">Secure Shopify checkout · no product-page detour · Instant access · 30-day guarantee</p>
+            <p className="text-gray-500 text-xs mt-2">Secure Shopify checkout · review the complete protocol · Instant access · 30-day guarantee</p>
           </div>
 
           {/* Confirmation */}

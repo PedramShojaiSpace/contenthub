@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
-  INTERCONNECTED_67_CART_PERMALINK,
   INTERCONNECTED_199_CART_PERMALINK,
   INTERCONNECTED_KLAVIYO_199_CONTENT,
+  INTERCONNECTED_KLAVIYO_THANK_YOU_PRODUCT_URL,
   INTERCONNECTED_KLAVIYO_TREATMENT_CONTENT,
   buildInterconnectedKlaviyo199CheckoutUrl,
   buildInterconnectedKlaviyoCheckoutUrl,
 } from "../client/src/lib/interconnectedKlaviyoCheckout";
 
 describe("Klaviyo Thank You B treatment checkout handoff", () => {
-  it("uses the first-party bridge and the direct $67 Shopify cart permalink", () => {
+  it("uses the first-party bridge and the approved Shopify product page", () => {
     const url = new URL(buildInterconnectedKlaviyoCheckoutUrl("?utm_medium=email&fbclid=meta-click"), "https://content.theurbanmonk.com");
     expect(url.pathname).toBe("/r/checkout");
-    expect(url.searchParams.get("destination")).toBe(INTERCONNECTED_67_CART_PERMALINK);
+    expect(url.searchParams.get("destination")).toBe(INTERCONNECTED_KLAVIYO_THANK_YOU_PRODUCT_URL);
     expect(url.searchParams.get("utm_source")).toBe("klaviyo");
     expect(url.searchParams.get("utm_medium")).toBe("email");
     expect(url.searchParams.get("utm_campaign")).toBe("interconnected_14day");

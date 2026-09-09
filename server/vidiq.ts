@@ -110,6 +110,28 @@ export interface VidIQKeywordResearch {
   related: VidIQKeywordResult[];
 }
 
+type RawVidIQKeyword = {
+  keyword?: unknown;
+  volume?: unknown;
+  competition?: unknown;
+  overall?: unknown;
+  estimatedMonthlySearch?: unknown;
+  topMarkets?: unknown;
+};
+
+type RawVidIQKeywordResearch = {
+  seedKeyword?: RawVidIQKeyword;
+  relatedKeywords?: RawVidIQKeyword[];
+  keyword?: unknown;
+  volume?: unknown;
+  competition?: unknown;
+  overall?: unknown;
+  estimatedMonthlySearch?: unknown;
+  topMarkets?: unknown;
+  related?: RawVidIQKeyword[];
+  _text?: string;
+};
+
 /**
  * ── v2.2 Part 1 fix 9 — field-name mismatch (NOT in the original defect list) ──
  *
@@ -365,6 +387,84 @@ function firstText(result: unknown): string | null {
   return null;
 }
 
+/**
+ * vidIQ's keyword tool presently returns a human-readable summary followed by
+ * "Keyword data (JSON):" and the actual payload. The generic MCP helper
+ * intentionally preserves that prose as `_text`; this parser lets the one
+ * keyword-specific consumer recover the embedded object without treating a
+ * successful prose response as a zero-valued metric record.
+ */
+function parseEmbeddedKeywordPayload(text: string): Record<string, unknown> | null {
+  const markerIndex = text.lastIndexOf("Keyword data (JSON):");
+  const objectStart = text.indexOf("{", markerIndex >= 0 ? markerIndex : 0);
+  if (objectStart < 0) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaping = false;
+
+  for (let index = objectStart; index < text.length; index += 1) {
+    const char = text[index];
+    if (inString) {
+      if (escaping) {
+        escaping = false;
+      } else if (char === "\\") {
+        escaping = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+    } else if (char === "{") {
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        try {
+          const parsed = JSON.parse(text.slice(objectStart, index + 1));
+          return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+            ? parsed as Record<string, unknown>
+            : null;
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function asFiniteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function normalizeKeywordResult(value: RawVidIQKeyword, context: string): VidIQKeywordResult {
+  const keyword = typeof value.keyword === "string" ? value.keyword.trim() : "";
+  const volume = asFiniteNumber(value.volume);
+  const competition = asFiniteNumber(value.competition);
+  const overall = asFiniteNumber(value.overall);
+  const estimatedMonthlySearch = asFiniteNumber(value.estimatedMonthlySearch);
+
+  if (!keyword || volume === null || competition === null || overall === null || estimatedMonthlySearch === null) {
+    throw new Error(`vidIQ keyword research returned incomplete ${context} data`);
+  }
+
+  const topMarkets = Array.isArray(value.topMarkets)
+    ? value.topMarkets.flatMap((market) => {
+        if (!market || typeof market !== "object") return [];
+        const country = (market as { country?: unknown }).country;
+        const pct = asFiniteNumber((market as { pct?: unknown }).pct);
+        return typeof country === "string" && pct !== null ? [{ country, pct }] : [];
+      })
+    : [];
+
+  return { keyword, volume, competition, overall, estimatedMonthlySearch, topMarkets };
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -377,63 +477,44 @@ export async function vidiqKeywordResearch(
 ): Promise<VidIQKeywordResearch> {
   // The VidIQ MCP API returns { seedKeyword: {...}, relatedKeywords: [...] }
   // NOT a flat object — we must read from seedKeyword.
-  const raw = await callVidIQTool<{
-    // New structure (actual API)
-    seedKeyword?: {
-      keyword: string;
-      volume: number;
-      competition: number;
-      overall: number;
-      estimatedMonthlySearch: number;
-      topMarkets?: { country: string; pct: number }[];
-    };
-    relatedKeywords?: VidIQKeywordResult[];
-    // Legacy flat structure (kept for safety)
-    keyword?: string;
-    volume?: number;
-    competition?: number;
-    overall?: number;
-    estimatedMonthlySearch?: number;
-    related?: VidIQKeywordResult[];
-  }>("vidiq_keyword_research", { keyword, includeRelated });
+  const raw = await callVidIQTool<RawVidIQKeywordResearch>(
+    "vidiq_keyword_research",
+    { keyword, includeRelated }
+  );
+  const embedded = typeof raw._text === "string" ? parseEmbeddedKeywordPayload(raw._text) : null;
+  const payload = (embedded ?? raw) as RawVidIQKeywordResearch;
 
-  // Normalise: prefer seedKeyword object, fall back to flat fields
-  const seed = raw.seedKeyword ?? {
-    keyword: raw.keyword ?? keyword,
-    volume: raw.volume ?? 0,
-    competition: raw.competition ?? 0,
-    overall: raw.overall ?? 0,
-    estimatedMonthlySearch: raw.estimatedMonthlySearch ?? 0,
+  // Do not silently create a zero-filled result when the provider returns only
+  // prose or a malformed object. Callers can then display an unavailable state
+  // and retry instead of presenting fabricated data as a real keyword signal.
+  const seedCandidate = payload.seedKeyword ?? {
+    keyword: payload.keyword,
+    volume: payload.volume,
+    competition: payload.competition,
+    overall: payload.overall,
+    estimatedMonthlySearch: payload.estimatedMonthlySearch,
+    topMarkets: payload.topMarkets,
   };
+  const seed = normalizeKeywordResult(seedCandidate, "seed keyword");
 
-  const relatedRaw: VidIQKeywordResult[] = (
-    raw.relatedKeywords ?? raw.related ?? []
-  ) as VidIQKeywordResult[];
-
-  const related = relatedRaw
-    .filter((r) => r.overall != null && r.overall > 0)
+  const related = (payload.relatedKeywords ?? payload.related ?? [])
+    .flatMap((entry) => {
+      try {
+        return [normalizeKeywordResult(entry, "related keyword")];
+      } catch {
+        return [];
+      }
+    })
+    .filter((entry) => entry.overall > 0)
     .sort((a, b) => b.overall - a.overall)
     .slice(0, 10);
 
-  // If the seed keyword has 0 volume/overall (common for niche terms),
-  // surface the best related keyword's numbers as the "effective" score
-  // so the UI shows something useful instead of all zeros.
-  const bestRelated = related[0];
-  const effectiveVolume =
-    seed.volume > 0 ? seed.volume : (bestRelated?.volume ?? 0);
-  const effectiveOverall =
-    seed.overall > 0 ? seed.overall : (bestRelated?.overall ?? 0);
-  const effectiveSearch =
-    seed.estimatedMonthlySearch > 0
-      ? seed.estimatedMonthlySearch
-      : (bestRelated?.estimatedMonthlySearch ?? 0);
-
   return {
     keyword: seed.keyword,
-    volume: effectiveVolume,
+    volume: seed.volume,
     competition: seed.competition,
-    overall: effectiveOverall,
-    estimatedMonthlySearch: effectiveSearch,
+    overall: seed.overall,
+    estimatedMonthlySearch: seed.estimatedMonthlySearch,
     related,
   };
 }

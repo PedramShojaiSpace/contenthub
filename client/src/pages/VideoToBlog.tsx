@@ -876,65 +876,93 @@ export default function VideoToBlog() {
               </p>
 
               {/* vidIQ Keyword Research Panel */}
-              {showVidiqPanel && vidiqResearch.data && (
+              {showVidiqPanel && (
                 <div className="mt-3 rounded-lg border border-border bg-muted/40 p-3 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">vidIQ Keyword Data</span>
                     <button onClick={() => setShowVidiqPanel(false)} className="text-xs text-muted-foreground hover:text-foreground">× close</button>
                   </div>
 
-                  {/* Primary keyword scores */}
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-md bg-background border border-border p-2">
-                      <div className="text-lg font-bold text-foreground">{Math.round(vidiqResearch.data.volume)}</div>
-                      <div className="text-xs text-muted-foreground">Volume</div>
+                  {vidiqResearch.isFetching ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Checking YouTube keyword data…
                     </div>
-                    <div className="rounded-md bg-background border border-border p-2">
-                      <div className="text-lg font-bold text-foreground">{Math.round(vidiqResearch.data.competition)}</div>
-                      <div className="text-xs text-muted-foreground">Competition</div>
+                  ) : vidiqResearch.isError ? (
+                    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+                      <div className="font-medium">vidIQ data is temporarily unavailable.</div>
+                      <p className="mt-1 text-xs">No zero scores were recorded. Your selected focus keyword remains unchanged.</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 h-8 bg-background text-xs"
+                        onClick={() => { void vidiqResearch.refetch(); }}
+                      >
+                        <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Retry vidIQ research
+                      </Button>
                     </div>
-                    <div className={`rounded-md border p-2 ${
-                      vidiqResearch.data.overall >= 60 ? "bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700" :
-                      vidiqResearch.data.overall >= 40 ? "bg-amber-50 dark:bg-amber-950 border-amber-300 dark:border-amber-700" :
-                      "bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-700"
-                    }`}>
-                      <div className={`text-lg font-bold ${
-                        vidiqResearch.data.overall >= 60 ? "text-green-700 dark:text-green-400" :
-                        vidiqResearch.data.overall >= 40 ? "text-amber-700 dark:text-amber-400" :
-                        "text-red-700 dark:text-red-400"
-                      }`}>{Math.round(vidiqResearch.data.overall)}</div>
-                      <div className="text-xs text-muted-foreground">Opportunity</div>
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-muted-foreground">
-                    ~{vidiqResearch.data.estimatedMonthlySearch.toLocaleString()} searches/month
-                  </div>
-
-                  {/* Related keywords */}
-                  {vidiqResearch.data.related.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="text-xs font-medium text-muted-foreground">Related keywords — click to use:</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {vidiqResearch.data.related.slice(0, 8).map((r) => (
-                          <button
-                            key={r.keyword}
-                            onClick={() => {
-                              setFocusKeyword(r.keyword);
-                              setVidiqKeyword(r.keyword);
-                            }}
-                            className={`text-xs px-2 py-0.5 rounded-full border transition-colors hover:bg-primary hover:text-primary-foreground ${
-                              focusKeyword === r.keyword
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-background border-border text-foreground"
-                            }`}
-                            title={`Volume: ${Math.round(r.volume)} | Competition: ${Math.round(r.competition)} | Score: ${Math.round(r.overall)}`}
-                          >
-                            {r.keyword} <span className="opacity-60">{Math.round(r.overall)}</span>
-                          </button>
-                        ))}
+                  ) : vidiqResearch.data ? (
+                    <>
+                      {/* Primary keyword scores */}
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="rounded-md bg-background border border-border p-2">
+                          <div className="text-lg font-bold text-foreground">{Math.round(vidiqResearch.data.volume)}</div>
+                          <div className="text-xs text-muted-foreground">Volume</div>
+                        </div>
+                        <div className="rounded-md bg-background border border-border p-2">
+                          <div className="text-lg font-bold text-foreground">{Math.round(vidiqResearch.data.competition)}</div>
+                          <div className="text-xs text-muted-foreground">Competition</div>
+                        </div>
+                        <div className={`rounded-md border p-2 ${
+                          vidiqResearch.data.overall >= 60 ? "bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700" :
+                          vidiqResearch.data.overall >= 40 ? "bg-amber-50 dark:bg-amber-950 border-amber-300 dark:border-amber-700" :
+                          "bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-700"
+                        }`}>
+                          <div className={`text-lg font-bold ${
+                            vidiqResearch.data.overall >= 60 ? "text-green-700 dark:text-green-400" :
+                            vidiqResearch.data.overall >= 40 ? "text-amber-700 dark:text-amber-400" :
+                            "text-red-700 dark:text-red-400"
+                          }`}>{Math.round(vidiqResearch.data.overall)}</div>
+                          <div className="text-xs text-muted-foreground">Opportunity</div>
+                        </div>
                       </div>
-                    </div>
+
+                      <div className="text-xs text-muted-foreground">
+                        ~{vidiqResearch.data.estimatedMonthlySearch.toLocaleString()} searches/month
+                      </div>
+
+                      {vidiqResearch.data.volume === 0 && (
+                        <p className="text-xs text-muted-foreground">vidIQ reported no direct volume score for this exact phrase. Competition and opportunity remain the direct phrase scores; related terms below may offer adjacent topics.</p>
+                      )}
+
+                      {/* Related keywords */}
+                      {vidiqResearch.data.related.length > 0 && (
+                        <div className="space-y-1">
+                          <div className="text-xs font-medium text-muted-foreground">Related keywords — click to use:</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {vidiqResearch.data.related.slice(0, 8).map((r) => (
+                              <button
+                                key={r.keyword}
+                                onClick={() => {
+                                  setFocusKeyword(r.keyword);
+                                  setVidiqKeyword(r.keyword);
+                                }}
+                                className={`text-xs px-2 py-0.5 rounded-full border transition-colors hover:bg-primary hover:text-primary-foreground ${
+                                  focusKeyword === r.keyword
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "bg-background border-border text-foreground"
+                                }`}
+                                title={`Volume: ${Math.round(r.volume)} | Competition: ${Math.round(r.competition)} | Score: ${Math.round(r.overall)}`}
+                              >
+                                {r.keyword} <span className="opacity-60">{Math.round(r.overall)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Select a keyword and choose vidIQ to check its YouTube opportunity.</p>
                   )}
                 </div>
               )}

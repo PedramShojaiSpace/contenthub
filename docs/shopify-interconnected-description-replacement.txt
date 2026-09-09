@@ -1,0 +1,80 @@
+<!--
+  Shopify Product Description Replacement
+  Product: Interconnected: The Complete Healing Protocol
+  Paste this entire block into Shopify Admin → Products → Interconnected → Description → Show HTML (<>).
+  This is standard HTML only: no Liquid, JavaScript, outside images, reviews, countdowns, or checkout controls.
+-->
+
+<div style="max-width:980px;margin:32px auto 8px;font-family:inherit;color:#233840;line-height:1.6;box-sizing:border-box;">
+  <div style="background:#062B38;color:#ffffff;padding:34px 30px 30px;border-radius:10px 10px 0 0;box-sizing:border-box;">
+    <p style="margin:0 0 10px;font-size:12px;line-height:1.3;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#CFE3E5;">A complete, self-paced learning experience</p>
+    <h2 style="margin:0 0 14px;font-size:30px;line-height:1.18;font-weight:700;color:#ffffff;">A clearer way to explore the connections that shape your health.</h2>
+    <p style="margin:0;max-width:760px;font-size:17px;line-height:1.65;color:#E8F4F5;">Interconnected brings the full nine-part series and practical companion resources into one organized, ad-free experience you can return to on your own schedule.</p>
+  </div>
+
+  <div style="border:1px solid #CFE3E5;border-top:0;padding:28px 30px 30px;box-sizing:border-box;background:#ffffff;">
+    <p style="margin:0 0 18px;font-size:17px;line-height:1.7;">If you are looking for more than another quick wellness tip, this protocol gives you a thoughtful place to learn, reflect, and take practical next steps. It is designed for people who want to understand the bigger picture behind gut health, daily habits, and the patterns that can influence how they feel.</p>
+
+    <div style="display:flex;flex-wrap:wrap;gap:12px;margin:0 0 28px;">
+      <div style="flex:1 1 210px;min-width:0;border-top:3px solid #087E9D;background:#F6FBFB;padding:17px 16px;box-sizing:border-box;">
+        <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#062B38;">9 EPISODES</p>
+        <p style="margin:0;font-size:14px;line-height:1.5;color:#4B5C63;">The complete Interconnected series, available on demand.</p>
+      </div>
+      <div style="flex:1 1 210px;min-width:0;border-top:3px solid #087E9D;background:#F6FBFB;padding:17px 16px;box-sizing:border-box;">
+        <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#062B38;">ONE-TIME PURCHASE</p>
+        <p style="margin:0;font-size:14px;line-height:1.5;color:#4B5C63;">Permanent access with no viewing window or recurring fee.</p>
+      </div>
+      <div style="flex:1 1 210px;min-width:0;border-top:3px solid #087E9D;background:#F6FBFB;padding:17px 16px;box-sizing:border-box;">
+        <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#062B38;">LEARN AT YOUR PACE</p>
+        <p style="margin:0;font-size:14px;line-height:1.5;color:#4B5C63;">Watch on the device and schedule that work for you.</p>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid #CFE3E5;padding-top:27px;">
+      <p style="margin:0 0 8px;font-size:12px;line-height:1.3;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#087E9D;">Everything included with your access</p>
+      <h2 style="margin:0 0 20px;font-size:26px;line-height:1.25;font-weight:700;color:#062B38;">The series is the starting point. The protocol helps you use it.</h2>
+
+      <div style="display:flex;flex-wrap:wrap;gap:14px;">
+        <div style="flex:1 1 400px;min-width:0;border:1px solid #D9E9EA;border-radius:8px;padding:18px;box-sizing:border-box;">
+          <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#062B38;">The complete Interconnected series</p>
+          <p style="margin:0;font-size:15px;line-height:1.6;color:#4B5C63;">Permanent, ad-free access to all nine episodes, so you can revisit the ideas that matter most to you.</p>
+        </div>
+        <div style="flex:1 1 400px;min-width:0;border:1px solid #D9E9EA;border-radius:8px;padding:18px;box-sizing:border-box;">
+          <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#062B38;">Gut Restoration Starter Protocol</p>
+          <p style="margin:0;font-size:15px;line-height:1.6;color:#4B5C63;">A practical 30-day reset plan created by Dr. Shojai to help you turn learning into a more intentional routine.</p>
+        </div>
+        <div style="flex:1 1 400px;min-width:0;border:1px solid #D9E9EA;border-radius:8px;padding:18px;box-sizing:border-box;">
+          <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#062B38;">Interconnected Companion Guide</p>
+          <p style="margin:0;font-size:15px;line-height:1.6;color:#4B5C63;">Episode-by-episode prompts and action steps to help you translate ideas into your everyday life.</p>
+        </div>
+        <div style="flex:1 1 400px;min-width:0;border:1px solid #D9E9EA;border-radius:8px;padding:18px;box-sizing:border-box;">
+          <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#062B38;">The 5 Root Causes Masterclass</p>
+          <p style="margin:0;font-size:15px;line-height:1.6;color:#4B5C63;">A 45-minute deep dive that expands on themes explored in the series.</p>
+        </div>
+        <div style="flex:1 1 400px;min-width:0;border:1px solid #D9E9EA;border-radius:8px;padding:18px;box-sizing:border-box;">
+          <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#062B38;">Private Interconnected Community</p>
+          <p style="margin:0;font-size:15px;line-height:1.6;color:#4B5C63;">Optional community access for continued learning, accountability, and discussion.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:30px;padding:24px;border-radius:8px;background:#EEF7F7;border:1px solid #CFE3E5;box-sizing:border-box;">
+      <p style="margin:0 0 8px;font-size:12px;line-height:1.3;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#087E9D;">Why choose the complete protocol?</p>
+      <h2 style="margin:0 0 10px;font-size:24px;line-height:1.25;font-weight:700;color:#062B38;">Keep the context. Come back to the conversations. Take your next step when you are ready.</h2>
+      <p style="margin:0;font-size:16px;line-height:1.7;color:#334B54;">The free series can introduce the conversation. This paid protocol is for anyone who wants the full experience, practical resources, and permanent access in one place—without ads, a countdown, or pressure to keep up.</p>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;margin-top:30px;padding-top:28px;border-top:1px solid #CFE3E5;">
+      <div style="flex:1 1 390px;min-width:0;">
+        <h2 style="margin:0 0 12px;font-size:23px;line-height:1.25;font-weight:700;color:#062B38;">Is this a good fit for you?</h2>
+        <p style="margin:0;font-size:16px;line-height:1.7;color:#4B5C63;">This is for people who value thoughtful education, want a practical way to revisit what they learn, and prefer a more connected conversation about everyday health over another one-size-fits-all answer.</p>
+      </div>
+      <div style="flex:1 1 300px;min-width:0;border-left:4px solid #087E9D;padding-left:18px;box-sizing:border-box;">
+        <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#062B38;">Your purchase is simple.</p>
+        <p style="margin:0;font-size:15px;line-height:1.65;color:#4B5C63;">Select <strong>Add to Cart</strong> above to begin checkout. Access details will be sent after purchase. You keep the protocol for life.</p>
+      </div>
+    </div>
+
+    <p style="margin:28px 0 0;padding-top:18px;border-top:1px solid #E4EEEE;font-size:12px;line-height:1.6;color:#6B7D84;">Educational content only. Interconnected is not a substitute for individualized medical advice, diagnosis, or treatment. Consult a qualified health professional for questions about your personal health.</p>
+  </div>
+</div>

@@ -25,6 +25,6 @@ The sibling Video Production Session keyword panel uses the same server adapter 
 | Focused adapter tests | Passed: 20/20, including markdown-wrapped payload parsing and unavailable-data regression coverage. |
 | Live adapter check for the reported phrase | Passed: direct values returned `volume: 0`, `competition: 13.3`, `overall: 34.68`, `estimatedMonthlySearch: 0`, with 10 related keywords; the returned object was not all-zero. |
 | Production build after both panels were updated | Passed with the bounded-memory build configuration. |
-| Browser page check | The custom-domain Video-to-Blog route remained on an application loading spinner during two read-only checks, so it could not be used to reproduce the panel or capture a post-fix visual state in this session. This is recorded as a browser verification limitation, not as evidence the correction failed. |
+| Browser page check | The custom-domain Video-to-Blog route remained on an application loading spinner during two pre-deployment and two post-deployment read-only checks, so it could not be used to reproduce the panel or capture a post-fix visual state in this session. This is recorded as a browser verification limitation, not as evidence the correction failed. |
 
 No focus keyword, blog content, DataForSEO result, WordPress/Substack publishing behavior, or external credential changed during this repair.

@@ -23,6 +23,7 @@ import {
   spendableCredits,
   VidIQToolError,
   vidiqBalance,
+  vidiqKeywordResearch,
   vidiqOutliers,
   vidiqTrendingVideos,
   type VidIQBalance,
@@ -159,6 +160,65 @@ describe("v2.2 Part 1 fix 2 — structuredContent is preferred over content[0].t
     // vidiqTrendingVideos reads `.videos`, which is absent — it must degrade to
     // an empty list rather than crashing the whole research leg.
     await expect(vidiqTrendingVideos("nonsense query")).resolves.toEqual([]);
+  });
+});
+
+describe("vidIQ keyword research — markdown-wrapped payloads are never normalized to fake zeros", () => {
+  it("parses the embedded Keyword data JSON when structuredContent is absent", async () => {
+    const payload = {
+      mode: "research",
+      seedKeyword: {
+        keyword: "bristol stool scale types",
+        volume: 0,
+        competition: 13.3,
+        overall: 34.68,
+        estimatedMonthlySearch: 0,
+      },
+      relatedKeywords: [
+        {
+          keyword: "poop",
+          volume: 75.7,
+          competition: 45.6,
+          overall: 67.2,
+          estimatedMonthlySearch: 18100,
+        },
+      ],
+    };
+    stubFetch(
+      sse({
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          content: [{ type: "text", text: `Research summary\n\nKeyword data (JSON):\n${JSON.stringify(payload)}` }],
+          isError: false,
+        },
+      })
+    );
+
+    const result = await vidiqKeywordResearch("bristol stool scale types", true);
+    expect(result).toMatchObject({
+      keyword: "bristol stool scale types",
+      volume: 0,
+      competition: 13.3,
+      overall: 34.68,
+      estimatedMonthlySearch: 0,
+    });
+    expect(result.related).toHaveLength(1);
+    expect(result.related[0]).toMatchObject({ keyword: "poop", overall: 67.2 });
+  });
+
+  it("rejects prose that contains no usable keyword payload instead of returning an all-zero result", async () => {
+    stubFetch(
+      sse({
+        jsonrpc: "2.0",
+        id: 1,
+        result: { content: [{ type: "text", text: "No keyword data is available right now." }], isError: false },
+      })
+    );
+
+    await expect(vidiqKeywordResearch("bristol stool scale types", true)).rejects.toThrow(
+      /incomplete seed keyword data/i
+    );
   });
 });
 

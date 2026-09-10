@@ -19,3 +19,7 @@ The approved $67 offer, tracked `buildInterconnectedKlaviyoCheckoutUrl` handoff,
 ## Validation
 
 Focused automated coverage verifies that the treatment no longer shares `ty_offer_end_time`, retains active current values, and refreshes expired or malformed values. Public-route and checkout-handoff verification are required after deployment.
+
+## Published Verification
+
+After publication, the public custom-domain route was re-opened at `https://content.theurbanmonk.com/interconnected/thank-you-klaviyo`. It rendered the active Interconnected handoff experience with its available all-access CTA and did not show the former **“This special offer has expired”** message. The checkout-helper regression suite continues to assert the approved tracked Shopify handoff is retained; no checkout was initiated during verification.

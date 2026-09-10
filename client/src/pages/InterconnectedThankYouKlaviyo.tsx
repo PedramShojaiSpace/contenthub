@@ -6,6 +6,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { buildInterconnectedKlaviyoCheckoutUrl } from "@/lib/interconnectedKlaviyoCheckout";
+import {
+  KLAVIYO_OFFER_TIMER_STORAGE_KEY,
+  resolveKlaviyoOfferEndTime,
+} from "@/lib/interconnectedKlaviyoOfferTimer";
 
 const LOGO = "/manus-storage/urban-monk-logo-white_bea7991f.png";
 
@@ -27,20 +31,28 @@ function firePixel(eventName: string, params?: Record<string, unknown>, eventId?
 }
 
 function useCountdown(initialSeconds: number) {
-  // Persist end time in localStorage so back button / refresh don't reset the timer
-  const STORAGE_KEY = "ty_offer_end_time";
-  const storedEnd = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-  const endRef = useRef(storedEnd ? parseInt(storedEnd, 10) : (() => {
-    const end = Date.now() + initialSeconds * 1000;
-    try { localStorage.setItem(STORAGE_KEY, String(end)); } catch (_) {}
-    return end;
-  })());
+  // Keep this timer isolated from legacy thank-you variants. A stale or malformed
+  // timestamp must start a new window instead of presenting the active handoff as expired.
+  const endRef = useRef<number | null>(null);
+  if (endRef.current === null) {
+    const now = Date.now();
+    const storedEnd = typeof window !== "undefined"
+      ? window.localStorage.getItem(KLAVIYO_OFFER_TIMER_STORAGE_KEY)
+      : null;
+    const end = resolveKlaviyoOfferEndTime({
+      storedValue: storedEnd,
+      now,
+      durationMs: initialSeconds * 1000,
+    });
+    endRef.current = end;
+    try { window.localStorage.setItem(KLAVIYO_OFFER_TIMER_STORAGE_KEY, String(end)); } catch (_) {}
+  }
   const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
   const [expired, setExpired] = useState(false);
 
   useEffect(() => {
     const tick = () => {
-      const diff = Math.max(0, endRef.current - Date.now());
+      const diff = Math.max(0, (endRef.current ?? Date.now()) - Date.now());
       if (diff === 0) { setExpired(true); return; }
       setTimeLeft({
         h: Math.floor(diff / 3600000),
@@ -278,7 +290,7 @@ function TyCountdownBlock() {
   const { timeLeft, expired } = useCountdown(900);
   if (expired) return (
     <div className="text-center my-8">
-      <p className="text-red-400 font-bold text-lg">This special offer has expired.</p>
+      <p className="text-gray-300 font-semibold text-base">The viewing timer has ended. Full access remains available below.</p>
     </div>
   );
   return (

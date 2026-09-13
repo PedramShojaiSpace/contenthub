@@ -20,11 +20,30 @@ export type HourlyLeadSummaryInput = {
   leadsInWindow: number;
   todayTotal: number;
   dbTotal: number;
+  hourlyByPath: LeadPathCounts;
+  todayByPath: LeadPathCounts;
+  totalByPath: LeadPathCounts;
   kajabiCount: number;
   kajabiGap: number;
   kajabiCheckError: string | null;
   checkedAtCT: string;
 };
+
+export type LeadPathCounts = {
+  kajabi: number;
+  koKlaviyo: number;
+  unassigned: number;
+};
+
+export function summarizeLeadPaths(rows: Array<Record<string, unknown>>): LeadPathCounts {
+  return rows.reduce<LeadPathCounts>((counts, row) => {
+    const count = Number(row.cnt ?? 0);
+    if (row.path === "kajabi") counts.kajabi += count;
+    else if (row.path === "ko_klaviyo") counts.koKlaviyo += count;
+    else counts.unassigned += count;
+    return counts;
+  }, { kajabi: 0, koKlaviyo: 0, unassigned: 0 });
+}
 
 export function buildHourlyLeadSummary(input: HourlyLeadSummaryInput) {
   const isQuiet = input.leadsInWindow === 0;
@@ -39,7 +58,10 @@ export function buildHourlyLeadSummary(input: HourlyLeadSummaryInput) {
 
   const content = [
     `New Interconnected opt-ins recorded in the last hour: ${input.leadsInWindow}.`,
+    `Last hour by path — KO/Klaviyo: ${input.hourlyByPath.koKlaviyo}; Kajabi: ${input.hourlyByPath.kajabi}; legacy/unassigned: ${input.hourlyByPath.unassigned}.`,
     `Today's recorded total: ${input.todayTotal}.`,
+    `Today by path — KO/Klaviyo: ${input.todayByPath.koKlaviyo}; Kajabi: ${input.todayByPath.kajabi}; legacy/unassigned: ${input.todayByPath.unassigned}.`,
+    `All-time recorded paths — KO/Klaviyo: ${input.totalByPath.koKlaviyo}; Kajabi: ${input.totalByPath.kajabi}; legacy/unassigned: ${input.totalByPath.unassigned}.`,
     kajabiStatus,
     isQuiet
       ? "No recorded opt-ins in this hour. This is an observation, not a customer-facing funnel change."
@@ -56,6 +78,12 @@ function firstResultRow(rows: unknown): Record<string, unknown> {
   return (inner ?? {}) as Record<string, unknown>;
 }
 
+function resultRows(rows: unknown): Array<Record<string, unknown>> {
+  const outer = Array.isArray(rows) ? rows[0] : rows;
+  if (Array.isArray(outer)) return outer as Array<Record<string, unknown>>;
+  return outer ? [outer as Record<string, unknown>] : [];
+}
+
 export async function leadWatchdogHandler(req: Request, res: Response) {
   try {
     const user = await sdk.authenticateRequest(req);
@@ -68,22 +96,28 @@ export async function leadWatchdogHandler(req: Request, res: Response) {
     const hourAgo = now - HOUR_MS;
     const checkedAtCT = new Date(now).toLocaleString("en-US", { timeZone: "America/Chicago" });
 
-    const leadRows = await db.execute(
-      sql`SELECT COUNT(*) as cnt FROM interconnected_leads WHERE created_at >= ${hourAgo}`,
+    const hourlyPathRows = await db.execute(
+      sql`SELECT funnel_path as path, COUNT(*) as cnt FROM interconnected_leads WHERE created_at >= ${hourAgo} GROUP BY funnel_path`,
     ) as unknown;
-    const leadsInWindow = Number(firstResultRow(leadRows).cnt ?? 0);
+    const hourlyByPath = summarizeLeadPaths(resultRows(hourlyPathRows));
+    const leadsInWindow = hourlyByPath.kajabi + hourlyByPath.koKlaviyo + hourlyByPath.unassigned;
 
     const midnightCT = new Date(now);
     midnightCT.setUTCHours(5, 0, 0, 0);
     if (now < midnightCT.getTime()) midnightCT.setUTCDate(midnightCT.getUTCDate() - 1);
 
-    const todayRows = await db.execute(
-      sql`SELECT COUNT(*) as cnt FROM interconnected_leads WHERE created_at >= ${midnightCT.getTime()}`,
+    const todayPathRows = await db.execute(
+      sql`SELECT funnel_path as path, COUNT(*) as cnt FROM interconnected_leads WHERE created_at >= ${midnightCT.getTime()} GROUP BY funnel_path`,
     ) as unknown;
-    const todayTotal = Number(firstResultRow(todayRows).cnt ?? 0);
+    const todayByPath = summarizeLeadPaths(resultRows(todayPathRows));
+    const todayTotal = todayByPath.kajabi + todayByPath.koKlaviyo + todayByPath.unassigned;
 
     const totalRows = await db.execute(sql`SELECT COUNT(*) as cnt FROM interconnected_leads`) as unknown;
     const dbTotal = Number(firstResultRow(totalRows).cnt ?? 0);
+    const totalPathRows = await db.execute(
+      sql`SELECT funnel_path as path, COUNT(*) as cnt FROM interconnected_leads GROUP BY funnel_path`,
+    ) as unknown;
+    const totalByPath = summarizeLeadPaths(resultRows(totalPathRows));
 
     let kajabiCount = 0;
     let kajabiCheckError: string | null = null;
@@ -94,11 +128,14 @@ export async function leadWatchdogHandler(req: Request, res: Response) {
       console.warn("[leadWatchdog] Kajabi spot-check failed:", kajabiCheckError);
     }
 
-    const kajabiGap = dbTotal - kajabiCount;
+    const kajabiGap = totalByPath.kajabi - kajabiCount;
     const summary = buildHourlyLeadSummary({
       leadsInWindow,
       todayTotal,
       dbTotal,
+      hourlyByPath,
+      todayByPath,
+      totalByPath,
       kajabiCount,
       kajabiGap,
       kajabiCheckError,
@@ -113,6 +150,9 @@ export async function leadWatchdogHandler(req: Request, res: Response) {
       leadsInWindow,
       todayTotal,
       dbTotal,
+      hourlyByPath,
+      todayByPath,
+      totalByPath,
       kajabiCount,
       kajabiGap,
       kajabiCheckError,

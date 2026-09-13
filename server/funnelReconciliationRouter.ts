@@ -131,6 +131,23 @@ export const FUNNELS: FunnelDef[] = [
     metaActive: true,
   },
   {
+    id: "interconnected_ko_shopify",
+    label: "Interconnected — Unbounce / Klaviyo / Shopify",
+    metaKeywords: [
+      "interconnected ko",
+      "interconnected_ko",
+      "interconnected-klaviyo",
+      "interconnected shopify",
+    ],
+    kajabSkus: {},
+    shopifyProducts: [
+      { productId: "9087631753370", label: "Interconnected: The Complete Healing Protocol" },
+    ],
+    kajabiActive: false,
+    shopifyActive: true,
+    metaActive: true,
+  },
+  {
     id: "gateway_health",
     label: "Gateway to Health Free Screening",
     metaKeywords: ["gateway"],
@@ -1078,6 +1095,43 @@ export async function oneCallManualMetaRefresh<T>(fetchOnce: () => Promise<T>): 
   return fetchOnce();
 }
 
+export function calculateKoKlaviyoPaidMediaMetrics(input: {
+  spend: number;
+  uniqueLeads: number;
+  paidOrders: number;
+  revenueCents: number;
+}) {
+  const revenue = input.revenueCents / 100;
+  return {
+    cpl: input.spend > 0 && input.uniqueLeads > 0
+      ? Math.round((input.spend / input.uniqueLeads) * 100) / 100
+      : null,
+    buyerCpa: input.spend > 0 && input.paidOrders > 0
+      ? Math.round((input.spend / input.paidOrders) * 100) / 100
+      : null,
+    roas: input.spend > 0
+      ? Math.round((revenue / input.spend) * 100) / 100
+      : null,
+    leadToBuyerRate: input.uniqueLeads > 0
+      ? Math.round((input.paidOrders / input.uniqueLeads) * 10_000) / 100
+      : null,
+  };
+}
+
+async function getKoKlaviyoFirstPartyLeads(startDate: string, endDate: string) {
+  const db = await getDb();
+  if (!db) return 0;
+  const { startMs, endExclusiveMs } = getChicagoDayBounds(startDate);
+  const [row] = await db.select({
+    uniqueLeads: sql<number>`COUNT(DISTINCT LOWER(TRIM(${interconnectedLeads.email})))`,
+  }).from(interconnectedLeads).where(and(
+    eq(interconnectedLeads.funnelPath, "ko_klaviyo"),
+    gte(interconnectedLeads.createdAt, startMs),
+    sql`${interconnectedLeads.createdAt} < ${endExclusiveMs}`,
+  ));
+  return Number(row?.uniqueLeads ?? 0);
+}
+
 async function getSavedMetaForFunnel(funnel: FunnelDef, startDate: string, endDate: string): Promise<ReconciliationMetaResult & { collectedAt: number | null }> {
   if (!funnel.metaActive) return { spend: 0, leads: 0, checkouts: 0, purchases: 0, purchaseValue: 0, campaigns: [], error: null, note: "placeholder", collectedAt: null };
   const db = await getDb();
@@ -1103,7 +1157,7 @@ async function getSavedMetaForFunnel(funnel: FunnelDef, startDate: string, endDa
 async function getCapiPurchaseEvidence(funnel: FunnelDef, startDate: string, endDate: string) {
   const db = await getDb();
   if (!db) return { accepted: 0, failed: 0, acceptedValueCents: 0, total: 0 };
-  const funnelSource = funnel.id === "interconnected_agora" ? "interconnected" : funnel.id;
+  const funnelSource = funnel.id.startsWith("interconnected_") ? "interconnected" : funnel.id;
   const { startMs, endExclusiveMs } = getChicagoDayBounds(startDate);
   const rows = await db.select({
     accepted: metaCapiDeliveryAudits.accepted,
@@ -1203,7 +1257,7 @@ export const funnelReconciliationRouter = router({
       // Build DB lookup for attribution cross-reference
       const dbLookup = await buildKajabiPurchasesLookup(input.startDate, input.endDate);
 
-      const [kajabi, shopify, meta, cohortAnalytics, facebookAgoraDownstream, capiPurchases] = await Promise.all([
+      const [kajabi, shopify, meta, cohortAnalytics, facebookAgoraDownstream, capiPurchases, koFirstPartyLeads] = await Promise.all([
         fetchKajabiForFunnel(funnel, input.startDate, input.endDate, dbLookup),
         fetchShopifyForFunnel(funnel, input.startDate, input.endDate),
         getSavedMetaForFunnel(funnel, input.startDate, input.endDate),
@@ -1214,6 +1268,9 @@ export const funnelReconciliationRouter = router({
           ? getFacebookAgoraDownstreamAnalytics(input.startDate, input.endDate)
           : Promise.resolve(null),
         getCapiPurchaseEvidence(funnel, input.startDate, input.endDate),
+        funnel.id === "interconnected_ko_shopify"
+          ? getKoKlaviyoFirstPartyLeads(input.startDate, input.endDate)
+          : Promise.resolve(null),
       ]);
 
       // ── Cross-reference Kajabi sales with DB attribution data ──────────────
@@ -1308,13 +1365,24 @@ export const funnelReconciliationRouter = router({
 
       const totalRevenueCents = filteredKajabiRevenueCents + shopify.totalRevenueCents;
       const totalRevenue = totalRevenueCents / 100;
-      const roas = meta.spend > 0 ? Math.round((totalRevenue / meta.spend) * 100) / 100 : null;
-      const leadMatchedRoas = meta.spend > 0 ? Math.round(((leadMatchedRevenueCents / 100) / meta.spend) * 100) / 100 : null;
-      const cpl  = meta.spend > 0 && meta.leads > 0 ? Math.round((meta.spend / meta.leads) * 100) / 100 : null;
-      const totalPurchases = filteredKajabiPurchases + shopify.totalOrders;
-      const convRate = meta.leads > 0 && totalPurchases > 0
-        ? Math.round((totalPurchases / meta.leads) * 10000) / 100
+      const koPaidMediaMetrics = funnel.id === "interconnected_ko_shopify"
+        ? calculateKoKlaviyoPaidMediaMetrics({
+            spend: meta.spend,
+            uniqueLeads: koFirstPartyLeads ?? 0,
+            paidOrders: shopify.totalOrders,
+            revenueCents: shopify.totalRevenueCents,
+          })
         : null;
+      const roas = koPaidMediaMetrics?.roas
+        ?? (meta.spend > 0 ? Math.round((totalRevenue / meta.spend) * 100) / 100 : null);
+      const leadMatchedRoas = meta.spend > 0 ? Math.round(((leadMatchedRevenueCents / 100) / meta.spend) * 100) / 100 : null;
+      const cpl = koPaidMediaMetrics?.cpl
+        ?? (meta.spend > 0 && meta.leads > 0 ? Math.round((meta.spend / meta.leads) * 100) / 100 : null);
+      const totalPurchases = filteredKajabiPurchases + shopify.totalOrders;
+      const convRate = koPaidMediaMetrics?.leadToBuyerRate
+        ?? (meta.leads > 0 && totalPurchases > 0
+          ? Math.round((totalPurchases / meta.leads) * 10000) / 100
+          : null);
 
       // Merge and sort individual sales
       const allSales = [
@@ -1377,14 +1445,23 @@ export const funnelReconciliationRouter = router({
           cpl,
           convRate,
           totalPurchases,
+          buyerCpa: koPaidMediaMetrics?.buyerCpa ?? null,
+          firstPartyLeads: koFirstPartyLeads,
+          leadCountBasis: funnel.id === "interconnected_ko_shopify"
+            ? "Deduplicated first-party Unbounce leads with funnel_path=ko_klaviyo"
+            : "Meta-reported leads",
           // Filter context
           filterApplied: input.newCustomersOnly || input.attributionFilter !== "all",
           newCustomersOnly: input.newCustomersOnly,
           attributionFilter: input.attributionFilter,
           reportingBasis: {
-            revenue: "Recorded Kajabi transactions and mapped Shopify paid orders in the selected Central-time date range.",
+            revenue: funnel.id === "interconnected_ko_shopify"
+              ? "Mapped Shopify paid orders for Interconnected: The Complete Healing Protocol in the selected Central-time date range. Kajabi revenue is excluded."
+              : "Recorded Kajabi transactions and mapped Shopify paid orders in the selected Central-time date range.",
             dateTimeZone: REPORTING_TIME_ZONE,
-            meta: "Agora-filtered Meta spend and delivery actions for the selected Meta reporting date.",
+            meta: funnel.id === "interconnected_ko_shopify"
+              ? "Meta spend where the campaign or ad-set name contains the dedicated Interconnected KO/Klaviyo/Shopify naming contract. Lead count and CPL use first-party LP-3 records, not Meta-reported leads."
+              : "Agora-filtered Meta spend and delivery actions for the selected Meta reporting date.",
             generatedAt: Date.now(),
           },
         },

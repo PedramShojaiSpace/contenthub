@@ -8,6 +8,10 @@ import { interconnectedLeads } from "../drizzle/schema";
 export const UNBOUNCE_INTERCONNECTED_ORIGIN = "https://try.theurbanmonk.com";
 export const UNBOUNCE_INTERCONNECTED_FORM_ID = "SJAKDW";
 export const UNBOUNCE_LEAD_BRIDGE_PATH = "/api/interconnected/unbounce-lead";
+export const UNBOUNCE_INTERCONNECTED_PAGE_PATHS = new Set([
+  "/interconnected-lp/",
+  "/interconnected-lp-3/",
+]);
 
 const bridgePayload = z.object({
   eventId: z.string().regex(/^ub_ic_[A-Za-z0-9_-]{12,96}$/),
@@ -62,7 +66,8 @@ export function isAllowedUnbounceOrigin(origin: string | undefined): boolean {
 export function isAllowedUnbouncePageUrl(pageUrl: string): boolean {
   try {
     const url = new URL(pageUrl);
-    return url.origin === UNBOUNCE_INTERCONNECTED_ORIGIN && url.pathname === "/interconnected-lp/";
+    return url.origin === UNBOUNCE_INTERCONNECTED_ORIGIN
+      && UNBOUNCE_INTERCONNECTED_PAGE_PATHS.has(url.pathname);
   } catch {
     return false;
   }

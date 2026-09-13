@@ -56,6 +56,10 @@ export function resolveNativeSmsConsent(input: {
   );
 }
 
+export function shouldSuppressNativeCapiForExistingLead(capiLeadSent: boolean): boolean {
+  return Boolean(capiLeadSent);
+}
+
 function parseUnbouncePayload(body: unknown): Record<string, unknown> | null {
   if (!body || typeof body !== "object") return null;
   const source = body as Record<string, unknown>;
@@ -173,13 +177,17 @@ export function registerUnbounceNativeInterconnectedWebhook(app: Express) {
         } else {
           const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
           const [existingEmail] = await db
-            .select({ id: interconnectedLeads.id })
+            .select({
+              id: interconnectedLeads.id,
+              capiLeadSent: interconnectedLeads.capiLeadSent,
+            })
             .from(interconnectedLeads)
             .where(and(eq(interconnectedLeads.email, email), gte(interconnectedLeads.createdAt, oneDayAgo)))
             .limit(1);
 
           if (existingEmail) {
             leadId = existingEmail.id;
+            eventAlreadySent = shouldSuppressNativeCapiForExistingLead(Boolean(existingEmail.capiLeadSent));
           } else {
             const result = await db.insert(interconnectedLeads).values({
               email,

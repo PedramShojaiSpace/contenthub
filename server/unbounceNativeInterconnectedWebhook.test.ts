@@ -5,6 +5,7 @@ import {
   isExplicitSmsConsent,
   registerUnbounceNativeInterconnectedWebhook,
   resolveNativeSmsConsent,
+  shouldSuppressNativeCapiForExistingLead,
   UNBOUNCE_NATIVE_INTERCONNECTED_PATH,
   UNBOUNCE_NATIVE_SECRET_HEADER,
 } from "./unbounceNativeInterconnectedWebhook";
@@ -74,5 +75,10 @@ describe("native Unbounce Interconnected webhook secret", () => {
     expect(resolveNativeSmsConsent({
       sms_consent_yes: "Yes",
     })).toBe(false);
+  });
+
+  it("suppresses a second CAPI Lead when the browser bridge won the delivery race", () => {
+    expect(shouldSuppressNativeCapiForExistingLead(true)).toBe(true);
+    expect(shouldSuppressNativeCapiForExistingLead(false)).toBe(false);
   });
 });

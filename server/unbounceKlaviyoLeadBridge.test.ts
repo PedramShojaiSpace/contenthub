@@ -19,6 +19,8 @@ describe("Unbounce/Klaviyo Lead bridge boundaries", () => {
   it("only accepts the dedicated Interconnected landing-page URL", () => {
     expect(isAllowedUnbouncePageUrl("https://try.theurbanmonk.com/interconnected-lp/")).toBe(true);
     expect(isAllowedUnbouncePageUrl("https://try.theurbanmonk.com/interconnected-lp/?utm_source=meta")).toBe(true);
+    expect(isAllowedUnbouncePageUrl("https://try.theurbanmonk.com/interconnected-lp-3/")).toBe(true);
+    expect(isAllowedUnbouncePageUrl("https://try.theurbanmonk.com/interconnected-lp-3/?utm_source=meta")).toBe(true);
     expect(isAllowedUnbouncePageUrl("https://try.theurbanmonk.com/another-page/")).toBe(false);
   });
 

@@ -136,7 +136,7 @@ async function startServer() {
   // Ingest endpoint — accepts research reports from external apps
   // POST /api/ingest/research-report (authenticated via INGEST_SECRET header)
   app.post("/api/ingest/research-report", handleIngestResearchReport);
-  // Public Unbounce/Klaviyo bridge — origin and form scoped; preserves one browser/CAPI Lead event ID.
+  // Public LP-3 Unbounce/Klaviyo bridge — exact origin/path scoped and browser/native CAPI deduplicated.
   registerUnbounceKlaviyoLeadBridge(app);
   // Unpublished native Unbounce Interconnected test receiver — page and header-secret scoped.
   registerUnbounceNativeInterconnectedWebhook(app);

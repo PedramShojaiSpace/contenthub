@@ -23,6 +23,38 @@ const bridgePayload = z.object({
   utmContent: z.string().max(128).optional(),
 });
 
+type ExistingLeadAttributionInput = {
+  pageUrl: string;
+  fbp?: string;
+  fbc?: string;
+  fbclid?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+  clientIp: string | null;
+  userAgent: string | null;
+};
+
+export function buildExistingLeadAttributionUpdate(input: ExistingLeadAttributionInput) {
+  return {
+    ...(input.utmSource ? { utmSource: input.utmSource } : {}),
+    ...(input.utmMedium ? { utmMedium: input.utmMedium } : {}),
+    ...(input.utmCampaign ? { utmCampaign: input.utmCampaign } : {}),
+    ...(input.utmContent ? { utmContent: input.utmContent } : {}),
+    ...(input.fbclid ? { fbclid: input.fbclid } : {}),
+    ...(input.fbp ? { fbp: input.fbp } : {}),
+    ...(input.fbc ? { fbc: input.fbc } : {}),
+    ...(input.clientIp ? { clientIp: input.clientIp } : {}),
+    ...(input.userAgent ? { userAgent: input.userAgent } : {}),
+    referrer: input.pageUrl,
+  };
+}
+
+export function shouldSuppressBridgeCapiForExistingLead(capiLeadSent: boolean): boolean {
+  return Boolean(capiLeadSent);
+}
+
 export function isAllowedUnbounceOrigin(origin: string | undefined): boolean {
   return origin === UNBOUNCE_INTERCONNECTED_ORIGIN;
 }
@@ -111,13 +143,32 @@ export function registerUnbounceKlaviyoLeadBridge(app: Express) {
         } else if (email) {
           const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
           const [existingEmail] = await db
-            .select({ id: interconnectedLeads.id })
+            .select({
+              id: interconnectedLeads.id,
+              capiLeadSent: interconnectedLeads.capiLeadSent,
+            })
             .from(interconnectedLeads)
             .where(and(eq(interconnectedLeads.email, email), gte(interconnectedLeads.createdAt, oneDayAgo)))
             .limit(1);
 
           if (existingEmail) {
             leadId = existingEmail.id;
+            eventAlreadySent = shouldSuppressBridgeCapiForExistingLead(Boolean(existingEmail.capiLeadSent));
+            await db
+              .update(interconnectedLeads)
+              .set(buildExistingLeadAttributionUpdate({
+                pageUrl: input.pageUrl,
+                fbp: input.fbp,
+                fbc: input.fbc,
+                fbclid: input.fbclid,
+                utmSource: input.utmSource,
+                utmMedium: input.utmMedium,
+                utmCampaign: input.utmCampaign,
+                utmContent: input.utmContent,
+                clientIp,
+                userAgent,
+              }))
+              .where(eq(interconnectedLeads.id, existingEmail.id));
           } else {
             const result = await db.insert(interconnectedLeads).values({
               email,

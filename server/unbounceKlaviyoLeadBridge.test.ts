@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildExistingLeadAttributionUpdate,
   isAllowedUnbounceOrigin,
   isAllowedUnbouncePageUrl,
   parseUnbounceBridgeBody,
+  shouldSuppressBridgeCapiForExistingLead,
   UNBOUNCE_INTERCONNECTED_FORM_ID,
   UNBOUNCE_LEAD_BRIDGE_PATH,
 } from "./unbounceKlaviyoLeadBridge";
@@ -29,5 +31,26 @@ describe("Unbounce/Klaviyo Lead bridge boundaries", () => {
     expect(parseUnbounceBridgeBody('{"formId":"SJAKDW"}')).toEqual({ formId: "SJAKDW" });
     expect(parseUnbounceBridgeBody("not-json")).toBeUndefined();
     expect(parseUnbounceBridgeBody({ formId: "SJAKDW" })).toEqual({ formId: "SJAKDW" });
+  });
+
+  it("enriches an existing native lead with browser UTMs without inventing absent values", () => {
+    expect(buildExistingLeadAttributionUpdate({
+      pageUrl: "https://try.theurbanmonk.com/interconnected-lp-3/?utm_source=meta&utm_campaign=interconnected_ko",
+      utmSource: "meta",
+      utmCampaign: "interconnected_ko",
+      clientIp: "203.0.113.1",
+      userAgent: "test-agent",
+    })).toEqual({
+      utmSource: "meta",
+      utmCampaign: "interconnected_ko",
+      clientIp: "203.0.113.1",
+      userAgent: "test-agent",
+      referrer: "https://try.theurbanmonk.com/interconnected-lp-3/?utm_source=meta&utm_campaign=interconnected_ko",
+    });
+  });
+
+  it("suppresses a second CAPI Lead when the native webhook already delivered it", () => {
+    expect(shouldSuppressBridgeCapiForExistingLead(true)).toBe(true);
+    expect(shouldSuppressBridgeCapiForExistingLead(false)).toBe(false);
   });
 });

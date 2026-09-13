@@ -11,7 +11,7 @@ import {
   leadPurchaseAttributions,
 } from "../drizzle/schema";
 
-const FLOW_ID = "VMpbLV";
+export const KO_KLAVIYO_LIVE_FLOW_ID = "YyFZPu";
 const PATHS = ["kajabi", "ko_klaviyo"] as const;
 type FunnelPath = (typeof PATHS)[number];
 
@@ -105,7 +105,7 @@ export async function collectKlaviyoSnapshot(startAt: number, endAt: number) {
         attributes: {
           timeframe: { start: new Date(startAt).toISOString(), end: new Date(endAt).toISOString() },
           conversion_metric_id: placedOrder.id,
-          filter: `equals(flow_id,\"${FLOW_ID}\")`,
+          filter: `equals(flow_id,"${KO_KLAVIYO_LIVE_FLOW_ID}")`,
           statistics: ["recipients", "delivered", "delivery_rate", "opens", "open_rate", "clicks", "click_rate", "conversion_uniques", "conversion_value"],
           group_by: ["flow_message_id", "flow_id", "flow_message_name", "send_channel"],
         },
@@ -123,7 +123,7 @@ export async function collectKlaviyoSnapshot(startAt: number, endAt: number) {
       snapshotKey: uniqueSnapshotKey(messageId, startAt, endAt),
       funnelPath: "ko_klaviyo",
       platform: "klaviyo",
-      flowId: String(groupings.flow_id ?? FLOW_ID),
+      flowId: String(groupings.flow_id ?? KO_KLAVIYO_LIVE_FLOW_ID),
       messageId,
       messageName: groupings.flow_message_name ?? null,
       messageKey: canonicalKoKlaviyoMessageKey(messageId),
@@ -219,7 +219,10 @@ export const interconnectedEmailRevenueRouter = router({
       window: { startAt: input.startAt, endAt: input.endAt },
       paths: paths.map((funnelPath) => ({
         funnelPath,
-        snapshots: snapshots.filter((row) => row.funnelPath === funnelPath).map((snapshot) => {
+        snapshots: snapshots.filter((row) => (
+          row.funnelPath === funnelPath
+          && (funnelPath !== "ko_klaviyo" || row.flowId === KO_KLAVIYO_LIVE_FLOW_ID)
+        )).map((snapshot) => {
           const direct = snapshot.messageKey ? touches.find((touch) => touch.funnelPath === funnelPath && touch.messageKey === snapshot.messageKey) : undefined;
           return {
             ...snapshot,

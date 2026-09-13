@@ -20,6 +20,8 @@ import { getShopifyWebhookRawBody, parseShopifyWebhookPayload } from "./shopifyW
 import { buildTrackedCheckoutDestination } from "./emailCheckoutTracking";
 import { isIsolatedEmailAttribution } from "./interconnectedEmailAttributionHygiene";
 import { recordOrobiomePaidPurchase } from "./orobiomeFunnelTracking";
+import { buildShopifyCartAttributionHandoff } from "./shopifyCartAttributionHandoff";
+import { extractShopifyClickToken } from "./shopifyOrderAttribution";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -461,6 +463,18 @@ export async function handleTrackedEmailCheckout(req: any, res: any) {
       utmCampaign,
       utmContent,
     });
+    const destinationUrl = new URL(trackedDestination);
+    if (funnelPath === "ko_klaviyo" && destinationUrl.hostname === "shop.theurbanmonk.com") {
+      return res.status(200).type("html").send(buildShopifyCartAttributionHandoff({
+        destination,
+        clickToken,
+        funnelPath,
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        utmContent,
+      }));
+    }
     return res.redirect(302, trackedDestination);
   } catch (error) {
     console.error("[attribution/email-checkout] Error:", error);
@@ -518,20 +532,8 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
       return res.json({ status: "duplicate", orderId: shopifyOrderId });
     }
 
-    // Try to find click token from order note_attributes
-    let clickToken: string | null = null;
     const noteAttrs: any[] = shopifyOrder.note_attributes || [];
-    for (const attr of noteAttrs) {
-      if (attr.name === "_um_click_token" && attr.value) {
-        clickToken = attr.value as string;
-        break;
-      }
-    }
-    // Also check order tags
-    if (!clickToken && shopifyOrder.tags) {
-      const tagMatch = String(shopifyOrder.tags).match(/um_ct_([a-f0-9]{48})/);
-      if (tagMatch) clickToken = tagMatch[1];
-    }
+    const clickToken = extractShopifyClickToken(shopifyOrder);
 
     let matchedClick: typeof adClicks.$inferSelect | null = null;
     let attributionType: "direct" | "probabilistic" | "unattributed" = "unattributed";

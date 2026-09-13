@@ -140,7 +140,7 @@ export default function Reconciliation() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Sales Reconciliation</h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Agora-only Meta spend vs. recorded Kajabi + Shopify revenue — scoped to the selected funnel and Central time.{" "}
+              Per-funnel Meta spend vs. recorded Kajabi or Shopify revenue — scoped to the selected funnel and Central time.{" "}
               <span className="text-amber-500 font-medium">
                 ⚠️ Meta pixel cannot see Kajabi or Shopify sales — always verify here.
               </span>
@@ -435,6 +435,9 @@ export default function Reconciliation() {
                     {summary.convRate != null && (
                       <div className="text-xs text-muted-foreground mt-1">{summary.convRate.toFixed(1)}% lead→sale</div>
                     )}
+                    {summary.firstPartyLeads != null && (
+                      <div className="text-xs text-muted-foreground mt-1">{summary.firstPartyLeads} first-party LP-3 leads</div>
+                    )}
                   </>
                 ) : (
                   <div className="text-2xl font-bold text-muted-foreground">—</div>
@@ -469,7 +472,9 @@ export default function Reconciliation() {
           <Card className="border-primary/25 bg-primary/5">
             <CardContent className="pt-4 text-xs text-muted-foreground leading-relaxed space-y-1.5">
               <div className="font-medium text-foreground">Spend-decision methodology</div>
-              <p><strong>Recorded Revenue ROAS</strong> is all eligible paid Kajabi and mapped Shopify transactions in the selected Central-time date range divided by Agora-only Meta spend. It is the primary same-day operating metric.</p>
+              <p><strong>Recorded Revenue ROAS</strong> is the selected funnel’s eligible paid revenue divided by its separately filtered Meta spend. Kajabi and Shopify paths are never pooled.</p>
+              {summary.buyerCpa != null && <p><strong>Buyer CPA:</strong> {fmtD(summary.buyerCpa)} using Shopify paid orders as the purchase ledger.</p>}
+              {summary.leadCountBasis && <p><strong>Lead-count basis:</strong> {summary.leadCountBasis}.</p>}
               <p><strong>Lead-matched lower bound</strong> counts only recorded purchases whose buyer email has matched a tracked Meta/Manus lead. It will understate early results whenever a valid purchase has not yet received an email match.</p>
               <p>Reporting time zone: <strong>{summary.reportingBasis.dateTimeZone}</strong>. Source data refreshes when you select a date range or press Refresh.</p>
             </CardContent>

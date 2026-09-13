@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { buildHourlyLeadSummary } from "./leadWatchdogHandler";
+import { buildHourlyLeadSummary, summarizeLeadPaths } from "./leadWatchdogHandler";
 
 describe("buildHourlyLeadSummary", () => {
   it("creates one aggregate hourly message without individual lead identity", () => {
@@ -8,6 +8,9 @@ describe("buildHourlyLeadSummary", () => {
       leadsInWindow: 27,
       todayTotal: 84,
       dbTotal: 4090,
+      hourlyByPath: { kajabi: 20, koKlaviyo: 7, unassigned: 0 },
+      todayByPath: { kajabi: 60, koKlaviyo: 20, unassigned: 4 },
+      totalByPath: { kajabi: 3900, koKlaviyo: 150, unassigned: 40 },
       kajabiCount: 4088,
       kajabiGap: 2,
       kajabiCheckError: null,
@@ -17,6 +20,8 @@ describe("buildHourlyLeadSummary", () => {
     expect(summary.title).toBe("📊 Hourly Opt-In Summary — 27 new opt-ins");
     expect(summary.content).toContain("last hour: 27");
     expect(summary.content).toContain("Today's recorded total: 84");
+    expect(summary.content).toContain("Last hour by path — KO/Klaviyo: 7; Kajabi: 20; legacy/unassigned: 0");
+    expect(summary.content).toContain("Today by path — KO/Klaviyo: 20; Kajabi: 60; legacy/unassigned: 4");
     expect(summary.content).not.toMatch(/@|phone|email/i);
     expect(summary.isQuiet).toBe(false);
   });
@@ -26,6 +31,9 @@ describe("buildHourlyLeadSummary", () => {
       leadsInWindow: 0,
       todayTotal: 0,
       dbTotal: 4090,
+      hourlyByPath: { kajabi: 0, koKlaviyo: 0, unassigned: 0 },
+      todayByPath: { kajabi: 0, koKlaviyo: 0, unassigned: 0 },
+      totalByPath: { kajabi: 4090, koKlaviyo: 0, unassigned: 0 },
       kajabiCount: 4050,
       kajabiGap: 40,
       kajabiCheckError: null,
@@ -37,6 +45,14 @@ describe("buildHourlyLeadSummary", () => {
     expect(summary.content).toContain("40 recorded-lead gap — review");
     expect(summary.isQuiet).toBe(true);
     expect(summary.hasTagGap).toBe(true);
+  });
+
+  it("normalizes grouped lead rows into explicit funnel-path counts", () => {
+    expect(summarizeLeadPaths([
+      { path: "ko_klaviyo", cnt: 7 },
+      { path: "kajabi", cnt: "11" },
+      { path: null, cnt: 3 },
+    ])).toEqual({ kajabi: 11, koKlaviyo: 7, unassigned: 3 });
   });
 
   it("keeps the Kajabi opt-in endpoint free of individual owner-lead alerts", () => {

@@ -10,9 +10,31 @@ vi.mock("./shopifyAdminAuth", () => ({
   getShopifyAdminStoreDomain,
 }));
 
-import { FUNNELS, fetchShopifyForFunnel } from "./funnelReconciliationRouter";
+import { calculateKoKlaviyoPaidMediaMetrics, FUNNELS, fetchShopifyForFunnel } from "./funnelReconciliationRouter";
 
 const tantraFunnel = FUNNELS.find((funnel) => funnel.id === "tantra_quiz")!;
+const koKlaviyoFunnel = FUNNELS.find((funnel) => funnel.id === "interconnected_ko_shopify")!;
+
+describe("Interconnected KO/Klaviyo/Shopify reconciliation contract", () => {
+  it("keeps Shopify revenue isolated from the Kajabi Agora funnel", () => {
+    expect(koKlaviyoFunnel).toMatchObject({
+      kajabiActive: false,
+      shopifyActive: true,
+      metaActive: true,
+      shopifyProducts: [{ productId: "9087631753370" }],
+    });
+    expect(koKlaviyoFunnel.metaKeywords).toContain("interconnected_ko");
+  });
+
+  it("calculates CPL from first-party leads and ROAS from Shopify paid revenue", () => {
+    expect(calculateKoKlaviyoPaidMediaMetrics({
+      spend: 500,
+      uniqueLeads: 100,
+      paidOrders: 10,
+      revenueCents: 67_000,
+    })).toEqual({ cpl: 5, buyerCpa: 50, roas: 1.34, leadToBuyerRate: 10 });
+  });
+});
 
 describe("Tantra Shopify reconciliation", () => {
   beforeEach(() => {

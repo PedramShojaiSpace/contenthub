@@ -8,9 +8,10 @@ import { interconnectedLeads } from "../drizzle/schema";
 export const UNBOUNCE_INTERCONNECTED_ORIGIN = "https://try.theurbanmonk.com";
 export const UNBOUNCE_INTERCONNECTED_FORM_ID = "SJAKDW";
 export const UNBOUNCE_LEAD_BRIDGE_PATH = "/api/interconnected/unbounce-lead";
+export const UNBOUNCE_LEAD_BRIDGE_VERSION = "lp3-native-v2";
 export const UNBOUNCE_INTERCONNECTED_PAGE_PATHS = new Set([
-  "/interconnected-lp/",
-  "/interconnected-lp-3/",
+  "/interconnected-lp",
+  "/interconnected-lp-3",
 ]);
 
 const bridgePayload = z.object({
@@ -66,8 +67,11 @@ export function isAllowedUnbounceOrigin(origin: string | undefined): boolean {
 export function isAllowedUnbouncePageUrl(pageUrl: string): boolean {
   try {
     const url = new URL(pageUrl);
+    const normalizedPath = url.pathname === "/"
+      ? "/"
+      : url.pathname.replace(/\/+$/, "");
     return url.origin === UNBOUNCE_INTERCONNECTED_ORIGIN
-      && UNBOUNCE_INTERCONNECTED_PAGE_PATHS.has(url.pathname);
+      && UNBOUNCE_INTERCONNECTED_PAGE_PATHS.has(normalizedPath);
   } catch {
     return false;
   }
@@ -101,6 +105,7 @@ function setBridgeCors(req: Request, res: Response) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Max-Age", "86400");
   res.setHeader("Vary", "Origin");
+  res.setHeader("X-UM-Unbounce-Bridge", UNBOUNCE_LEAD_BRIDGE_VERSION);
   return true;
 }
 

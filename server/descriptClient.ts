@@ -105,7 +105,8 @@ export interface DescriptJobStatusResponse {
   project_url?: string;
   progress?: { label: string; last_update_at: string };
   result?: {
-    status: "success" | "failed" | "partial";
+    status: "success" | "failed" | "partial" | "error";
+    error_message?: string;
     agent_response?: string;
     project_changed?: boolean;
     media_seconds_used?: number;
@@ -115,6 +116,33 @@ export interface DescriptJobStatusResponse {
     media_status?: Record<string, { status: string; duration_seconds?: number }>;
     created_compositions?: Array<{ id: string; name: string }>;
   };
+}
+
+export function extractDescriptCompositionId(status: DescriptJobStatusResponse): string | undefined {
+  const createdCompositionId = status.result?.created_compositions?.find(
+    composition => typeof composition.id === "string" && composition.id.length > 0,
+  )?.id;
+  if (createdCompositionId) return createdCompositionId;
+
+  const response = status.result?.agent_response ?? "";
+  const taggedMatch = response.match(/compositionId=["']([^"']+)["']/i);
+  return taggedMatch?.[1];
+}
+
+export function getDescriptFailureMessage(
+  status: DescriptJobStatusResponse,
+  fallback: string,
+): string {
+  return status.result?.error_message
+    ?? status.result?.agent_response
+    ?? `${fallback} (provider status: ${status.result?.status ?? status.job_state})`;
+}
+
+export function isDescriptResultFailure(status: DescriptJobStatusResponse): boolean {
+  const resultStatus = status.result?.status;
+  return status.job_state === "cancelled"
+    || resultStatus === "failed"
+    || resultStatus === "error";
 }
 
 export interface DescriptExportResponse {

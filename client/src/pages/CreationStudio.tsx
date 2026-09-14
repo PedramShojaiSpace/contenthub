@@ -809,8 +809,8 @@ export default function CreationStudio() {
     onSuccess: (data) => {
       setVideoPipelineLaunched(true);
       setShowVideoPipelineModal(false);
-      toast.success(data.message ?? "Video job queued! Check VA Dashboard for review.", {
-        action: { label: "VA Dashboard →", onClick: () => window.location.href = "/va" },
+      toast.success(data.message ?? "Video job queued! Track it in VA Dashboard → Video Review → In Progress.", {
+        action: { label: "Track Job →", onClick: () => window.location.href = "/va?tab=video&filter=processing" },
       });
     },
     onError: (err) => {

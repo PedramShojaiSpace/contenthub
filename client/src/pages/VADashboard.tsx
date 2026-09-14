@@ -8,6 +8,12 @@ import React, { useState } from "react";
 import { RefreshSubstackSessionModal } from "./SubstackPublisher";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import {
+  getInitialVAView,
+  isVideoJobProcessing,
+  matchesVAVideoFilter,
+  type VAVideoFilter,
+} from "@/lib/vaVideoJobFilters";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -699,7 +705,7 @@ function VideoJobCard({ job, onRefresh }: { job: VideoJob; onRefresh: () => void
   const isApproved = job.status === "approved"; // reset from stuck — needs re-upload
   const isQueuedOrPending = job.status === "pending"; // waiting in queue — can force re-export
   const isUploadedUnlisted = job.status === "uploaded_unlisted";
-  const isInProgress = ["queued", "importing", "processing", "rendering"].includes(job.status);
+  const isInProgress = isVideoJobProcessing(job.status);
   const isUploading = job.status === "uploading" || job.status === "publishing";
   const isPublished = job.status === "published";
   const isFailed = job.status === "failed";
@@ -1807,9 +1813,10 @@ function SubstackInboxBanner({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function VADashboard() {
   const [, navigate] = useLocation();
-  const [activeTab, setActiveTab] = useState<"syndication" | "video" | "substack">("syndication");
+  const initialView = getInitialVAView(typeof window === "undefined" ? "" : window.location.search);
+  const [activeTab, setActiveTab] = useState<"syndication" | "video" | "substack">(initialView.activeTab);
   const [syndicationFilter, setSyndicationFilter] = useState<"all" | "todo" | "done" | "finished">("todo");
-  const [videoFilter, setVideoFilter] = useState<"all" | "review" | "seo" | "published" | "failed" | "finished">("review");
+  const [videoFilter, setVideoFilter] = useState<VAVideoFilter>(initialView.videoFilter);
 
   // Syndication data
   const { data: syndicationJobs, isLoading: syndicationLoading, refetch: refetchSyndication } =
@@ -1858,14 +1865,7 @@ export default function VADashboard() {
     return !job.archivedAt;
   });
 
-  const filteredVideoJobs = allVideoJobs.filter((job) => {
-    if (videoFilter === "finished") return !!job.archivedAt;
-    if (videoFilter === "review") return !job.archivedAt && job.status === "ready_for_review";
-    if (videoFilter === "seo") return !job.archivedAt && job.status === "uploaded_unlisted";
-    if (videoFilter === "published") return !job.archivedAt && job.status === "published";
-    if (videoFilter === "failed") return !job.archivedAt && job.status === "failed";
-    return !job.archivedAt;
-  });
+  const filteredVideoJobs = allVideoJobs.filter((job) => matchesVAVideoFilter(job, videoFilter));
 
   const [expandedInboxId, setExpandedInboxId] = useState<number | null>(null);
   const [inboxNotes, setInboxNotes] = useState<Record<number, string>>({});
@@ -1892,6 +1892,7 @@ export default function VADashboard() {
     (j) => j.status === "ready" || (j.status === "pending" && j.scheduledAt <= Date.now())
   ).length;
   const videoReviewCount = allVideoJobs.filter((j) => j.status === "ready_for_review" || j.status === "uploaded_unlisted").length;
+  const videoProcessingCount = allVideoJobs.filter((j) => !j.archivedAt && isVideoJobProcessing(j.status)).length;
   const substackNewCount = inboxCounts?.new ?? 0;
 
   // Group syndication jobs by wordpress post
@@ -1929,6 +1930,10 @@ export default function VADashboard() {
               <div className="bg-muted rounded-lg px-4 py-2">
                 <p className="text-2xl font-bold text-red-400">{videoReviewCount}</p>
                 <p className="text-xs text-muted-foreground">Videos to Review</p>
+              </div>
+              <div className="bg-muted rounded-lg px-4 py-2">
+                <p className="text-2xl font-bold text-purple-400">{videoProcessingCount}</p>
+                <p className="text-xs text-muted-foreground">Videos Processing</p>
               </div>
               <div className="bg-muted rounded-lg px-4 py-2">
                 <p className="text-2xl font-bold text-purple-400">{substackNewCount}</p>
@@ -2296,7 +2301,7 @@ export default function VADashboard() {
 
             {/* Filter tabs */}
             <div className="flex gap-2 mb-6 flex-wrap">
-              {(["review", "seo", "all", "published", "failed", "finished"] as const).map((f) => (
+              {(["processing", "review", "seo", "all", "published", "failed", "finished"] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setVideoFilter(f)}
@@ -2307,7 +2312,7 @@ export default function VADashboard() {
                   }`}
                 >
                   {f === "finished" && <Archive className="w-3.5 h-3.5" />}
-                  {f === "review" ? "Needs Review" : f === "seo" ? "SEO Review" : f === "published" ? "Published" : f === "failed" ? "Failed" : f === "finished" ? "Finished Bin" : "All"}
+                  {f === "processing" ? "In Progress" : f === "review" ? "Needs Review" : f === "seo" ? "SEO Review" : f === "published" ? "Published" : f === "failed" ? "Failed" : f === "finished" ? "Finished Bin" : "All"}
                 </button>
               ))}
             </div>
@@ -2328,10 +2333,12 @@ export default function VADashboard() {
               <div className="text-center py-16">
                 <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-foreground mb-2">
-                  {videoFilter === "review" ? "No videos waiting for review" : "No videos found"}
+                  {videoFilter === "processing" ? "No videos processing" : videoFilter === "review" ? "No videos waiting for review" : "No videos found"}
                 </h3>
                 <p className="text-muted-foreground text-sm">
-                  {videoFilter === "review"
+                  {videoFilter === "processing"
+                    ? "New Descript jobs appear here immediately and move to Needs Review when rendering finishes."
+                    : videoFilter === "review"
                     ? "Videos will appear here once Descript finishes rendering them."
                     : "No video jobs match this filter."}
                 </p>

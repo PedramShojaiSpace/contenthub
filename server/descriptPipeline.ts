@@ -46,6 +46,9 @@ import {
   getJobStatus,
   exportProject,
   addMediaToProject,
+  extractDescriptCompositionId,
+  getDescriptFailureMessage,
+  isDescriptResultFailure,
 } from "./descriptClient";
 import { gatherStockFootage, buildPexelsQueriesFromScript } from "./pexelsClient";
 import { storagePut } from "./storage";
@@ -539,8 +542,8 @@ export async function processVideoJob(jobId: number): Promise<void> {
         console.log(`${jobLabel} [Avatar] Descript import status: ${importStatus.job_state}`);
 
         if (importStatus.job_state === "running") return;
-        if (importStatus.job_state === "cancelled" || importStatus.result?.status === "failed") {
-          throw new Error(`Descript import failed: ${importStatus.result?.agent_response ?? "unknown"}`);
+        if (isDescriptResultFailure(importStatus)) {
+          throw new Error(`Descript import failed: ${getDescriptFailureMessage(importStatus, "unknown")}`);
         }
 
         // Avatar import done — now source Pexels stock footage and add to the project
@@ -632,12 +635,17 @@ export async function processVideoJob(jobId: number): Promise<void> {
           topic: jobTopic,
           sceneDirections: sceneDirectionMatches,
           hasPexelsFootage,
+          hasPresenterVideo: true,
           ctaSuffix,
         });
+
+        const importStatus = await getJobStatus(job.descriptImportJobId!);
+        const compositionId = extractDescriptCompositionId(importStatus);
 
         console.log(`${jobLabel} [Avatar] Running Underlord B-roll agent (${hasPexelsFootage ? "with Pexels stock footage" : "without stock footage"})...`);
         const editResult = await runUnderlordAgent({
           projectId: job.descriptProjectId!,
+          ...(compositionId ? { compositionId } : {}),
           prompt: brollPrompt,
         });
 
@@ -655,13 +663,17 @@ export async function processVideoJob(jobId: number): Promise<void> {
         console.log(`${jobLabel} [Avatar] Underlord edit status: ${agentStatus.job_state}`);
 
         if (agentStatus.job_state === "running") return;
-        if (agentStatus.job_state === "cancelled" || agentStatus.result?.status === "failed") {
-          throw new Error(`Underlord editing failed: ${agentStatus.result?.agent_response ?? "unknown"}`);
+        if (isDescriptResultFailure(agentStatus)) {
+          throw new Error(`Underlord editing failed: ${getDescriptFailureMessage(agentStatus, "unknown")}`);
         }
 
         // Editing done — export
         console.log(`${jobLabel} [Avatar] Starting Descript export...`);
-        const exportResult = await exportProject({ projectId: job.descriptProjectId! });
+        const compositionId = extractDescriptCompositionId(agentStatus);
+        const exportResult = await exportProject({
+          projectId: job.descriptProjectId!,
+          ...(compositionId ? { compositionId } : {}),
+        });
         await db.update(videoJobs).set({
           descriptPublishJobId: exportResult.job_id,
           status: "rendering",
@@ -676,8 +688,11 @@ export async function processVideoJob(jobId: number): Promise<void> {
         console.log(`${jobLabel} [Avatar] Export status: ${exportStatus.job_state}`);
 
         if (exportStatus.job_state === "running") return;
-        if (exportStatus.job_state === "cancelled" || exportStatus.result?.status === "failed") {
-          throw new Error(`Export failed: ${exportStatus.result?.agent_response ?? "unknown"}`);
+        if (isDescriptResultFailure(exportStatus)) {
+          throw new Error(`Export failed: ${getDescriptFailureMessage(exportStatus, "unknown")}`);
+        }
+        if (exportStatus.result?.status !== "success" || !exportStatus.result.download_url) {
+          throw new Error(`Export did not return a usable video: ${getDescriptFailureMessage(exportStatus, "download URL missing")}`);
         }
 
         const shareUrl = exportStatus.result?.share_url ?? job.descriptShareUrl ?? "";
@@ -753,8 +768,8 @@ export async function processVideoJob(jobId: number): Promise<void> {
       const jobStatus = await getJobStatus(job.descriptImportJobId);
 
       if (jobStatus.job_state === "running") return;
-      if (jobStatus.job_state === "cancelled" || (jobStatus.result && jobStatus.result.status === "failed")) {
-        throw new Error(`Descript project creation failed: ${jobStatus.result?.agent_response ?? "unknown"}`);
+      if (isDescriptResultFailure(jobStatus)) {
+        throw new Error(`Descript project creation failed: ${getDescriptFailureMessage(jobStatus, "unknown")}`);
       }
 
       const ctaSuffix = job.ctaText
@@ -768,11 +783,18 @@ export async function processVideoJob(jobId: number): Promise<void> {
         topic: dscriptOnlyTopic,
         sceneDirections: dscriptOnlySceneMatches,
         hasPexelsFootage: false,
+        hasPresenterVideo: false,
         ctaSuffix,
       });
 
+      const compositionId = extractDescriptCompositionId(jobStatus);
+      if (!compositionId) {
+        throw new Error("Descript project creation completed without a target composition ID");
+      }
+
       const editResult = await runUnderlordAgent({
         projectId: job.descriptProjectId!,
+        compositionId,
         prompt: brollPrompt,
       });
 
@@ -789,11 +811,16 @@ export async function processVideoJob(jobId: number): Promise<void> {
       const agentStatus = await getJobStatus(job.descriptAgentJobId);
 
       if (agentStatus.job_state === "running") return;
-      if (agentStatus.job_state === "cancelled" || (agentStatus.result && agentStatus.result.status === "failed")) {
-        throw new Error(`Underlord editing failed: ${agentStatus.result?.agent_response ?? "unknown"}`);
+      if (isDescriptResultFailure(agentStatus)) {
+        throw new Error(`Underlord editing failed: ${getDescriptFailureMessage(agentStatus, "unknown")}`);
       }
 
-      const exportResult = await exportProject({ projectId: job.descriptProjectId! });
+      const compositionId = extractDescriptCompositionId(agentStatus);
+      if (!compositionId) {
+        throw new Error("Descript editing completed without a target composition ID");
+      }
+
+      const exportResult = await exportProject({ projectId: job.descriptProjectId!, compositionId });
 
       await db.update(videoJobs).set({
         descriptPublishJobId: exportResult.job_id,
@@ -808,8 +835,11 @@ export async function processVideoJob(jobId: number): Promise<void> {
       const exportStatus = await getJobStatus(job.descriptPublishJobId);
 
       if (exportStatus.job_state === "running") return;
-      if (exportStatus.job_state === "cancelled" || (exportStatus.result && exportStatus.result.status === "failed")) {
-        throw new Error(`Export failed: ${exportStatus.result?.agent_response ?? "unknown"}`);
+      if (isDescriptResultFailure(exportStatus)) {
+        throw new Error(`Export failed: ${getDescriptFailureMessage(exportStatus, "unknown")}`);
+      }
+      if (exportStatus.result?.status !== "success" || !exportStatus.result.download_url) {
+        throw new Error(`Export did not return a usable video: ${getDescriptFailureMessage(exportStatus, "download URL missing")}`);
       }
 
       const shareUrl = exportStatus.result?.share_url ?? job.descriptShareUrl ?? "";

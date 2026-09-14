@@ -69,9 +69,10 @@ export function buildUnderlordPrompt(params: {
   topic: string;
   sceneDirections: string[];
   hasPexelsFootage: boolean;
+  hasPresenterVideo?: boolean;
   ctaSuffix?: string;
 }): string {
-  const { topic, sceneDirections, hasPexelsFootage, ctaSuffix = "" } = params;
+  const { topic, sceneDirections, hasPexelsFootage, hasPresenterVideo = true, ctaSuffix = "" } = params;
 
   // Build a concise scene-by-scene B-roll guide from the LLM-generated directions
   const sceneGuide = sceneDirections.length > 0
@@ -82,10 +83,15 @@ export function buildUnderlordPrompt(params: {
     ? `Use the stock clips in the media library (named broll_01_*, broll_02_*, etc.) as the full-screen background.`
     : `Search for and add stock footage clips matching the B-roll timing guide above.`;
 
+  const visualInstructions = hasPresenterVideo
+    ? `1. PRESENTER OVERLAY: The main video track is the presenter (talking head). Resize it to a small circle (approximately 20% of the frame width) and position it in the lower-right corner of the frame. This creates a picture-in-picture presenter bubble. Keep this presenter bubble visible for the entire duration of the video — do not remove or hide it at any point.
+2. B-ROLL BACKGROUND: ${footageSource} Place the FIRST B-roll clip as a full-screen background layer starting at 0:00 — the very beginning of the video. There must be NO black screen at the opening. The first clip should be a wide, atmospheric shot (nature, landscape, or wellness imagery) that establishes the mood. The presenter bubble from step 1 sits on top of this background layer. Switch to a new background clip every 10-15 seconds. Never reuse the same clip. B-roll must cover 100% of the video from start to finish — the presenter bubble is always visible on top.`
+    : `1. NARRATION: Preserve the existing AI narration and its full timing. Do not look for, create, or assign a presenter, avatar, talking-head track, or picture-in-picture overlay.
+2. B-ROLL BACKGROUND: ${footageSource} Place the FIRST B-roll clip as a full-screen background layer starting at 0:00 — the very beginning of the video. There must be NO black screen at the opening. The first clip should be a wide, atmospheric shot (nature, landscape, or wellness imagery) that establishes the mood. Switch to a new background clip every 10-15 seconds. Never reuse the same clip. B-roll must cover 100% of the video from start to finish behind the narration.`;
+
   const prompt = `Edit this video with the following steps in order:
 
-1. PRESENTER OVERLAY: The main video track is the presenter (talking head). Resize it to a small circle (approximately 20% of the frame width) and position it in the lower-right corner of the frame. This creates a picture-in-picture presenter bubble. Keep this presenter bubble visible for the entire duration of the video — do not remove or hide it at any point.
-2. B-ROLL BACKGROUND: ${footageSource} Place the FIRST B-roll clip as a full-screen background layer starting at 0:00 — the very beginning of the video. There must be NO black screen at the opening. The first clip should be a wide, atmospheric shot (nature, landscape, or wellness imagery) that establishes the mood. The presenter bubble from step 1 sits on top of this background layer. Switch to a new background clip every 10-15 seconds. Never reuse the same clip. B-roll must cover 100% of the video from start to finish — the presenter bubble is always visible on top.
+${visualInstructions}
 3. CLEANUP: Remove filler words (um, uh, like, you know) and silence gaps longer than 0.5 seconds.
 4. CAPTIONS: Add auto-captions in white text at the lower third. Captions must be readable over the background footage.
 5. MUSIC: Add ambient background music at -18dB volume (nature, meditation, or wellness style).

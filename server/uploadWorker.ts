@@ -21,7 +21,7 @@ import "dotenv/config";
 import * as fs from "fs";
 import { createConnection } from "mysql2/promise";
 import { uploadToYouTube } from "./youtubeUploader";
-import { exportProject, getJobStatus } from "./descriptClient";
+import { exportProject, getJobStatus, resolveDescriptCompositionId } from "./descriptClient";
 import { postVideoToSocialChannels } from "./videoSocialPoster";
 
 const jobId = parseInt(process.env.JOB_ID ?? "0", 10);
@@ -54,6 +54,7 @@ async function run() {
     // Load job from DB
     const [rows] = await conn.execute(
       `SELECT id, video_job_status, vj_descript_project_id, vj_descript_download_url,
+              vj_descript_import_job_id, vj_descript_agent_job_id,
               vj_youtube_title, vj_youtube_description, vj_youtube_tags,
               vj_yt_upload_uri, vj_yt_upload_offset, vj_output_channels
        FROM video_jobs WHERE id = ?`,
@@ -147,7 +148,14 @@ async function run() {
       if (!downloadUrl && !publishJobId) {
         log(`Triggering Descript export for project: ${projectId}`);
         try {
-          const exportResp = await exportProject({ projectId });
+          const compositionId = await resolveDescriptCompositionId([
+            job.vj_descript_agent_job_id,
+            job.vj_descript_import_job_id,
+          ]);
+          if (!compositionId) {
+            throw new Error("No non-empty Descript composition target found — cannot safely export");
+          }
+          const exportResp = await exportProject({ projectId, compositionId });
           publishJobId = exportResp.job_id;
           log(`Descript export job ID: ${publishJobId}`);
         } catch (exportErr) {

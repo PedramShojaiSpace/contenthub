@@ -11,7 +11,7 @@ import { videoJobs, contentItems } from "../drizzle/schema";
 import { processScheduledVideoJobs, processVideoJob } from "./descriptPipeline";
 import { uploadToYouTube } from "./youtubeUploader";
 import { spawnUploadWorker, isUploadWorkerRunning } from "./spawnUploadWorker";
-import { exportProject, getJobStatus } from "./descriptClient";
+import { exportProject, getJobStatus, resolveDescriptCompositionId } from "./descriptClient";
 import { invokeLLM } from "./_core/llm";
 import { google } from "googleapis";
 import { userCredentials } from "../drizzle/schema";
@@ -328,7 +328,14 @@ export const videoPipelineRouter = router({
             } else {
               // Fresh Descript export (either no cached URL or it expired)
               console.log(`${jobLabel} Triggering fresh Descript export for project: ${job.descriptProjectId}`);
-              const exportResp = await exportProject({ projectId: job.descriptProjectId! });
+              const compositionId = await resolveDescriptCompositionId([
+                job.descriptAgentJobId,
+                job.descriptImportJobId,
+              ]);
+              if (!compositionId) {
+                throw new Error("No non-empty Descript composition target found — cannot safely re-export");
+              }
+              const exportResp = await exportProject({ projectId: job.descriptProjectId!, compositionId });
               const publishJobId = exportResp.job_id;
               console.log(`${jobLabel} Descript export job ID: ${publishJobId}`);
               const maxAttempts = 80; // 80 x 15s = 20 min
@@ -424,7 +431,14 @@ export const videoPipelineRouter = router({
         console.log(`${jobLabel} Force re-export started for: "${job.youtubeTitle ?? 'Urban Monk Video'}"`);
         console.log(`${jobLabel} Cached Descript URL cleared. Triggering fresh export from project: ${job.descriptProjectId}`);
         try {
-          const exportResp = await exportProject({ projectId: job.descriptProjectId! });
+          const compositionId = await resolveDescriptCompositionId([
+            job.descriptAgentJobId,
+            job.descriptImportJobId,
+          ]);
+          if (!compositionId) {
+            throw new Error("No non-empty Descript composition target found — cannot safely force re-export");
+          }
+          const exportResp = await exportProject({ projectId: job.descriptProjectId!, compositionId });
           const publishJobId = exportResp.job_id;
           console.log(`${jobLabel} Descript export job ID: ${publishJobId}`);
 

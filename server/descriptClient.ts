@@ -145,6 +145,24 @@ export function isDescriptResultFailure(status: DescriptJobStatusResponse): bool
     || resultStatus === "error";
 }
 
+export async function resolveDescriptCompositionId(
+  jobIds: Array<string | null | undefined>,
+  fetchStatus: (jobId: string) => Promise<DescriptJobStatusResponse> = getJobStatus,
+): Promise<string | undefined> {
+  const uniqueJobIds = Array.from(new Set(jobIds.filter((jobId): jobId is string => Boolean(jobId))));
+
+  for (const jobId of uniqueJobIds) {
+    try {
+      const compositionId = extractDescriptCompositionId(await fetchStatus(jobId));
+      if (compositionId) return compositionId;
+    } catch {
+      // A stale or unavailable retained job should not prevent checking the next source.
+    }
+  }
+
+  return undefined;
+}
+
 export interface DescriptExportResponse {
   job_id: string;
   drive_id: string;

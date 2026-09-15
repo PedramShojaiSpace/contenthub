@@ -35,4 +35,16 @@ The script was therefore genuinely sent to Descript and processed. It was not vi
 
 ## Recovery boundary
 
-Both video-pipeline heartbeat jobs were temporarily paused before the repair so the current job could not be falsely marked ready or exported repeatedly. After the repaired build is deployed, job 420001 can be resumed from its already completed editing stage by clearing only the failed publish-job reference and returning its database status to `editing`. The existing Descript project and completed edit job must be reused; no duplicate project or script resubmission is needed.
+Both video-pipeline heartbeat jobs were temporarily paused before the repair so the current job could not be falsely marked ready or exported repeatedly. Job 420001 was then recovered from its already completed editing stage by reusing its existing Descript project and targeting the verified non-empty composition. No duplicate project or script resubmission was created.
+
+## Final recovery and verification
+
+- The composition-aware replacement export completed with provider state `stopped` and result status `success`.
+- The existing Content Hub row now has status `ready_for_review`, a Descript share URL, a rendered download URL, and no error message.
+- The VA dashboard reports two videos awaiting review after the job returned to the review queue. New active jobs also have a dedicated **In Progress** filter and processing count.
+- A direct dashboard capture confirms job `420001` is visible in **VA Dashboard → Video Review → Needs Review** with the title “3 Days in Nature for Anxiety Relief: The Ultimate Nervous Reset,” a **Ready for Review** status, and a Descript Only label. The review/download links were also verified from the retained job record without exposing them in this report.
+- The 15-minute video-pipeline poll and the two-hour recovery poll were both resumed after the successful export.
+- The detached upload worker and both VA recovery actions now resolve a retained non-empty composition from the completed Descript agent/import jobs before starting a fresh export. They reject a missing target instead of silently exporting the empty project default.
+- Focused regression coverage and the bounded-memory production build passed before deployment.
+
+The job is no longer running in Descript. Its edit and render are complete, and it is waiting for human review in the VA dashboard.

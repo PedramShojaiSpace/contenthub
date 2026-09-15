@@ -3,6 +3,7 @@ import {
   extractDescriptCompositionId,
   getDescriptFailureMessage,
   isDescriptResultFailure,
+  resolveDescriptCompositionId,
   type DescriptJobStatusResponse,
 } from "./descriptClient";
 import { buildUnderlordPrompt } from "./brollPromptGenerator";
@@ -55,5 +56,33 @@ describe("Descript composition targeting", () => {
     expect(prompt).toContain("Preserve the existing AI narration");
     expect(prompt).toContain("Do not look for, create, or assign a presenter");
     expect(prompt).not.toContain("PRESENTER OVERLAY");
+  });
+
+  it("resolves the retained composition across edit and import jobs", async () => {
+    const calls: string[] = [];
+    const compositionId = await resolveDescriptCompositionId(
+      ["edit-job", "import-job", "edit-job"],
+      async jobId => {
+        calls.push(jobId);
+        return jobId === "import-job"
+          ? status({ result: { status: "success", created_compositions: [{ id: "composition-retained", name: "Video" }] } })
+          : status({ result: { status: "success" } });
+      },
+    );
+
+    expect(compositionId).toBe("composition-retained");
+    expect(calls).toEqual(["edit-job", "import-job"]);
+  });
+
+  it("returns undefined when retained provider jobs cannot supply a composition", async () => {
+    const compositionId = await resolveDescriptCompositionId(
+      ["stale-job", "empty-job"],
+      async jobId => {
+        if (jobId === "stale-job") throw new Error("not found");
+        return status({ result: { status: "success" } });
+      },
+    );
+
+    expect(compositionId).toBeUndefined();
   });
 });

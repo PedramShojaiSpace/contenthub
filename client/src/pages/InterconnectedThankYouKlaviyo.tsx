@@ -334,8 +334,9 @@ export default function InterconnectedThankYouKlaviyo() {
 
   useEffect(() => {
     sessionStorage.setItem("__interconnected_treatment", "klaviyo_ty_b_v1");
-    const leadEventId = sessionStorage.getItem('__capi_lead_event_id') ?? undefined;
-    firePixel("Lead", {}, leadEventId);
+    // LP-3 owns the Lead event. Its browser pixel and the native Unbounce
+    // webhook share one event ID with Meta CAPI. Re-emitting Lead after the
+    // redirect would otherwise create a second, unpaired browser conversion.
   }, []);
 
   useEffect(() => {

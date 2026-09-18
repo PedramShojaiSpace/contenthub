@@ -30,4 +30,14 @@ describe("Interconnected Lead event deduplication", () => {
     expect(staticThankYouSource).toContain("if (leadEventId) fbq('track','Lead',{}, {eventID: leadEventId});");
     expect(staticThankYouSource).not.toContain("fbq('track','Lead');");
   });
+
+  it("keeps the Klaviyo thank-you treatment from emitting a second Lead after LP-3 already tracked it", () => {
+    const pageSource = readFileSync(
+      new URL("../client/src/pages/InterconnectedThankYouKlaviyo.tsx", import.meta.url),
+      "utf8"
+    );
+
+    expect(pageSource).toContain("LP-3 owns the Lead event");
+    expect(pageSource).not.toContain('firePixel("Lead", {}, leadEventId)');
+  });
 });

@@ -10,6 +10,7 @@ import { pushInterconnectedEmailLead } from "./klaviyo";
 export const UNBOUNCE_NATIVE_INTERCONNECTED_PATH = "/api/interconnected/unbounce-native-lead";
 export const UNBOUNCE_NATIVE_INTERCONNECTED_TEST_PATH = "/interconnected-lp-3";
 export const UNBOUNCE_NATIVE_SECRET_HEADER = "x-urban-monk-webhook-secret";
+const BROWSER_LEAD_EVENT_ID_PATTERN = /^ub_ic_[A-Za-z0-9_-]{12,96}$/;
 
 const unbounceWebhookPayload = z.object({
   email: z.unknown(),
@@ -27,6 +28,11 @@ const unbounceWebhookPayload = z.object({
   time_submitted: z.unknown().optional(),
   page_url: z.unknown(),
   page_name: z.unknown().optional(),
+  // LP-3 writes this hidden field synchronously at form submit, then uses the
+  // same identifier in fbq('trackSingle', 'Lead', ..., { eventID }). The native
+  // receiver forwards it to CAPI, allowing Meta to deduplicate browser/server
+  // delivery correctly.
+  um_event_id: z.unknown().optional(),
 });
 
 function firstValue(value: unknown): string | null {
@@ -106,6 +112,17 @@ function buildEventId(input: { email: string; pageUuid: string | null; submitted
   return `ubn_ic_${digest}`;
 }
 
+export function resolveNativeLeadEventId(input: {
+  browserEventId?: unknown;
+  email: string;
+  pageUuid: string | null;
+  submittedAt: string;
+}): string {
+  const candidate = firstValue(input.browserEventId);
+  if (candidate && BROWSER_LEAD_EVENT_ID_PATTERN.test(candidate)) return candidate;
+  return buildEventId(input);
+}
+
 function readTracking(pageUrl: string) {
   const url = new URL(pageUrl);
   return {
@@ -157,7 +174,12 @@ export function registerUnbounceNativeInterconnectedWebhook(app: Express) {
     }
 
     const tracking = readTracking(pageUrl);
-    const eventId = buildEventId({ email, pageUuid, submittedAt });
+    const eventId = resolveNativeLeadEventId({
+      browserEventId: parsed.data.um_event_id,
+      email,
+      pageUuid,
+      submittedAt,
+    });
     let leadId: number | null = null;
     let eventAlreadySent = false;
     let smsSubscribed = false;

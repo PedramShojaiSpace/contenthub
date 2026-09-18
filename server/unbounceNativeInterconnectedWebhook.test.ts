@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   isExplicitSmsConsent,
   registerUnbounceNativeInterconnectedWebhook,
+  resolveNativeLeadEventId,
   resolveNativeSmsConsent,
   shouldSuppressNativeCapiForExistingLead,
   UNBOUNCE_NATIVE_INTERCONNECTED_PATH,
@@ -80,5 +81,27 @@ describe("native Unbounce Interconnected webhook secret", () => {
   it("suppresses a second CAPI Lead when the browser bridge won the delivery race", () => {
     expect(shouldSuppressNativeCapiForExistingLead(true)).toBe(true);
     expect(shouldSuppressNativeCapiForExistingLead(false)).toBe(false);
+  });
+
+  it("uses a valid LP-3 browser event ID so browser Lead and CAPI can deduplicate", () => {
+    const input = {
+      email: "person@example.com",
+      pageUuid: "9872b1ca-b228-46f8-b1fe-b3885c254663",
+      submittedAt: "2026-09-18 06:00 PM UTC",
+    };
+    expect(resolveNativeLeadEventId({
+      ...input,
+      browserEventId: "ub_ic_3f2de9d2b0e8426385ba083cc0dc1a42",
+    })).toBe("ub_ic_3f2de9d2b0e8426385ba083cc0dc1a42");
+  });
+
+  it("rejects malformed browser event IDs and retains the deterministic native fallback", () => {
+    const input = {
+      email: "person@example.com",
+      pageUuid: "9872b1ca-b228-46f8-b1fe-b3885c254663",
+      submittedAt: "2026-09-18 06:00 PM UTC",
+    };
+    const fallback = resolveNativeLeadEventId({ ...input, browserEventId: "not-a-meta-event-id" });
+    expect(fallback).toMatch(/^ubn_ic_[a-f0-9]{48}$/);
   });
 });

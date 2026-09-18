@@ -47,6 +47,17 @@
     if (!form || form.dataset.umAttributionBridge === 'ready') return;
     form.dataset.umAttributionBridge = 'ready';
 
+    function persistNativeEventId(eventId) {
+      var hidden = form.querySelector('input[name="um_event_id"]');
+      if (!hidden) {
+        hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'um_event_id';
+        form.appendChild(hidden);
+      }
+      hidden.value = eventId;
+    }
+
     form.addEventListener('submit', function () {
       if (fired) return;
       var emailInput = form.querySelector('[name="email"]');
@@ -55,6 +66,9 @@
 
       fired = true;
       var eventId = makeEventId();
+      // The native Unbounce webhook receives this with the form submit and
+      // forwards the exact same ID to Meta CAPI for browser/server deduplication.
+      persistNativeEventId(eventId);
       var fbclid = getParam('fbclid');
       var payload = {
         eventId: eventId,

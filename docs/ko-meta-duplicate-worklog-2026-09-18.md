@@ -35,3 +35,9 @@ The live ads workflow is currently operating in ad account `10207858653523297`. 
 Programmatic account inspection confirms the Urban Monk Pixel is active and firing, but it is owned by a different ad account, `1153114224705920`. The challenger therefore cannot be published correctly from the current Agora ad account until the Urban Monk Pixel is shared with `10207858653523297` in Meta Business Settings / Events Manager. This is an asset-permission change, not a tracking-code problem.
 
 The draft is intentionally held unpublished. After pixel sharing, the remaining process is to select Urban Monk Pixel, resolve the one unavailable inherited suppression audience, set the KO destination and UTM parameters on the selected challenger ad, validate the draft, and publish the equal-budget test.
+
+## Partner-access prerequisite
+
+The approved pixel-assignment request was submitted through Meta's Business API and rejected with Meta error `200 / 1784039`: **Business does not have access to pixel or ad account.** Urban Monk Productions (`1153112761372733`) owns and can manage the Urban Monk Pixel, but Meta confirms it has no access to Agora ad account `10207858653523297`.
+
+The owner of the business portfolio that owns the Agora account must first add **Urban Monk Productions, Inc.** as a partner on ad account `10207858653523297`, granting **Manage campaigns** / advertising use. This does not transfer ad-account ownership, billing, or current campaign management. Once that is complete, Urban Monk Productions can assign the Urban Monk Pixel to the existing Agora account; then the held KO draft can be finalized and published.

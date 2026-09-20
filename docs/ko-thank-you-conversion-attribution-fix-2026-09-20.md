@@ -2,7 +2,7 @@
 
 **Date:** September 20, 2026  
 **Scope:** Paid Unbounce LP-3 → Klaviyo thank-you page → Shopify $67 purchase path  
-**Status:** Implementation validated; public deployment verification pending
+**Status:** Live and bundle-verified
 
 ## What the current read shows
 
@@ -43,6 +43,12 @@ For the current launch, conversion begins at **0 / 22 = 0.00%**. The first decis
 ## Validation plan
 
 Focused regression tests verify that both the $67 thank-you and $199 post-purchase builders send the new path and CTA-key parameters. A bounded production build and a public bundle verification follow. No additional live lead submission or paid test order is required for the code verification.
+
+## Public release verification
+
+Railway built and deployed the checkpointed GitHub source successfully. Once the custom-domain frontend assets propagated, the live `content.theurbanmonk.com` thank-you route resolved to the current `InterconnectedThankYouKlaviyo` and checkout-helper chunks. Direct inspection of the deployed helper confirmed that it contains both `funnel_path=ko_klaviyo` and the stable $67 CTA key `ty_b_klaviyo_v1_67_checkout`.
+
+No CTA was clicked for this verification, so no cart, checkout, order, payment, lead, email, SMS, or paid-media event was created. The first genuine visitor checkout click after propagation is now eligible to produce the first checkout-start observation; the existing reconciliation page already calculates the `lead→sale` percentage from the first-party KO lead denominator and Shopify paid-order numerator.
 
 ## References
 

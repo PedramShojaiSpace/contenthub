@@ -19,7 +19,7 @@ The published Shopify catalog contains a strong candidate for the matching offer
 | Base purchase | Interconnected: The Complete Healing Protocol | Product `9087631753370` / variant `48959577653402` | `UM-OTO` | $67 | Existing KO checkout product |
 | Post-purchase upgrade candidate | Gut Permeability Test + Health Coach Call — $199 Member Offer | Product `9096395620506` / variant `48994340077722` | `FIT-22-OCUS-199` | $199, shown against $299 | Published, available, tagged `ocus` and `upsell` [2] |
 
-Before configuration, the owner or a designated operations lead must confirm that **`FIT-22-OCUS-199` is the same underlying $199 test/coach offer currently used by the Kajabi OCUS**. The public Shopify title says “Gut Permeability Test + Health Coach Call,” while the Kajabi benchmark was described as “Gut Permeability and Food Sensitivity Testing.” Do not assume that those scopes are identical without this confirmation.
+The owner confirmed on September 20 that **`FIT-22-OCUS-199` is the intended Shopify $199 offer for this Interconnected upgrade path**. The public Shopify title says “Gut Permeability Test + Health Coach Call,” while the Kajabi benchmark was described as “Gut Permeability and Food Sensitivity Testing”; use the verified Shopify SKU and its stated package scope consistently in the Shopify arm.
 
 ## Recommended Architecture
 
@@ -137,7 +137,7 @@ No change is needed from Curt while the parity path is being staged. His UTM con
 
 The only material decision needed is:
 
-> **Confirm that Shopify SKU `FIT-22-OCUS-199` is the exact $199 offer to use, then approve installation/configuration of one native Shopify post-purchase upsell app in disabled QA mode.**
+> **Approve the existing Zipify One Click Upsell app’s requested Shopify reauthorization, then allow configuration of one disabled $67 → $199 post-purchase rule in that app.**
 
 After that approval, the implementation work can proceed in this order: app configuration, webhook/ledger update, Klaviyo fallback, controlled QA, owner preview, and only then live enablement.
 

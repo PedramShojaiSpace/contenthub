@@ -17,7 +17,14 @@ export const AGORA_PRICE_ARM_SPECS = {
     isControl: true,
     existingOfferId: "2151314475",
   },
-  p99: { armId: "p99", label: "$99 treatment", priceCents: 9900, isControl: false },
+  p99: {
+    armId: "p99",
+    label: "$99 treatment",
+    priceCents: 9900,
+    isControl: false,
+    existingOfferId: "2151402817",
+    existingCheckoutUrl: "https://theacademy.theurbanmonk.com/offers/ofRhsQvo/checkout",
+  },
 } as const;
 
 export type AgoraPriceArmId = keyof typeof AGORA_PRICE_ARM_SPECS;
@@ -57,7 +64,8 @@ export function getAgoraPriceTestDraftReadiness() {
     testId: AGORA_PRICE_TEST_ID,
     status: "draft" as const,
     trafficAllocationActive: false,
-    externalOffersCreated: false,
+    // The verified $99 Offer exists; the $49 P1 treatment remains uncreated.
+    externalOffersCreated: true,
     priceArms: Object.values(AGORA_PRICE_ARM_SPECS).map((arm) => ({
       armId: arm.armId,
       label: arm.label,
@@ -68,7 +76,6 @@ export function getAgoraPriceTestDraftReadiness() {
     ocus: CURRENT_INTERCONNECTED_OCUS_CONTRACT,
     blockers: [
       "$49 Kajabi Offer has not been created or mapped to an exact Offer ID.",
-      "$99 Kajabi Offer has not been created or mapped to an exact Offer ID.",
       "The $199 OCUS eligibility and price equivalence has not been verified for every entry-price arm.",
       "No sticky public price allocation or assigned page-to-checkout mapping has been approved or activated.",
       "Exact-offer price-arm reporting and refund reconciliation must be confirmed against the approved live offers before activation.",
@@ -139,4 +146,3 @@ export function classifyPriceTestBaseOffer(input: {
   );
   return match?.armId ?? null;
 }
-

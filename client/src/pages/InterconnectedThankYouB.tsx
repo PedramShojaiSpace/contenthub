@@ -39,6 +39,8 @@ export type InterconnectedThankYouPriceConfig = {
   entryPriceCents: number;
   /** Omitted for the unlinked draft pages until the VA supplies the Kajabi checkout. */
   checkoutUrl?: string;
+  /** Keep treatment timers separate from the long-standing $67 thank-you page state. */
+  countdownStorageKey?: string;
 };
 
 const CONTROL_PRICE_CONFIG: InterconnectedThankYouPriceConfig = {
@@ -64,13 +66,12 @@ function firePixel(eventName: string, params?: Record<string, unknown>, eventId?
   } catch (_) {}
 }
 
-function useCountdown(initialSeconds: number) {
+function useCountdown(initialSeconds: number, storageKey = "ty_offer_end_time") {
   // Persist end time in localStorage so back button / refresh don't reset the timer
-  const STORAGE_KEY = "ty_offer_end_time";
-  const storedEnd = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+  const storedEnd = typeof window !== "undefined" ? localStorage.getItem(storageKey) : null;
   const endRef = useRef(storedEnd ? parseInt(storedEnd, 10) : (() => {
     const end = Date.now() + initialSeconds * 1000;
-    try { localStorage.setItem(STORAGE_KEY, String(end)); } catch (_) {}
+    try { localStorage.setItem(storageKey, String(end)); } catch (_) {}
     return end;
   })());
   const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
@@ -263,8 +264,8 @@ const sectionStyle = (bg: string) => ({
 });
 
 // ─── Isolated countdown components (prevent full-page rerenders) ─────────────────
-function TyStickyBar({ onBuyClick }: { onBuyClick: () => void }) {
-  const { timeLeft, expired } = useCountdown(900);
+function TyStickyBar({ onBuyClick, storageKey }: { onBuyClick: () => void; storageKey?: string }) {
+  const { timeLeft, expired } = useCountdown(900, storageKey);
   if (expired) return null;
   return (
     <div
@@ -303,8 +304,8 @@ function TyStickyBar({ onBuyClick }: { onBuyClick: () => void }) {
   );
 }
 
-function TyCountdownBlock() {
-  const { timeLeft, expired } = useCountdown(900);
+function TyCountdownBlock({ storageKey }: { storageKey?: string }) {
+  const { timeLeft, expired } = useCountdown(900, storageKey);
   if (expired) return (
     <div className="text-center my-8">
       <p className="text-red-400 font-bold text-lg">This special offer has expired.</p>
@@ -342,6 +343,7 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
   });
   const visitorId = useRef(getVisitorId());
   const checkoutUrl = priceConfig.checkoutUrl;
+  const countdownStorageKey = priceConfig.countdownStorageKey;
   const entryPrice = `$${(priceConfig.entryPriceCents / 100).toFixed(0)}`;
   const savings = `$${((19700 - priceConfig.entryPriceCents) / 100).toFixed(0)}`;
 
@@ -448,7 +450,7 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
     <div className="min-h-screen text-white font-sans" style={{ background: BG_DARK }} data-price-test-arm={priceConfig.armId}>
 
             {/* ── STICKY TOP BAR — isolated component */}
-      <TyStickyBar onBuyClick={handleBuyClick} />
+      <TyStickyBar onBuyClick={handleBuyClick} storageKey={countdownStorageKey} />
 
       {/* ── HEADER ─────────────────────────────────────────────────────────────── */}
       <header className="pt-8 pb-4 px-4 text-center" style={{ background: BG_DARK }}>
@@ -547,7 +549,7 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
             the moment you purchase. That way you'll have real solutions at your fingertips when you need them most.
           </p>
 
-          <TyCountdownBlock />
+          <TyCountdownBlock storageKey={countdownStorageKey} />
         </div>
       </section>
 
@@ -724,7 +726,7 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
           <p className="text-center font-bold text-sm uppercase tracking-widest mb-4" style={{ color: BLUE }}>
             Act Fast — This Special Offer Expires In…
           </p>
-          <TyCountdownBlock />
+          <TyCountdownBlock storageKey={countdownStorageKey} />
           <div
             className="rounded-2xl overflow-hidden mt-8"
             style={{ border: `2px solid ${BLUE}`, boxShadow: `0 0 60px ${BLUE_GLOW}` }}

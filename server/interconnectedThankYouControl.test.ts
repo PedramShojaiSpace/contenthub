@@ -88,7 +88,7 @@ describe("Interconnected Thank You control routing", () => {
     expect(versionBSource).not.toContain("4.9 out of 5 Stars");
   });
 
-  it("keeps the $49 and $99 pages unlinked and checkout-inactive until verified Kajabi mappings are supplied", () => {
+  it("keeps the $49 page checkout-inactive while routing the verified $99 treatment to its exact Kajabi checkout", () => {
     const appSource = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
     const publicSource = readFileSync(new URL("../client/src/PublicApp.tsx", import.meta.url), "utf8");
     const controlSource = readFileSync(
@@ -109,9 +109,11 @@ describe("Interconnected Thank You control routing", () => {
     expect(publicSource).toContain('path="/interconnected/thank-you-p49-draft"');
     expect(publicSource).toContain('path="/interconnected/thank-you-p99-draft"');
     expect(p49Source).toContain('armId: "p49", entryPriceCents: 4900');
-    expect(p99Source).toContain('armId: "p99", entryPriceCents: 9900');
+    expect(p99Source).toContain('armId: "p99"');
+    expect(p99Source).toContain('entryPriceCents: 9900');
     expect(p49Source).not.toContain("checkoutUrl:");
-    expect(p99Source).not.toContain("checkoutUrl:");
+    expect(p99Source).toContain('checkoutUrl: "https://theacademy.theurbanmonk.com/offers/ofRhsQvo/checkout"');
+    expect(p99Source).toContain('countdownStorageKey: "interconnected_p99_offer_end_time_v1"');
     expect(controlSource).toContain("if (!checkoutUrl) return;");
     expect(controlSource).toContain('priceConfig.armId !== "p67"');
     expect(controlSource).toContain('data-price-test-arm={priceConfig.armId}');

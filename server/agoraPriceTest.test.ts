@@ -8,17 +8,17 @@ import {
 } from "./agoraPriceTest";
 
 describe("Agora draft price-test readiness", () => {
-  it("is explicitly non-live and blocks traffic until missing offer mappings are resolved", () => {
+  it("is explicitly non-live and blocks traffic until the remaining offer mapping is resolved", () => {
     const readiness = getAgoraPriceTestDraftReadiness();
 
     expect(readiness.status).toBe("draft");
     expect(readiness.trafficAllocationActive).toBe(false);
-    expect(readiness.externalOffersCreated).toBe(false);
+    expect(readiness.externalOffersCreated).toBe(true);
     expect(readiness.priceArms.find((arm) => arm.armId === "p67")?.offerId).toBe("2151314475");
     expect(readiness.priceArms.find((arm) => arm.armId === "p49")?.offerId).toBeNull();
-    expect(readiness.priceArms.find((arm) => arm.armId === "p99")?.offerId).toBeNull();
+    expect(readiness.priceArms.find((arm) => arm.armId === "p99")?.offerId).toBe("2151402817");
     expect(readiness.ocus.equivalenceVerifiedForAllPriceArms).toBe(false);
-    expect(readiness.blockers).toHaveLength(5);
+    expect(readiness.blockers).toHaveLength(4);
   });
 
   it("rejects price testing when an arm has no exact Kajabi Offer ID", () => {
@@ -69,6 +69,7 @@ describe("Agora draft price-test readiness", () => {
     expect(AGORA_PRICE_ARM_SPECS.p49.priceCents).toBe(4900);
     expect(AGORA_PRICE_ARM_SPECS.p67.existingOfferId).toBe("2151314475");
     expect(AGORA_PRICE_ARM_SPECS.p99.priceCents).toBe(9900);
+    expect(AGORA_PRICE_ARM_SPECS.p99.existingOfferId).toBe("2151402817");
+    expect(AGORA_PRICE_ARM_SPECS.p99.existingCheckoutUrl).toBe("https://theacademy.theurbanmonk.com/offers/ofRhsQvo/checkout");
   });
 });
-

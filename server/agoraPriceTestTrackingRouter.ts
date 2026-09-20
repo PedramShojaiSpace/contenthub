@@ -22,7 +22,14 @@ const ARM_INPUT = z.object({
 
 const SEED_ARMS: PriceTestTrackerArmInput[] = [
   { armId: "p49", label: "$49 treatment — P1", priceCents: 4900, isControl: false, offerId: null, checkoutUrl: null },
-  { armId: "p67", label: "$67 current control", priceCents: 6700, isControl: true, offerId: "2151314475", checkoutUrl: null },
+  {
+    armId: "p67",
+    label: "$67 current control",
+    priceCents: 6700,
+    isControl: true,
+    offerId: "2151314475",
+    checkoutUrl: "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout",
+  },
   { armId: "p99", label: "$99 treatment — P2", priceCents: 9900, isControl: false, offerId: null, checkoutUrl: null },
 ];
 

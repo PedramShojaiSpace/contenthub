@@ -1,10 +1,16 @@
 import InterconnectedThankYouB from "./InterconnectedThankYouB";
 
 /**
- * Draft-only $99 treatment. The missing checkout URL is intentional: the VA
- * must complete the manual Kajabi Offer setup and map it in Price-Test Tracker
- * before a separate activation decision can permit any traffic.
+ * Staged $99 treatment. This page is not linked from a live allocation or ad.
+ * Its checkout is intentionally the verified, exact Kajabi $99 Offer rather
+ * than a generic page so the treatment can be previewed and later measured by
+ * Offer ID. The $199 OCUS parity was verified separately in Kajabi.
  */
 export default function InterconnectedThankYouPrice99() {
-  return <InterconnectedThankYouB priceConfig={{ armId: "p99", entryPriceCents: 9900 }} />;
+  return <InterconnectedThankYouB priceConfig={{
+    armId: "p99",
+    entryPriceCents: 9900,
+    checkoutUrl: "https://theacademy.theurbanmonk.com/offers/ofRhsQvo/checkout",
+    countdownStorageKey: "interconnected_p99_offer_end_time_v1",
+  }} />;
 }

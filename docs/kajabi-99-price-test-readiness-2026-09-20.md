@@ -38,3 +38,19 @@ At 10:30 on September 20, the sandbox preview of `/interconnected/thank-you-p99-
 ## Public deployment check
 
 The source/preview is correct, but the public `content.theurbanmonk.com` route was still serving its previous bundle during the first post-checkpoint check: it displayed the $99 presentation but the lower purchase buttons still read **“Checkout mapping pending.”** The public deployment therefore requires a Railway redeploy from the checkpointed GitHub source before this route is ready for manual review. No checkout was submitted and no traffic, ad, or allocation changed during this read-only verification.
+
+## Railway release status
+
+Railway’s `contenthub` production service is online but still reports the prior GitHub deployment as active. The checkpointed $99 changes are committed on the source repository and now need the Railway service to be redeployed from its current GitHub source. This is a source refresh only; it does not activate traffic, ads, budgets, or any visitor split.
+
+## Deployment action
+
+A Railway production redeploy was started from the current checkpointed GitHub source at 10:34. It rebuilds the existing `contenthub` service with the same deployment configuration; no traffic routing, ad delivery, budget, price, offer, or messaging configuration was activated or changed.
+
+## Post-redeploy bundle verification
+
+After Railway reported a new deployment, the isolated browser still rendered some lower-button labels as “Checkout mapping pending.” The loaded route assets were recorded for diagnosis. This remains a read-only verification; no purchase CTA was clicked, no checkout was submitted, and no traffic/ad configuration changed.
+
+## Railway source recovery
+
+Railway’s source configuration was confirmed as `PedramShojaiSpace/contenthub` on `main`. Automatic branch deployment was re-enabled. The branch-picker refresh still reports a Railway-side load error, but the source repository itself is current at commit `636ca912`. A subsequent harmless documentation checkpoint will provide a fresh GitHub push to exercise the restored automatic deployment path; it will contain the already committed $99 staging code and no customer-facing offer, allocation, ad, or budget change.

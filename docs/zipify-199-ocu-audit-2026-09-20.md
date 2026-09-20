@@ -1,7 +1,7 @@
 # Zipify One Click Upsell Audit — $199 Interconnected Upgrade
 
 **Date:** September 20, 2026  
-**Status:** Product page completed; Zipify configuration inspection is blocked pending the app’s explicit Shopify reauthorization. No Zipify funnel, app permission, checkout behavior, traffic, or payment setting was changed.
+**Status:** Product page completed; Zipify authorization completed and the $67 → $199 post-purchase funnel is published. No test order was created.
 
 ## Verified Shopify Product
 
@@ -23,9 +23,9 @@ The live Shopify product description was replaced with a conversion-focused, mob
 
 Public verification confirmed that the product page renders the new description and retains the Wistia iframe at a responsive 1100 × 620 pixels. The raw, reusable HTML is retained in `docs/shopify-gut-permeability-199-description-v1.txt`.
 
-## Zipify App Status
+## Zipify App Status — Historical Pre-Authorization State
 
-The installed app is **One Click Upsell** at the Shopify Admin path `Apps → One Click Upsell`. It currently stops at a Shopify reauthorization screen:
+Before the owner-approved access update, the installed app was **One Click Upsell** at the Shopify Admin path `Apps → One Click Upsell` and stopped at a Shopify reauthorization screen:
 
 > **One Click Upsell needs access to:** View and edit store data; Edit Online Store Theme.
 

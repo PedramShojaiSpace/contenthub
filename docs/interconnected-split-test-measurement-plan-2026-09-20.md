@@ -63,17 +63,26 @@ The winning path or price is the arm with the higher **14-day booked revenue per
 
 The current live traffic is being treated as a monitored KO/Klaviyo launch, not as proof that the price test has begun. The first real lead will be verified against the following four fields: one first-party KO lead; complete campaign identification; Klaviyo sync; and a single CAPI Lead. The existing hourly summary will continue to deliver the rolling KO/Klaviyo count separately from Kajabi. No individual lead notifications, SMS settings, ad settings, or traffic allocation will be changed during this observation.
 
-## References
-
-[1]: https://content.theurbanmonk.com/hub/analytics/reconciliation "Urban Monk Content Hub Sales Reconciliation"
-[2]: https://try.theurbanmonk.com/interconnected-lp-3/ "Interconnected LP-3 Unbounce landing page"
-[3]: https://content.theurbanmonk.com/hub/analytics/interconnected-price-test "Interconnected Price Test Tracker"
-[4]: https://content.theurbanmonk.com/interconnected/thank-you-klaviyo "Interconnected Klaviyo thank-you page"
-
 ## Initial live KO launch validation
 
 At approximately 11:07–11:09 Central on September 20, the first four newly recorded KO/Klaviyo leads passed the first-party transport check: four lead rows were created, all four show Klaviyo sync, and all four show a single server-side Meta CAPI Lead delivery. The next aggregate delivery read showed ten recently added profiles with successful email-list membership.
 
 The initial four rows use the native fallback campaign label `interconnected_unbounce_native` and have no `utm_content` or Meta campaign key. This means the acquisition and CAPI path is functioning, but these earliest leads are **not yet cleanly labeled for a paid destination experiment**. Before treating additional traffic as the challenger cohort, the active ad destination must carry the KO UTM contract: `utm_source=meta`, `utm_medium=paid_social`, `utm_campaign=ic_destination_test_ko_shopify_challenger_v1`, and `utm_content=healthy_habits_control_image_v1`.
 
-Klaviyo confirmed the live flow is triggered by the Interconnected Free Screening Opt-Ins list; its Day 0 email is live, has no configured delay, and has smart sending disabled. At the initial read, Klaviyo had not yet recorded a `Received Email` event for the new profiles. That is not treated as a pass. A one-time delayed read is in progress to distinguish normal provider processing latency from a flow-enrollment failure. The first-party consent audit is included in that same read; existing-profile SMS events are not being interpreted as new consent from the Unbounce form.
+Klaviyo confirmed the live flow is triggered by the Interconnected Free Screening Opt-Ins list; its Day 0 email is live, has no configured delay, and has smart sending disabled. The initial read did not yet show a `Received Email` event for the earliest profiles, so delivery was left open pending a delayed provider read. Existing-profile SMS events are not interpreted as new consent from the Unbounce form.
+
+## Paid LP-3 → Klaviyo delivery verification — 12:19 Central
+
+The live-flow verification is complete for the current paid LP-3 traffic. The intended Klaviyo flow, **`YyFZPu` — “[LIVE — STRICT 24H] Interconnected Free Screening - KO — APPROVED DESIGN,”** is live and its entry trigger is the **Interconnected Free Screening Opt-Ins** list. The first Day-0 email, **“Day 0 opt in EG sp26,”** is live, has no delay, and has Smart Sending disabled.
+
+A privacy-minimized read of the 180-minute paid LP-3 cohort found **21** records with `funnel_path = ko_klaviyo`. All 21 first-party lead records were marked as successfully synchronized to Klaviyo. Each corresponding Klaviyo profile had a **Received Email** event dated after its own lead timestamp. There were no unresolved delivery exceptions and no profile lookup failures at the time of the check. No new test lead, email, SMS, flow edit, audience edit, or ad setting was created for this verification.
+
+> This establishes current enrollment and Day-0 delivery for the paid LP-3 cohort. It is not a revenue result, and it does not change the requirement to evaluate the KO route against the Kajabi route using cleared revenue and the agreed cohort maturity window.
+
+## References
+
+[1]: https://content.theurbanmonk.com/hub/analytics/reconciliation "Urban Monk Content Hub Sales Reconciliation"
+[2]: https://try.theurbanmonk.com/interconnected-lp-3/ "Interconnected LP-3 Unbounce landing page"
+[3]: https://content.theurbanmonk.com/hub/analytics/interconnected-price-test "Interconnected Price Test Tracker"
+[4]: https://content.theurbanmonk.com/interconnected/thank-you-klaviyo "Interconnected Klaviyo thank-you page"
+[5]: https://www.klaviyo.com/flow/YyFZPu/edit "Klaviyo: Interconnected Free Screening KO flow"

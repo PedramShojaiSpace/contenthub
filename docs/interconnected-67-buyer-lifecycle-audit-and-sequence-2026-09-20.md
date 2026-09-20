@@ -29,14 +29,14 @@ A $67 buyer has demonstrated intent, trust, and willingness to pay. The immediat
 
 The current one-message $199 offer can still have a role. Its proper role is as a **recovery path** for a buyer who did not see or did not accept the native Zipify offer. It should not be the entire relationship.
 
-## Two viable implementation paths
+## Selected implementation architecture: Approach A
 
 | Approach | Tradeoffs | Cost | Setup complexity |
 |---|---|---:|---:|
 | **A. Dedicated paid-buyer lifecycle** | Creates a distinct paid-client experience; preserves the free sequence for nonbuyers; supports clean measurement and proper exits into testing, fulfillment, webinars, and core offers. Requires a new controlled flow and one-time access-delivery verification. | Existing platform capacity | Moderate |
 | **B. Add buyer branches inside the current free-screening flow** | Fewer flows to manage, but buyer logic becomes embedded in a 21-action acquisition flow and is harder to audit, improve, and measure. It also makes future offer and webinar work more fragile. | Existing platform capacity | Lower initially; higher ongoing risk |
 
-The sequence below is drafted for **Approach A**. It does not select or implement either approach. The user should choose the operating model before any live build begins.
+The owner selected **Approach A** on September 20, 2026. The sequence below is therefore the approved architecture for a future draft-only build: a dedicated, purchase-triggered buyer lifecycle that is separate from the free-screening sequence. This selection does not activate a flow, alter a message, or replace the remaining access-delivery, destination, copy, timing, and proofing gates.
 
 ## Required control rules before activation
 

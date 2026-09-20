@@ -23,6 +23,10 @@ export type HourlyLeadSummaryInput = {
   hourlyByPath: LeadPathCounts;
   todayByPath: LeadPathCounts;
   totalByPath: LeadPathCounts;
+  koCheckoutStartsInWindow: number;
+  koCheckoutStartsToday: number;
+  koPaidOrdersInWindow: number;
+  koPaidOrdersToday: number;
   kajabiCount: number;
   kajabiGap: number;
   kajabiCheckError: string | null;
@@ -48,7 +52,13 @@ export function summarizeLeadPaths(rows: Array<Record<string, unknown>>): LeadPa
 export function buildHourlyLeadSummary(input: HourlyLeadSummaryInput) {
   const isQuiet = input.leadsInWindow === 0;
   const hasTagGap = input.kajabiGap > 10;
-  const title = isQuiet
+  const hasNewKoPaidOrder = input.koPaidOrdersInWindow > 0;
+  const koLeadToPaidRate = input.todayByPath.koKlaviyo > 0
+    ? Math.round((input.koPaidOrdersToday / input.todayByPath.koKlaviyo) * 10_000) / 100
+    : null;
+  const title = hasNewKoPaidOrder
+    ? `✓ KO/Klaviyo $67 sale alert — ${input.koPaidOrdersInWindow} new paid order${input.koPaidOrdersInWindow === 1 ? "" : "s"}`
+    : isQuiet
     ? "📊 Hourly Opt-In Summary — 0 new opt-ins"
     : `📊 Hourly Opt-In Summary — ${input.leadsInWindow} new opt-in${input.leadsInWindow === 1 ? "" : "s"}`;
 
@@ -62,6 +72,7 @@ export function buildHourlyLeadSummary(input: HourlyLeadSummaryInput) {
     `Today's recorded total: ${input.todayTotal}.`,
     `Today by path — KO/Klaviyo: ${input.todayByPath.koKlaviyo}; Kajabi: ${input.todayByPath.kajabi}; legacy/unassigned: ${input.todayByPath.unassigned}.`,
     `All-time recorded paths — KO/Klaviyo: ${input.totalByPath.koKlaviyo}; Kajabi: ${input.totalByPath.kajabi}; legacy/unassigned: ${input.totalByPath.unassigned}.`,
+    `KO/Klaviyo $67 conversion monitor — checkout starts: ${input.koCheckoutStartsInWindow} in the last hour / ${input.koCheckoutStartsToday} today; paid Shopify orders from this checkout path: ${input.koPaidOrdersInWindow} in the last hour / ${input.koPaidOrdersToday} today; lead → paid today: ${koLeadToPaidRate === null ? "not available yet" : `${koLeadToPaidRate.toFixed(2)}%`}.`,
     kajabiStatus,
     isQuiet
       ? "No recorded opt-ins in this hour. This is an observation, not a customer-facing funnel change."
@@ -69,7 +80,7 @@ export function buildHourlyLeadSummary(input: HourlyLeadSummaryInput) {
     `Checked at ${input.checkedAtCT} CT.`,
   ].join("\n");
 
-  return { title, content, isQuiet, hasTagGap };
+  return { title, content, isQuiet, hasTagGap, hasNewKoPaidOrder, koLeadToPaidRate };
 }
 
 function firstResultRow(rows: unknown): Record<string, unknown> {
@@ -112,6 +123,34 @@ export async function leadWatchdogHandler(req: Request, res: Response) {
     const todayByPath = summarizeLeadPaths(resultRows(todayPathRows));
     const todayTotal = todayByPath.kajabi + todayByPath.koKlaviyo + todayByPath.unassigned;
 
+    const koCheckoutRows = await db.execute(
+      sql`SELECT
+        SUM(CASE WHEN clicked_at >= ${hourAgo} THEN 1 ELSE 0 END) AS hourly_count,
+        COUNT(*) AS today_count
+      FROM interconnected_email_checkout_touches
+      WHERE funnel_path = 'ko_klaviyo'
+        AND message_key = 'ty_b_klaviyo_v1_67_checkout'
+        AND clicked_at >= ${midnightCT.getTime()}`,
+    ) as unknown;
+    const koCheckoutCounts = firstResultRow(koCheckoutRows);
+    const koCheckoutStartsInWindow = Number(koCheckoutCounts.hourly_count ?? 0);
+    const koCheckoutStartsToday = Number(koCheckoutCounts.today_count ?? 0);
+
+    const koPaidOrderRows = await db.execute(
+      sql`SELECT
+        COUNT(DISTINCT CASE WHEN sales.order_created_at >= ${hourAgo} THEN sales.shopify_order_id END) AS hourly_count,
+        COUNT(DISTINCT sales.shopify_order_id) AS today_count
+      FROM attributed_sales AS sales
+      INNER JOIN interconnected_email_checkout_touches AS touches
+        ON touches.click_token = sales.click_token
+      WHERE touches.funnel_path = 'ko_klaviyo'
+        AND touches.message_key = 'ty_b_klaviyo_v1_67_checkout'
+        AND sales.order_created_at >= ${midnightCT.getTime()}`,
+    ) as unknown;
+    const koPaidOrderCounts = firstResultRow(koPaidOrderRows);
+    const koPaidOrdersInWindow = Number(koPaidOrderCounts.hourly_count ?? 0);
+    const koPaidOrdersToday = Number(koPaidOrderCounts.today_count ?? 0);
+
     const totalRows = await db.execute(sql`SELECT COUNT(*) as cnt FROM interconnected_leads`) as unknown;
     const dbTotal = Number(firstResultRow(totalRows).cnt ?? 0);
     const totalPathRows = await db.execute(
@@ -136,6 +175,10 @@ export async function leadWatchdogHandler(req: Request, res: Response) {
       hourlyByPath,
       todayByPath,
       totalByPath,
+      koCheckoutStartsInWindow,
+      koCheckoutStartsToday,
+      koPaidOrdersInWindow,
+      koPaidOrdersToday,
       kajabiCount,
       kajabiGap,
       kajabiCheckError,
@@ -153,11 +196,17 @@ export async function leadWatchdogHandler(req: Request, res: Response) {
       hourlyByPath,
       todayByPath,
       totalByPath,
+      koCheckoutStartsInWindow,
+      koCheckoutStartsToday,
+      koPaidOrdersInWindow,
+      koPaidOrdersToday,
       kajabiCount,
       kajabiGap,
       kajabiCheckError,
       isQuiet: summary.isQuiet,
       hasTagGap: summary.hasTagGap,
+      hasNewKoPaidOrder: summary.hasNewKoPaidOrder,
+      koLeadToPaidRate: summary.koLeadToPaidRate,
     });
   } catch (error: any) {
     console.error("[leadWatchdog] Error:", error);

@@ -12,7 +12,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
-import { adClicks, attributedSales, interconnectedEmailCheckoutTouches } from "../drizzle/schema";
+import { adClicks, attributedSales, interconnectedEmailCheckoutTouches, leadPurchaseAttributions } from "../drizzle/schema";
 import { eq, desc, gte, sql, and, isNotNull } from "drizzle-orm";
 import { ENV } from "./_core/env";
 import { isAuthorizedShopifyWebhook } from "./shopifyWebhookAuth";
@@ -21,7 +21,11 @@ import { buildTrackedCheckoutDestination } from "./emailCheckoutTracking";
 import { isIsolatedEmailAttribution } from "./interconnectedEmailAttributionHygiene";
 import { recordOrobiomePaidPurchase } from "./orobiomeFunnelTracking";
 import { buildShopifyCartAttributionHandoff } from "./shopifyCartAttributionHandoff";
-import { extractShopifyClickToken } from "./shopifyOrderAttribution";
+import {
+  calculateShopifyOrderRevenueIncrease,
+  extractShopifyClickToken,
+  snapshotShopifyOrderRevenue,
+} from "./shopifyOrderAttribution";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -703,6 +707,103 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
     return res.json({ status: "ok", orderId: shopifyOrderId, attributionType, capiSent });
   } catch (err) {
     console.error("[shopify/order-paid] Error:", err);
+    return res.status(500).json({ error: "Internal error" });
+  }
+}
+
+/**
+ * Zipify and comparable post-purchase apps amend the original paid Shopify
+ * order after the buyer accepts an offer. This route updates the already
+ * attributed sale without firing a second Purchase CAPI event or creating a
+ * second buyer. A decrease is intentionally ignored: refunds and adjustments
+ * remain a separately reconciled source of truth.
+ */
+export async function handleShopifyOrderUpdated(req: any, res: any) {
+  try {
+    const hmacHeader = req.headers["x-shopify-hmac-sha256"] as string | undefined;
+    const ingestKey = typeof req.query.ingest_key === "string" ? req.query.ingest_key : undefined;
+    const rawBody = getShopifyWebhookRawBody(req.body);
+    if (!isAuthorizedShopifyWebhook({
+      hmacHeader,
+      rawBody,
+      shopifyAppSecret: process.env.SHOPIFY_WEBHOOK_SECRET,
+      ingestKey,
+      ingestSecret: ENV.ingestSecret,
+    })) {
+      console.warn("[shopify/order-updated] Unauthorized webhook — rejecting");
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    let order: Record<string, unknown>;
+    try {
+      ({ order } = parseShopifyWebhookPayload(req.body));
+    } catch {
+      return res.status(400).json({ error: "Invalid Shopify webhook payload" });
+    }
+
+    const shopifyOrder = order as any;
+    if (String(shopifyOrder.financial_status ?? "").toLowerCase() !== "paid") {
+      return res.json({ status: "ignored_non_paid_order" });
+    }
+
+    const shopifyOrderId = String(shopifyOrder.id ?? "").trim();
+    if (!shopifyOrderId) return res.status(400).json({ error: "Missing Shopify order id" });
+
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: "DB unavailable" });
+
+    const [existingSale] = await db.select({
+      id: attributedSales.id,
+      orderTotal: attributedSales.orderTotal,
+    }).from(attributedSales)
+      .where(eq(attributedSales.shopifyOrderId, shopifyOrderId))
+      .limit(1);
+
+    if (!existingSale) {
+      return res.json({ status: "ignored_untracked_order", orderId: shopifyOrderId });
+    }
+
+    const snapshot = snapshotShopifyOrderRevenue(shopifyOrder);
+    const change = calculateShopifyOrderRevenueIncrease({
+      priorTotalCents: existingSale.orderTotal,
+      updatedTotalCents: snapshot.totalCents,
+    });
+    if (!change.hasRevenueIncrease) {
+      return res.json({
+        status: "ignored_no_revenue_increase",
+        orderId: shopifyOrderId,
+        priorTotalCents: existingSale.orderTotal,
+        updatedTotalCents: snapshot.totalCents,
+      });
+    }
+
+    await db.update(attributedSales).set({
+      orderTotal: snapshot.totalCents,
+      lineItems: snapshot.lineItems,
+    }).where(eq(attributedSales.id, existingSale.id));
+
+    // Preserve one cohort credit per Shopify order while raising it to the
+    // final amended order value. This prevents a $67 buyer plus $199 acceptance
+    // from being counted as two customers in cohort conversion reporting.
+    await db.update(leadPurchaseAttributions).set({
+      purchaseAmountCents: snapshot.totalCents,
+    }).where(and(
+      eq(leadPurchaseAttributions.purchasePlatform, "shopify"),
+      eq(leadPurchaseAttributions.externalPurchaseId, shopifyOrderId),
+    ));
+
+    console.log(
+      `[shopify/order-updated] Order ${shopifyOrderId} revenue updated by ${change.incrementalRevenueCents} cents without a duplicate purchase event`,
+    );
+    return res.json({
+      status: "updated_post_purchase_revenue",
+      orderId: shopifyOrderId,
+      priorTotalCents: existingSale.orderTotal,
+      updatedTotalCents: snapshot.totalCents,
+      incrementalRevenueCents: change.incrementalRevenueCents,
+    });
+  } catch (error) {
+    console.error("[shopify/order-updated] Error:", error);
     return res.status(500).json({ error: "Internal error" });
   }
 }

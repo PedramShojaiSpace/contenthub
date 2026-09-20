@@ -112,3 +112,9 @@ The draft was re-opened and visually verified after configuration. It is still m
 The $199 product has been added in the correct **Post-Purchase Upsell Offer #1** position. Zipify displays it as a single-product offer with `Active` and `100%` within the draft configuration. This does **not** make it live: the overall funnel status remains Unpublished. The following intentionally remain empty: Post-Purchase Upsell #2, Downsell, Product Page Upsell, Pre-Purchase Upsell Popup, and Thank You / Order Status Page Upsell.
 
 The remaining draft-only work is to customize the Zipify offer page copy and visuals, confirm no unintended discount is applied, use a 100% display allocation inside this one-offer draft, give the funnel a clear internal name, and retain the overall funnel as **Unpublished** pending owner review. No customer can see or accept the offer until publication.
+
+## Publication check — 2026-09-20, 14:56 Central
+
+The owner published the configured Zipify funnel. Direct Shopify Admin inspection now shows the internal funnel name beginning **“Interconnected $67 → $199…”**, status **Published**, and an available **Unpublish** control. The trigger still shows a Product condition with one selected product. The Product Page Upsell and Pre-Purchase Upsell Popup sections are visibly empty. The previously verified $199 offer is retained in the dedicated Post-Purchase Upsell #1 placement.
+
+This confirms that eligible future orders matching the selected trigger can be shown Zipify’s post-purchase one-click screen. It does not establish the final paid-order path or measurement accuracy. No test order was created during this verification. The next observation target is the first genuine qualifying $67 Interconnected order, after which the native offer view, acceptance/decline outcome, and modified-order attribution must be reconciled.

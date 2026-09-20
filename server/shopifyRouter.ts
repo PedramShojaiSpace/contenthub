@@ -88,16 +88,27 @@ export const shopifyRouter = router({
     }),
 
   getWebhookConfig: protectedProcedure.query(() => ({
-    webhookUrl: "https://content.theurbanmonk.com/api/shopify/order-paid",
-    topic: "orders/paid",
+    webhooks: [
+      {
+        webhookUrl: "https://content.theurbanmonk.com/api/shopify/order-paid",
+        topic: "orders/paid",
+        eventLabel: "Order payment",
+        role: "Records the original paid Shopify order.",
+      },
+      {
+        webhookUrl: "https://content.theurbanmonk.com/api/shopify/order-updated",
+        topic: "orders/updated",
+        eventLabel: "Order update",
+        role: "Raises an already-attributed order to its final value after a post-purchase one-click acceptance.",
+      },
+    ],
     format: "JSON",
-    status: "CONFIGURED",
+    status: "ORDER_PAYMENT_CONFIGURED; ORDER_UPDATE_PENDING",
     instructions: [
       "Shopify Admin → Settings → Notifications → Webhooks",
-      "Create webhook: Event = Order payment, Format = JSON",
-      "URL: https://content.theurbanmonk.com/api/shopify/order-paid",
-      "API version: 2024-10",
-      "Copy signing secret → add as SHOPIFY_WEBHOOK_SECRET in project secrets",
+      "Keep the existing Order payment webhook pointed to /api/shopify/order-paid",
+      "Add Order update, JSON, to https://content.theurbanmonk.com/api/shopify/order-updated",
+      "Use Shopify's current stable webhook API version and Send test after the endpoint is deployed",
     ],
   })),
 

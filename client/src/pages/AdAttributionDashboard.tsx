@@ -13,7 +13,6 @@ import {
   TrendingUp,
   RefreshCw,
   CheckCircle2,
-  AlertCircle,
   HelpCircle,
   Zap,
   BarChart3,
@@ -34,9 +33,11 @@ function AttributionBadge({ type }: { type: string }) {
   return <Badge variant="outline" className="text-xs text-muted-foreground">Unattributed</Badge>;
 }
 
-function CapiBadge({ sent }: { sent: boolean }) {
-  if (sent) return <span className="flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 className="w-3 h-3" /> CAPI Sent</span>;
-  return <span className="flex items-center gap-1 text-xs text-muted-foreground"><AlertCircle className="w-3 h-3" /> No CAPI</span>;
+function MetaPurchaseBadge({ legacyCapiSent }: { legacyCapiSent: boolean }) {
+  if (legacyCapiSent) {
+    return <span className="flex items-center gap-1 text-xs text-amber-600"><CheckCircle2 className="w-3 h-3" /> Legacy CAPI record</span>;
+  }
+  return <span className="flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 className="w-3 h-3" /> Shopify native</span>;
 }
 
 export default function AdAttributionDashboard() {
@@ -47,18 +48,6 @@ export default function AdAttributionDashboard() {
   const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = trpc.attribution.getSummary.useQuery({ days });
   const { data: sales, isLoading: salesLoading, refetch: refetchSales } = trpc.attribution.listSales.useQuery({ days, attributionType: filterType, limit: 100 });
   const { data: evRoas, isLoading: evLoading } = trpc.attribution.getEvRoas.useQuery({ days, academyUpgradeRate: upgradeRate, academyLtv: 239900 });
-
-  const retryCapi = trpc.attribution.retryCapi.useMutation({
-    onSuccess: (result) => {
-      if (result.success) {
-        toast.success("CAPI Purchase event sent to Meta");
-        refetchSales();
-      } else {
-        toast.error("CAPI send failed — check META_AD_ACCESS_TOKEN");
-      }
-    },
-    onError: () => toast.error("Failed to retry CAPI"),
-  });
 
   const handleRefresh = () => {
     refetchSummary();
@@ -262,7 +251,7 @@ export default function AdAttributionDashboard() {
                       <th className="text-left pb-2 pr-4">Attribution</th>
                       <th className="text-left pb-2 pr-4">Campaign</th>
                       <th className="text-left pb-2 pr-4">Advertorial</th>
-                      <th className="text-left pb-2 pr-4">CAPI</th>
+                      <th className="text-left pb-2 pr-4">Meta Purchase source</th>
                       <th className="text-left pb-2">Date</th>
                     </tr>
                   </thead>
@@ -294,20 +283,7 @@ export default function AdAttributionDashboard() {
                           {sale.advertorialSlug || "—"}
                         </td>
                         <td className="py-2 pr-4">
-                          <div className="flex items-center gap-2">
-                            <CapiBadge sent={sale.capiEventSent} />
-                            {!sale.capiEventSent && sale.attributionType !== "unattributed" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs"
-                                onClick={() => retryCapi.mutate({ saleId: sale.id })}
-                                disabled={retryCapi.isPending}
-                              >
-                                Retry
-                              </Button>
-                            )}
-                          </div>
+                          <MetaPurchaseBadge legacyCapiSent={sale.capiEventSent} />
                         </td>
                         <td className="py-2 text-xs text-muted-foreground">{formatDate(sale.receivedAt)}</td>
                       </tr>

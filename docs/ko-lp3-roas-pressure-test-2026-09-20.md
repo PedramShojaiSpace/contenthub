@@ -1,7 +1,7 @@
 # KO LP-3 ROAS Pressure Test — 20 September 2026
 
 **Author:** Manus AI  
-**Status:** Live read-only reconciliation in progress
+**Status:** Approved Purchase deduplication implementation validated locally; deployment verification pending
 
 ## Direct conclusion
 
@@ -44,9 +44,13 @@ The observed result—one $67 order, one Content Hub CAPI Purchase, Shopify Face
 
 The lead mismatch is separate from the purchase issue. The launch ledger contains 32 accepted KO/Klaviyo records, all Klaviyo-synced and CAPI-sent, while Meta’s later campaign read shows 44 Lead actions. The Lead implementation passes the same event ID from browser to Content Hub CAPI, so it is designed for deduplication. The gap could reflect browser-only submissions that did not persist to the ledger, repeated submissions, or reporting latency. It should be reconciled next, but it does not change the paid-order or booked-ROAS conclusion.
 
-## Recommended correction — approval required
+## Approved correction — implemented for all Shopify paid orders
 
-Do **not** switch off the Shopify Facebook & Instagram pixel or make an ad change. The low-risk correction is to prevent the Content Hub from sending an additional Purchase CAPI event for Shopify orders that are already handled by Shopify’s Facebook & Instagram Web/Server pixel. Shopify remains the paid-order and revenue authority, while the Content Hub retains its order, checkout-touch, and cohort records for first-party reporting. This is a tracking-behavior change and is deliberately **not applied** in this investigation. Before implementation, the event-source contract should be documented across all Shopify funnels so the correction does not silently affect another campaign.
+The owner approved Shopify-native Purchase deduplication for all Shopify paid orders. The Content Hub now preserves every paid-order webhook, revenue record, checkout touch, cohort credit, Zipify order update, and Klaviyo post-purchase action, but it does **not** issue an additional Meta Purchase CAPI event. Shopify Facebook & Instagram is explicitly recorded as the single Meta Purchase authority.
+
+The former manual “Retry CAPI” path is disabled server-side and removed from the attribution dashboard. New records display **Shopify native** as their Meta Purchase source. Historical records retain their legacy CAPI audit status for an honest history; they are not rewritten and no historical Meta events are deleted.
+
+Local verification passed **29 focused tests** and a bounded-memory production build. No test order was created. The remaining step is a passive production observation of the next genuine Shopify paid order: it should create one first-party revenue record without a Content Hub CAPI Purchase dispatch, while Shopify’s native Facebook & Instagram integration continues to own Meta Purchase reporting.
 
 ## Calculation
 
@@ -60,7 +64,7 @@ This is the current booked ROAS. Meta’s 1.14 is its reported $134 purchase val
 
 ## Current guardrails
 
-No ad, budget, pixel, product, checkout, email, SMS, funnel, order, or payment setting was changed for this investigation. The next task is a read-only reconciliation of the eight-to-twelve-event lead count gap, followed by an approval-gated Purchase deduplication change that preserves Shopify’s native Meta reporting.
+No ad, budget, pixel ID, product, checkout, email, SMS, funnel, order, or payment setting was changed. The approved code change affects only future Content Hub Purchase CAPI dispatch for Shopify paid-order webhooks. The next task is a passive reconciliation of the next genuine Shopify order and a separate read-only investigation of the Meta Lead (40/44) versus first-party KO lead (32) gap.
 
 ## References
 

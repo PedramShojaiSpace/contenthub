@@ -4,7 +4,7 @@
  * Architecture:
  * 1. Bridge page JS captures UTM params + fbclid → POST /api/attribution/click → stores in ad_clicks
  * 2. Shopify sends orders/paid webhook → POST /api/shopify/order-paid → matches click token → stores in attributed_sales
- * 3. On match, fires Meta Conversions API (CAPI) server-side Purchase event for dedup
+ * 3. Shopify's Facebook & Instagram integration is the sole Meta Purchase authority
  * 4. tRPC procedures expose attribution data to the dashboard
  */
 
@@ -37,69 +37,18 @@ function hashIp(ip: string): string {
   return crypto.createHash("sha256").update(ip + "urban-monk-salt").digest("hex").slice(0, 32);
 }
 
-/** Send a Purchase event to Meta Conversions API */
-async function sendCapiPurchase(params: {
-  eventId: string;
-  orderTotal: number; // in cents
-  currency: string;
-  customerEmail?: string | null;
-  fbclid?: string | null;
-  advertorialSlug?: string | null;
-  utmCampaign?: string | null;
-}): Promise<boolean> {
-  const pixelId = "1498608757116877";
-  const accessToken = process.env.META_AD_ACCESS_TOKEN;
-  if (!accessToken) {
-    console.warn("[CAPI] META_AD_ACCESS_TOKEN not set — skipping CAPI event");
-    return false;
-  }
+/**
+ * Shopify's Facebook & Instagram customer-event integration is the single Meta
+ * Purchase authority for all Shopify orders. It emits the native Web + Server
+ * pair and owns their event-ID contract. The Content Hub retains Shopify order
+ * attribution for financial reporting but must never send a second Purchase
+ * CAPI event, because a generated server-only ID cannot deduplicate with
+ * Shopify's browser event.
+ */
+export const SHOPIFY_META_PURCHASE_AUTHORITY = "shopify_facebook_instagram";
 
-  const userData: Record<string, string> = {};
-  if (params.customerEmail) {
-    userData.em = crypto.createHash("sha256").update(params.customerEmail.toLowerCase().trim()).digest("hex");
-  }
-  if (params.fbclid) {
-    userData.fbc = `fb.1.${Date.now()}.${params.fbclid}`;
-  }
-
-  const eventPayload = {
-    data: [
-      {
-        event_name: "Purchase",
-        event_time: Math.floor(Date.now() / 1000),
-        event_id: params.eventId,
-        action_source: "website",
-        user_data: userData,
-        custom_data: {
-          value: (params.orderTotal / 100).toFixed(2),
-          currency: params.currency || "USD",
-          content_category: params.advertorialSlug || "supplement",
-          campaign: params.utmCampaign || "",
-        },
-      },
-    ],
-  };
-
-  try {
-    const resp = await fetch(
-      `https://graph.facebook.com/v19.0/${pixelId}/events?access_token=${accessToken}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(eventPayload),
-      }
-    );
-    const body = await resp.json() as any;
-    if (!resp.ok) {
-      console.error("[CAPI] Error response:", body);
-      return false;
-    }
-    console.log(`[CAPI] Purchase event sent — event_id: ${params.eventId}, events_received: ${body.events_received}`);
-    return true;
-  } catch (err) {
-    console.error("[CAPI] fetch failed:", err);
-    return false;
-  }
+export function shouldSendContentHubShopifyPurchaseCapi(): false {
+  return false;
 }
 
 // ── tRPC Attribution Router ───────────────────────────────────────────────────
@@ -327,31 +276,12 @@ export const attributionRouter = router({
 
   retryCapi: protectedProcedure
     .input(z.object({ saleId: z.number() }))
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("DB unavailable");
-
-      const [sale] = await db.select().from(attributedSales).where(eq(attributedSales.id, input.saleId)).limit(1);
-      if (!sale) throw new Error("Sale not found");
-
-      const eventId = `retry-${sale.shopifyOrderId}-${Date.now()}`;
-      const sent = await sendCapiPurchase({
-        eventId,
-        orderTotal: sale.orderTotal,
-        currency: sale.currency,
-        customerEmail: sale.customerEmail,
-        fbclid: sale.fbclid,
-        advertorialSlug: sale.advertorialSlug,
-        utmCampaign: sale.utmCampaign,
-      });
-
-      if (sent) {
-        await db.update(attributedSales)
-          .set({ capiEventSent: true, capiEventId: eventId, capiSentAt: Date.now() })
-          .where(eq(attributedSales.id, input.saleId));
-      }
-
-      return { success: sent };
+    .mutation(async () => {
+      return {
+        success: false,
+        disabled: true,
+        reason: "Shopify Facebook & Instagram is the sole Meta Purchase authority for Shopify orders.",
+      };
     }),
 });
 
@@ -574,7 +504,6 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
       }
     }
 
-    const eventId = `purchase-${shopifyOrderId}-${Date.now()}`;
     await db.insert(attributedSales).values({
       shopifyOrderId,
       shopifyOrderNumber,
@@ -598,21 +527,11 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
       receivedAt: Date.now(),
     });
 
-    // ── Fire Meta CAPI Purchase for ALL orders (attributed + unattributed) ───────────
-    const capiSent = await sendCapiPurchase({
-      eventId,
-      orderTotal,
-      currency,
-      customerEmail,
-      fbclid: matchedClick?.fbclid ?? null,
-      advertorialSlug: matchedClick?.advertorialSlug ?? null,
-      utmCampaign: matchedClick?.utmCampaign ?? null,
-    });
-    if (capiSent) {
-      await db.update(attributedSales)
-        .set({ capiEventSent: true, capiEventId: eventId, capiSentAt: Date.now() })
-        .where(eq(attributedSales.shopifyOrderId, shopifyOrderId));
-    }
+    // ── Meta Purchase is emitted only by Shopify's Facebook & Instagram integration ──
+    // Do not add a Content Hub CAPI Purchase here. Shopify's native Web + Server
+    // implementation owns Purchase deduplication and is the single source for
+    // all Shopify orders. This endpoint remains the order/revenue authority.
+    const capiSent = shouldSendContentHubShopifyPurchaseCapi();
 
     // Record the approved Orobiome funnel purchase only when the cart permalink
     // supplied its anonymous visit/variant attributes. This does not alter the
@@ -703,8 +622,16 @@ export async function handleShopifyOrderPaid(req: any, res: any) {
       console.warn("[shopify/order-paid] Klaviyo tagging failed:", klaviyoErr?.message);
     }
 
-    console.log(`[shopify/order-paid] Order ${shopifyOrderNumber} — attribution: ${attributionType} — CAPI: ${capiSent}`);
-    return res.json({ status: "ok", orderId: shopifyOrderId, attributionType, capiSent });
+    console.log(
+      `[shopify/order-paid] Order ${shopifyOrderNumber} — attribution: ${attributionType} — Meta Purchase authority: ${SHOPIFY_META_PURCHASE_AUTHORITY}`,
+    );
+    return res.json({
+      status: "ok",
+      orderId: shopifyOrderId,
+      attributionType,
+      capiSent,
+      metaPurchaseAuthority: SHOPIFY_META_PURCHASE_AUTHORITY,
+    });
   } catch (err) {
     console.error("[shopify/order-paid] Error:", err);
     return res.status(500).json({ error: "Internal error" });

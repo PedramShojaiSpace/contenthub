@@ -14,11 +14,11 @@ If any screen looks substantially different from the instructions, **stop and se
 
 Open these three things in separate browser tabs. Keep this instruction page open so you can return to it.
 
-1. [Download this image to your computer first](/home/ubuntu/Downloads/urban-monk-199-ocus-video-thumbnail.jpg). It is the picture that will sit on the left of the purchase panel.
+1. [Download the recommended product-hero image to your computer first](/home/ubuntu/Downloads/urban-monk-199-hero-precision-wellness.jpg). It is the premium green test-kit image that will sit on the left of the purchase panel.
 2. [Open the ready-made sales section](/home/ubuntu/lights-on-optin/docs/shopify-gut-permeability-199-custom-liquid-v2.html). You will copy everything in that file later.
 3. Open your Shopify Admin in another tab.
 
-**Important:** Do not upload the video file. Upload only the downloaded image in Step 4 below. The actual Wistia video is already included in the copy-ready sales section.
+**Important:** Do not upload the video file. Upload only the downloaded product-hero image in Step 4 below. The actual Wistia video is already included in the copy-ready sales section.
 
 ---
 
@@ -47,7 +47,7 @@ Do **not** add “$199 Member Offer” to the title. Shopify already shows the p
 
 1. Scroll down until you see the section called **Media**.
 2. Click **Add** or **Upload new**.
-3. Choose the image you downloaded before you started: `urban-monk-199-ocus-video-thumbnail.jpg`.
+3. Choose the image you downloaded before you started: `urban-monk-199-hero-precision-wellness.jpg`.
 4. Wait for the image to finish uploading. You should see it appear in the Media area.
 5. Make sure that it is the **first image**. If more than one image appears, drag the new image to the first position.
 6. Click the black **Save** button in the upper-right corner.

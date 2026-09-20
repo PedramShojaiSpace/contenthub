@@ -46,6 +46,16 @@ The receiver was then checked at the public custom-domain URL. An unsigned paylo
 
 > The existing **Order payment** webhook remains unchanged. It records the original paid order; the new **Order update** webhook raises the one existing tracked order to its final total only after an accepted post-purchase offer.
 
+## Live re-verification — 2026-09-20, 15:46 Central
+
+The authenticated Shopify administrator loaded **Settings → Notifications**, where the **Webhooks** section is present. The subscription detail is being inspected read-only from that section. No notification, webhook, endpoint, or order setting was changed.
+
+The direct Shopify Webhooks settings route is available at `Settings → Notifications → Webhooks` and opened successfully under the authenticated Urban Monk Productions store. The settings content was still loading at the capture moment; the next read will inspect the active subscriptions only.
+
+The visible Shopify settings list confirms that the existing **Order payment** JSON webhook remains directed to the Content Hub’s `order-paid` endpoint. A separate read-only Shopify Admin GraphQL subscription audit confirms an active **`ORDERS_UPDATED`** subscription whose HTTP destination is the Content Hub’s `order-updated` endpoint. This explains why the manually managed payment webhook and the app-managed update subscription do not appear as the same single list entry in the visible settings screen. No subscription was added, removed, or modified.
+
+Together, the currently live components are: the original $67 payment event for first-party order creation and the Order update event for the same order’s accepted $199 post-purchase amendment. The remaining unknown is the buyer-facing eligibility/acceptance path on the first genuine qualifying order; no test purchase was created.
+
 ## First genuine-order reconciliation
 
 No test order was created. On the first genuine $67 Interconnected purchase that is eligible for the Zipify offer, verify these five points in order:

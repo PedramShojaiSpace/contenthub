@@ -60,3 +60,11 @@ The next necessary action is not a content decision. It is an app-permission dec
 > Approve the **One Click Upsell** app’s Shopify reauthorization request for **View and edit store data** and **Edit Online Store Theme**, then allow the existing Zipify funnel configuration to be inspected in disabled/draft mode.
 
 After that approval, the next step is a read-only review of existing Zipify funnels and capabilities, followed by a draft-only $67 → $199 rule and an owner preview before any activation.
+
+## Above-the-fold product-page correction — 2026-09-20
+
+The public product template was a default Shopify product layout with no product media. Its product title carried the price and member-offer label, which forced a three-line headline and left a large blank media region above the purchase controls. The product title has therefore been shortened to **“Gut Permeability Test + 1-Hour Health Coach Call.”** The Wistia thumbnail for the approved `vvvuj0gexg` video was downloaded as the proposed hero media. The remaining routine product-page update is to upload that approved video thumbnail as the first Shopify product image, save, then recheck the public desktop and mobile layouts. No Zipify permission or funnel setting is involved in this product-media update.
+
+## Product-media update blocker
+
+The intended headline correction is **“Gut Permeability Test + 1-Hour Health Coach Call”** and the prepared hero medium is the Wistia thumbnail at `https://embed-ssl.wistia.com/deliveries/837f840f08bda03b1d4146341cf68b0eaa36f8e6.jpg?image_crop_resized=960x540`. The Shopify Admin product interface can display the unsaved title draft, but its native media-upload control is not exposing an accessible file input to the automation layer. The Shopify connector’s direct product-media update also failed before writing because its active-account state is not reaching the MCP server, despite the project configuration specifying the authorized Urban Monk Productions account. Per connector safety policy, the update was not retried through the browser after that connector failure. The unsaved title change was discarded; the live product remains unchanged except for the already-saved HTML description and Wistia embed.

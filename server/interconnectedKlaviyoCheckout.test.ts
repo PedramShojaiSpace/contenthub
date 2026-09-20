@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   INTERCONNECTED_199_CART_PERMALINK,
   INTERCONNECTED_KLAVIYO_199_CONTENT,
+  INTERCONNECTED_KLAVIYO_THANK_YOU_FUNNEL_PATH,
+  INTERCONNECTED_KLAVIYO_THANK_YOU_MESSAGE_KEY,
   INTERCONNECTED_KLAVIYO_THANK_YOU_PRODUCT_URL,
   INTERCONNECTED_KLAVIYO_TREATMENT_CONTENT,
   buildInterconnectedKlaviyo199CheckoutUrl,
@@ -17,6 +19,8 @@ describe("Klaviyo Thank You B treatment checkout handoff", () => {
     expect(url.searchParams.get("utm_medium")).toBe("email");
     expect(url.searchParams.get("utm_campaign")).toBe("interconnected_14day");
     expect(url.searchParams.get("utm_content")).toBe(INTERCONNECTED_KLAVIYO_TREATMENT_CONTENT);
+    expect(url.searchParams.get("funnel_path")).toBe(INTERCONNECTED_KLAVIYO_THANK_YOU_FUNNEL_PATH);
+    expect(url.searchParams.get("email_key")).toBe(INTERCONNECTED_KLAVIYO_THANK_YOU_MESSAGE_KEY);
     expect(url.searchParams.get("fbclid")).toBe("meta-click");
   });
 
@@ -35,6 +39,8 @@ describe("Klaviyo Thank You B treatment checkout handoff", () => {
     expect(url.searchParams.get("utm_medium")).toBe("sms");
     expect(url.searchParams.get("utm_campaign")).toBe("interconnected_14day");
     expect(url.searchParams.get("utm_content")).toBe(INTERCONNECTED_KLAVIYO_199_CONTENT);
+    expect(url.searchParams.get("funnel_path")).toBe(INTERCONNECTED_KLAVIYO_THANK_YOU_FUNNEL_PATH);
+    expect(url.searchParams.get("email_key")).toBe(INTERCONNECTED_KLAVIYO_199_CONTENT);
     expect(url.searchParams.get("fbclid")).toBe("post-purchase-click");
   });
 });

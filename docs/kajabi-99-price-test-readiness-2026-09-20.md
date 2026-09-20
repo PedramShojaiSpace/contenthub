@@ -54,3 +54,7 @@ After Railway reported a new deployment, the isolated browser still rendered som
 ## Railway source recovery
 
 Railway’s source configuration was confirmed as `PedramShojaiSpace/contenthub` on `main`. Automatic branch deployment was re-enabled. The branch-picker refresh still reports a Railway-side load error, but the source repository itself is current at commit `636ca912`. A subsequent harmless documentation checkpoint will provide a fresh GitHub push to exercise the restored automatic deployment path; it will contain the already committed $99 staging code and no customer-facing offer, allocation, ad, or budget change.
+
+## Final public verification
+
+After automatic branch deployment was restored and the fresh GitHub checkpoint was consumed, the public route was re-opened in an isolated browser. It rendered the active $99 offer, a fresh treatment-specific 15-minute countdown, and all visible purchase CTAs without any “Checkout mapping pending” text. A direct deployed-bundle inspection confirmed the public $99 route chunk contains both the exact Kajabi checkout token `ofRhsQvo` and the isolated `interconnected_p99_offer_end_time_v1` storage key; it contains no legacy pending-mapping marker. No purchase CTA was clicked, checkout submitted, visitor traffic allocated, or campaign/ad/budget changed.

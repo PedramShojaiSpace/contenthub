@@ -14,6 +14,7 @@ describe("intentional public HTTP surface", () => {
 
   it("keeps representative inbound webhook routes behind their required integrity controls", () => {
     expect(serverEntry).toContain('app.post("/api/shopify/order-paid", express.raw({ type: "application/json" })');
+    expect(serverEntry).toContain('app.post("/api/shopify/order-updated", express.raw({ type: "application/json" })');
     expect(serverEntry).toContain('app.post("/api/ingest/research-report", handleIngestResearchReport)');
     expect(serverEntry).toContain('if (secret !== process.env.INGEST_SECRET)');
     expect(serverEntry).toContain('app.post("/api/kajabi/purchase", async (req, res) =>');

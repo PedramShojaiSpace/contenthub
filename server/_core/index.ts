@@ -114,6 +114,12 @@ async function startServer() {
     const { handleShopifyOrderPaid } = await import("../attributionRouter");
     return handleShopifyOrderPaid(req, res);
   });
+  // A post-purchase one-click acceptance amends the original paid order. Keep
+  // this raw-body route before JSON parsing so Shopify's HMAC remains valid.
+  app.post("/api/shopify/order-updated", express.raw({ type: "application/json" }), async (req, res) => {
+    const { handleShopifyOrderUpdated } = await import("../attributionRouter");
+    return handleShopifyOrderUpdated(req, res);
+  });
   app.post("/api/shopify/checkout-created", express.raw({ type: "application/json" }), handleOrobiomeCheckoutStarted);
   app.use(express.json({
     limit: "50mb",

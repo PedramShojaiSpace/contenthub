@@ -1,7 +1,7 @@
 # KO LP-3 ROAS Pressure Test — 20 September 2026
 
 **Author:** Manus AI  
-**Status:** Approved Purchase deduplication implementation validated locally; deployment verification pending
+**Status:** Approved Purchase deduplication release committed to production branch; service health and webhook protection verified
 
 ## Direct conclusion
 
@@ -50,7 +50,7 @@ The owner approved Shopify-native Purchase deduplication for all Shopify paid or
 
 The former manual “Retry CAPI” path is disabled server-side and removed from the attribution dashboard. New records display **Shopify native** as their Meta Purchase source. Historical records retain their legacy CAPI audit status for an honest history; they are not rewritten and no historical Meta events are deleted.
 
-Local verification passed **29 focused tests** and a bounded-memory production build. No test order was created. The remaining step is a passive production observation of the next genuine Shopify paid order: it should create one first-party revenue record without a Content Hub CAPI Purchase dispatch, while Shopify’s native Facebook & Instagram integration continues to own Meta Purchase reporting.
+Local verification passed **29 focused tests** and a bounded-memory production build. Release checkpoint `52cb27f5` is the current `main`/`origin/main` revision. The public Content Hub returned HTTP 200 and an unsigned `orders/paid` probe returned the expected HTTP 401; no test order was created. The remaining step is a passive production observation of the next genuine Shopify paid order: it should create one first-party revenue record without a Content Hub CAPI Purchase dispatch, while Shopify’s native Facebook & Instagram integration continues to own Meta Purchase reporting.
 
 ## Calculation
 

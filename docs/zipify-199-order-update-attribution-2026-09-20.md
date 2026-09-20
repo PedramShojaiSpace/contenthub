@@ -1,6 +1,6 @@
 # Zipify $199 Post-Purchase Revenue Attribution Upgrade
 
-**Status:** Implementation complete; Shopify webhook subscription pending deployment verification and configuration.  
+**Status:** Receiver and Shopify webhook subscription are active; awaiting the first genuine qualifying order for end-to-end observation.
 **Date:** September 20, 2026  
 **Scope:** $67 Interconnected purchase → Zipify post-purchase $199 Gut Permeability Test + 1-Hour Health Coach Call offer.
 
@@ -29,20 +29,22 @@ When Shopify delivers a valid, HMAC-signed **Order update** payload for an alrea
 
 Focused regression tests cover the $67 → $266 scenario, prevention of negative incremental credit, signed-route placement before JSON parsing, and existing cohort attribution behavior. The focused suite passed **12/12**; the bounded-memory production build completed successfully.
 
-## Remaining Shopify configuration
+## Completed Shopify configuration
 
-After the deployed route is publicly verified, add exactly one Shopify webhook:
+One Shopify webhook subscription is now registered and active:
 
 | Shopify field | Required value |
 |---|---|
 | **Event** | **Order update** |
 | **Format** | **JSON** |
 | **URL** | `https://content.theurbanmonk.com/api/shopify/order-updated` |
-| **Webhook API version** | Current stable version shown by Shopify |
+| **Webhook API version** | `2026-07` |
 
 > Do **not** remove the existing **Order payment** webhook. The two events have different jobs: Order payment records the original paid order; Order update raises the existing tracked revenue if Zipify adds the accepted $199 one-click offer.
 
-Shopify documents the navigation as **Settings → Notifications → Webhooks → Create webhook**, then selecting the event, JSON format, URL, API version, and Save. Shopify also provides **Send test** from the webhook row for a non-purchase verification.[^shopify-webhooks]
+The receiver was then checked at the public custom-domain URL. An unsigned payload was correctly rejected with HTTP `401 Unauthorized`, which confirms the live route is deployed and enforcing the expected Shopify HMAC boundary. No test order or accepted offer was generated for that check.
+
+> The existing **Order payment** webhook remains unchanged. It records the original paid order; the new **Order update** webhook raises the one existing tracked order to its final total only after an accepted post-purchase offer.
 
 ## First genuine-order reconciliation
 

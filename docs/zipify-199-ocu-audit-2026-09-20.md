@@ -72,3 +72,43 @@ The intended headline correction is **“Gut Permeability Test + 1-Hour Health C
 ## Recommended no-code layout correction
 
 The correct layout is not a second description block above the standard purchase panel. It is a dedicated `ocus-199` product template that retains Shopify’s normal product-media-left / purchase-panel-right layout, with the supplied Wistia thumbnail as the product image. The existing rich content is then moved out of the product-description field and into one Custom Liquid section immediately below Product information. This puts the video, proof and details in one full-width, coherent section without affecting other products. A non-technical step-by-step guide and the paste-ready Custom Liquid source are retained in `docs/shopify-199-product-layout-instructions-2026-09-20.md` and `docs/shopify-gut-permeability-199-custom-liquid-v2.html`.
+
+## Authorized Zipify draft creation — 2026-09-20
+
+The owner explicitly approved Zipify's requested Shopify access update. The authorization completed and Zipify's **Upsell Funnels** workspace is now available. A new unpublished funnel was created from scratch:
+
+| Field | Current value |
+|---|---|
+| Draft funnel | `New Funnel 5` |
+| Status | **Unpublished** |
+| Current trigger | `Any product` — not acceptable and must be narrowed before activation |
+| Required trigger | $67 Interconnected product — `UM-OTO`, product `9087631753370`, variant `48959577653402` |
+| Required offer | $199 Gut Permeability Test + 1-Hour Health Coach Call — `FIT-22-OCUS-199`, product `9096395620506`, variant `48994340077722` |
+| Required placement | Zipify **post-purchase** offer only; do not configure the visible Product Page Upsell or Pre-Purchase Popup modules |
+| Publication | Not published; no buyer can see the draft |
+
+The embedded Zipify editor does not expose its inner controls to the connected browser automation. The owner has opened the editor in the real browser, so the remaining selection steps must be performed in that editor with exact guided values. No live rule, upsell, price, product, checkout, advertising, or traffic behavior has changed.
+
+## Verified Zipify behavior and setup references — 2026-09-20
+
+Current Zipify documentation confirms the intended architecture. A **post-purchase offer** sits between Shopify checkout and the thank-you page; on supported eligible checkouts, a customer accepts the offer in one click without re-entering payment or shipping details, and the accepted product is automatically edited into the original order. The selected $199 offer is a simple Shopify product, not a Shopify Bundles API item, so it fits the documented product-compatibility requirement.
+
+The blank funnel’s default `Any product` trigger must be replaced through **Advanced trigger settings** with a **Product is** condition for the exact $67 Interconnected product. Zipify distinguishes a Product trigger (which covers future variants) from a Product Variant trigger (which must be manually expanded if variants change); for this controlled test, the exact currently-approved `$67` variant must be chosen or confirmed when presented by Zipify.
+
+Within the Funnel Builder, the correct offer slot is **Post-Purchase Upsell 1**. The configuration is: `Add product(s) to the customer's order` → `Select the product(s) manually` → select the single $199 product → `Add`. This produces Zipify’s single-product post-purchase page, which supports long-form content, additional images, and a buy box. Do **not** add a Pre-Purchase popup, Product Page Upsell, second post-purchase offer, downsell, thank-you-page offer, AI offer, catch-all rule, or extra product.
+
+Zipify Help Center references used:
+
+1. [Trigger Types & Conditions](https://help.zipify.com/en/articles/6381023-trigger-types-conditions-ocu)
+2. [General Information About Post-Purchase Offers](https://help.zipify.com/en/articles/6906421-general-information-about-post-purchase-offers-ocu)
+3. [Adding Offers Into a Funnel](https://help.zipify.com/en/articles/6381036-adding-offers-into-a-funnel-ocu)
+
+The funnel must remain **Unpublished** after saving the draft. No live test order, buyer exposure, or activation is authorized at this stage.
+
+## Draft verification — trigger and offer placement
+
+The draft was re-opened and visually verified after configuration. It is still marked **Unpublished**. The trigger area now shows `Product` with **1 product selected**, which limits the funnel to the selected $67 Interconnected trigger product; the UI wording `is any` refers to the list of selected products, not to every product in the store.
+
+The $199 product has been added in the correct **Post-Purchase Upsell Offer #1** position. Zipify displays it as a single-product offer with `Active` and `100%` within the draft configuration. This does **not** make it live: the overall funnel status remains Unpublished. The following intentionally remain empty: Post-Purchase Upsell #2, Downsell, Product Page Upsell, Pre-Purchase Upsell Popup, and Thank You / Order Status Page Upsell.
+
+The remaining draft-only work is to customize the Zipify offer page copy and visuals, confirm no unintended discount is applied, use a 100% display allocation inside this one-offer draft, give the funnel a clear internal name, and retain the overall funnel as **Unpublished** pending owner review. No customer can see or accept the offer until publication.

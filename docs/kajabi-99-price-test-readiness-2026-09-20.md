@@ -34,3 +34,7 @@ The relevant focused safeguards passed **18/18**, and the bounded-memory product
 ## Preview verification
 
 At 10:30 on September 20, the sandbox preview of `/interconnected/thank-you-p99-draft` rendered the $99 offer, its active countdown, and each visible purchase CTA. The route did not show a false expired state. This was a view-only preview: no checkout was submitted and no form, email, SMS, tracking event, visitor allocation, campaign, ad, or budget was changed.
+
+## Public deployment check
+
+The source/preview is correct, but the public `content.theurbanmonk.com` route was still serving its previous bundle during the first post-checkpoint check: it displayed the $99 presentation but the lower purchase buttons still read **“Checkout mapping pending.”** The public deployment therefore requires a Railway redeploy from the checkpointed GitHub source before this route is ready for manual review. No checkout was submitted and no traffic, ad, or allocation changed during this read-only verification.

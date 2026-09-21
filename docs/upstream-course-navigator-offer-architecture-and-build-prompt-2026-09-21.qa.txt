@@ -1,3 +1,3 @@
-PDF QA — 2026-09-21
+PDF and diagram QA — 2026-09-21
 
-The corrected 12-page Upstream architecture PDF now renders price values as plain currency text. Visual review of pages 1–2 confirmed a readable title page, clear hierarchy, intact callout formatting, and a legible offer/entitlement table. The accompanying offer-flow diagram rendered at 3120×1144 and clearly separates direct Course/Navigator sales, the Kajabi $99 OCU path, and the gated Shopify entitlement path.
+The revised PDF contains readable currency values, 9 pages of nonempty text, and the corrected annual-subscription architecture. The rendered 3120×1196 offer-flow diagram visually separates: (1) the one-time $199 Course, (2) the $499/year Navigator annual subscription, (3) the $99 Kajabi Course OCU, and (4) the gated Shopify entitlement path. The diagram does not imply that Course purchase grants Navigator access or that Navigator automatically grants Course access.

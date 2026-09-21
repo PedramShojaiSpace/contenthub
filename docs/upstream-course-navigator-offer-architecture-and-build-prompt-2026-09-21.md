@@ -2,237 +2,278 @@
 
 **Author:** Manus AI  
 **Date:** 21 September 2026  
-**Status:** Draft implementation brief. No sales page, Kajabi product, offer, checkout, price, upsell, email, or traffic setting has been changed.
+**Status:** Draft implementation brief. No sales page, Kajabi product, offer, checkout, price, upsell, email, automation, or traffic setting has been changed.
 
 ## Executive decision
 
-The revised offer ladder should separate the **Upstream Course** from the higher-touch **Upstream Navigator**. The course becomes the accessible standalone education product at **\$199**. The Navigator becomes the premium, clearly differentiated path at **\$499**. The course may also appear as a **\$99 one-time post-purchase offer** after a qualifying front-end purchase.
+The offer ladder has three distinct commercial paths. **Upstream Course** is the standalone self-guided education product at **\$199 one time**. The same Course may be offered at **\$99 one time** as a restricted post-purchase one-click upsell (OCU) for an approved qualifying buyer. **Upstream Navigator** is neither a bundle nor an upgrade by default. It is a separate **\$499-per-year annual subscription**, with its own product/SKU, access rules, buyer experience, reporting, and Klaviyo lifecycle.
 
-The strategic advantage is clarity. The customer sees one self-guided educational product and one higher-level option, rather than being asked to infer why two similarly named offers exist. The \$99 price is not a third course. It is a restricted post-purchase price for the **same Upstream Course entitlement**.
+> **Naming rule:** The annual membership is **Upstream Navigator**. Do not call it “Complete System,” do not describe it as a higher-priced version of the Course, and do not imply that it includes the Course unless that entitlement is deliberately approved and configured.
 
-> **Naming rule:** Do not use the phrase “Complete System” for the \$499 Upstream offer. On this offer ladder, **\$499 means Upstream Navigator**. This avoids colliding with the earlier Interconnected “Complete System” concept.
+The practical implication is simple. The \$199 and \$99 purchases identify a **Course buyer**. The \$499 annual purchase identifies an **active Navigator member**. These are separate states, even if one person owns both.
 
-## Recommended offer and entitlement map
+## Product, SKU, and entitlement map
 
-| Layer | Customer-facing name | Price | Kajabi structure | Who sees it | Required entitlement |
-|---|---|---:|---|---|---|
-| Core product | **Upstream Course** | N/A | One Kajabi Product | Anyone who buys any Course offer | The complete self-guided Upstream curriculum and only the confirmed included resources. |
-| Standard course offer | **Upstream Course — Standard Access** | \$199 one time | One Kajabi Offer attached to the Upstream Course product | Dedicated Upstream sales page, qualified organic follow-up, and approved direct traffic | Access to the Upstream Course. |
-| Post-purchase offer | **Upstream Course — Front-End Buyer OCU** | \$99 one time | A second Kajabi Offer attached to the **same** Upstream Course product, used by a Kajabi upsell page | Only the approved qualifying front-end buyer immediately after purchase | Exact same Upstream Course access as the \$199 offer. |
-| Premium path | **Upstream Navigator** | \$499 one time | A separate Kajabi Offer. Attach the Upstream Course plus a second product only if Navigator has genuinely distinct, deliverable content or service. | Dedicated Navigator sales page and approved qualified follow-up | Upstream Course plus the verified Navigator-specific entitlement. |
+| Layer | Customer-facing name | Commercial model | Kajabi identity | Klaviyo identity | Entitlement |
+|---|---|---|---|---|---|
+| Core course | **Upstream Course** | Product, not a price | One Kajabi Product | `upstream_course` | Confirmed self-guided curriculum and confirmed Course resources only. |
+| Standard course offer | **Upstream Course — Standard Access** | \$199 one-time purchase | One Kajabi Offer attached to `upstream_course` | Exact Course Offer ID and `upstream_course_199` reporting key | Course access. |
+| Qualified-buyer OCU | **Upstream Course — Qualified Buyer OCU** | \$99 one-time post-purchase purchase | A second Kajabi Offer attached to the **same** Course Product, presented by a Kajabi Upsell | Exact OCU Offer ID and `upstream_course_99_ocu` reporting key | Exact same Course access as the \$199 offer. |
+| Annual membership | **Upstream Navigator** | \$499 annual subscription | Separate Kajabi Product and separate Kajabi annual subscription Offer | Exact Navigator Offer ID and `upstream_navigator_annual_499` reporting key | Navigator-only curriculum, membership, and resources that are specifically verified and deliverable. |
 
-Kajabi’s offer model supports one or more products per Offer, so the \$499 Navigator can bundle the Course with a distinct Navigator product when that distinction is real. It is not necessary, or desirable, to create duplicate Course products merely to support different prices. [1]
+Kajabi supports Offers that package one or more Products, and it also supports yearly subscription Offers. This structure deliberately uses separate Products because the Course and Navigator represent separate SKU, access, and lifecycle states—not merely different prices for the same access. [1] [2]
 
-## Funnel map
+## Offer and lifecycle map
 
 ![Upstream Course and Navigator offer flow](./upstream-course-navigator-offer-flow-2026-09-21.png)
 
-### 1. Dedicated Upstream acquisition and direct sales
+### Course paths
 
-The **Upstream sales page** should present two clean choices after the program has been explained.
+The Course has two price paths but one underlying Course entitlement.
 
-| Choice | Intended buyer | CTA | Destination |
+| Path | Offer | Price | Buyer gets | Buyer does not automatically get |
+|---|---|---:|---|---|
+| Direct Course sale | Upstream Course — Standard Access | \$199 one time | Upstream Course access | Navigator membership or Navigator resources. |
+| Qualifying Kajabi front-end buyer | Upstream Course — Qualified Buyer OCU | \$99 one time | The same Upstream Course access | Navigator membership or Navigator resources. |
+
+The \$99 OCU is a restricted price path, not a third product. It should be shown only immediately after the owner-approved Kajabi source offer or offers. Kajabi presents an upsell after checkout, processes acceptance as a separate transaction using the original payment method, and grants access through the accepted Offer. [3] [4]
+
+### Navigator annual path
+
+The Navigator should have its own dedicated sales page and annual Kajabi checkout. It should use a **Subscription** payment type, charge **\$499 USD every year**, and retain member access until the subscription is cancelled or the Offer is revoked. [2]
+
+The Navigator page must clearly answer five questions before asking for a purchase:
+
+1. What exactly is the Navigator experience?
+2. What content, access, interaction, resources, or support are exclusive to Navigator?
+3. Who is it for, and who is better served by the self-guided Course?
+4. What happens at the end of the first year and how is renewal handled?
+5. What are the cancellation, refund, and access-after-cancellation terms?
+
+Do not use generic words such as “personalized,” “guided,” “support,” “community,” “navigation,” or “implementation” unless the page defines the actual included deliverable, the delivery owner, the cadence, the access period, and the boundary.
+
+### Shopify LP-3 path
+
+Do **not** put the Kajabi \$99 Course OCU or the Navigator annual membership into the Shopify/Zipify post-purchase funnel until an approved and tested Shopify-to-Kajabi entitlement bridge exists. A Shopify payment does not automatically grant Kajabi Product access.
+
+| Option | Buyer experience | First-release recommendation |
+|---|---|---|
+| Kajabi-only \$99 OCU | Qualifying buyers on an approved Kajabi source offer see a native Kajabi Course OCU and receive Course access automatically. | **Use first.** |
+| Shopify post-purchase Kajabi checkout | A Shopify buyer is sent to a separate Kajabi checkout for the Course or Navigator. | Acceptable only as a deliberate second checkout; it is not one click. |
+| Shopify OCU with Kajabi entitlement bridge | A Shopify buyer accepts an offer and is granted the matching Kajabi Product access. | Do not build or activate until payment, entitlement, refunds, cancellation, access email, and failure recovery are designed and tested. |
+
+## Separate Kajabi and Klaviyo lifecycle contract
+
+### Kajabi
+
+| Record | Internal draft name | Price and billing | Access model | Required status at first review |
+|---|---|---|---|---|
+| Course Product | `[DRAFT] Upstream Course` | Not applicable | Self-guided Course only | Draft |
+| Course Offer | `[DRAFT] Upstream Course — Standard — 199 USD` | One time, \$199 | Grants Course Product | Draft |
+| Course OCU Offer | `[DRAFT] Upstream Course — Qualified Buyer OCU — 99 USD` | One time, \$99 | Grants the same Course Product | Draft and unattached |
+| Navigator Product | `[DRAFT] Upstream Navigator` | Not applicable | Navigator-only entitlement | Draft |
+| Navigator Offer | `[DRAFT] Upstream Navigator — Annual — 499 USD/year` | Subscription, \$499 every year | Grants Navigator Product only, unless a separate Course inclusion is approved | Draft |
+
+The annual Navigator Offer must have its own exact Offer ID. That exact ID, not the public title or price, is the authoritative identity used by all automation, reporting, and customer-state rules.
+
+### Klaviyo
+
+Klaviyo must receive or recognize Navigator as a discrete purchase and membership state. Build no live flow yet. First create this registry and verify its source data against a real **draft** offer configuration:
+
+| Lifecycle | Exact inclusion rule | Reporting key | Permitted messaging role |
 |---|---|---|---|
-| **Upstream Course — \$199** | “I want the self-guided framework and I am ready to begin on my own.” | **Start Upstream** | Kajabi \$199 Course Offer checkout |
-| **Upstream Navigator — \$499** | “I want the Upstream framework plus the specific Navigator support and resources.” | **Choose Upstream Navigator** | Kajabi \$499 Navigator Offer checkout |
+| Course buyer | Native purchase event or integration event with the exact \$199 Course Offer ID | `upstream_course_199` | Course access, activation, learning engagement, Course-related follow-up. |
+| Course OCU buyer | Exact \$99 OCU Course Offer ID | `upstream_course_99_ocu` | Same Course activation path, with source-price reporting preserved. |
+| Active Navigator member | Exact annual Navigator Offer ID plus an active subscription/payment state | `upstream_navigator_annual_499` | Navigator onboarding, member-value communications, renewal education, and approved member-only content. |
+| Navigator renewal | Exact Navigator Offer ID and a successful renewal event | `upstream_navigator_renewal` | Receipt or value-reinforcement messages only after the event source and consent architecture are verified. |
+| Navigator cancellation or failed renewal | Exact Navigator Offer ID and a verified cancellation/failure event | `upstream_navigator_lapsed` | Access, account, and reactivation communications only after legal/consent and platform event behavior are verified. |
 
-The Course and Navigator pages should explain the difference in an explicit comparison. The Navigator page must not claim any element that has not been confirmed as included and deliverable.
-
-### 2. Qualifying Kajabi front-end purchase
-
-For the existing Kajabi front-end offers, create a single \$99 **Upstream Course OCU** in Kajabi’s Upsell library, then attach it only to the approved qualifying source offer or offers. The current Kajabi environment has distinct \$67 and \$99 Interconnected entry offers, so the final setup must identify which one—or both—should show the OCU before it is attached.
-
-Kajabi states that an upsell is presented after the source checkout and accepted as a separate transaction using the original purchase method. This is appropriate for a \$99 one-time post-purchase Course offer. [2] [3]
-
-### 3. Shopify LP-3 purchase
-
-Do **not** attach the \$99 Kajabi Course OCU to the Shopify/Zipify funnel until a reliable entitlement design is approved and verified. A Shopify payment does not by itself grant a buyer access to a Kajabi Product. The possible paths are:
-
-| Option | Customer experience | Strength | Constraint |
-|---|---|---|---|
-| Keep the \$99 OCU Kajabi-only initially | Eligible Kajabi front-end buyers see the native Kajabi upsell and receive course access automatically. | Fastest and cleanest first launch. | Shopify LP-3 buyers do not see this OCU yet. |
-| Sell a \$99 Shopify OCU and grant Kajabi access through an approved integration | Shopify buyer accepts an OCU, then receives the Course entitlement in Kajabi. | Creates parity across checkout platforms. | Requires a tested, idempotent payment-to-entitlement integration, customer identity matching, access-email ownership, refund/revocation plan, and a failure-recovery process. |
-| Send Shopify buyers to a post-purchase \$99 Kajabi checkout | Buyer sees a \$99 follow-up CTA and purchases in Kajabi. | No entitlement bridge is required. | It is a second checkout, not a true one-click upsell. |
-
-The recommended first release is **Kajabi-only for the \$99 OCU**, while the Shopify path remains separate until its entitlement handoff is tested. This avoids selling digital access that may not be granted correctly.
-
-## Price and upgrade policy
-
-The standard pricing relationships are simple:
-
-| Buyer position | Offer shown | Suggested handling |
-|---|---:|---|
-| New direct Course buyer | \$199 Course | Full Course access. |
-| Qualified front-end buyer | \$99 OCU Course | Full Course access at the restricted post-purchase price. |
-| New Navigator buyer | \$499 Navigator | Full Course plus the confirmed Navigator entitlement. |
-| Existing \$199 Course buyer who wants Navigator | \$300 upgrade, if full price credit is approved | Do not make this buyer repay for the Course. |
-| Existing \$99 OCU Course buyer who wants Navigator | \$400 upgrade, if full price credit is approved | Do not make this buyer repay for the Course. |
-
-The two upgrade rows are a **recommended policy**, not a live price instruction. Decide whether you want to credit prior Course payments fully before creating upgrade offers. If the policy is not approved, the Navigator sales page must not imply automatic credit.
+Do not use broad tags such as “Upstream,” text matching in a product title, or price alone as the trigger. Use the exact Kajabi Offer ID plus the applicable subscription status. The existing Content Hub Kajabi purchase normalizer already captures offer IDs from Kajabi payment payloads, which makes exact-offer reporting feasible once the Navigator Offer is created. [5]
 
 ## Sales-page requirements
 
-### Upstream Course \$199 page
+### Upstream Course — \$199 one-time page
 
-The Course page should introduce the Upstream framework before presenting price. It should state exactly what is included, who the self-guided experience is for, how the learning path is organized, what the buyer can expect immediately after purchase, and what the Course is **not**. It should treat health education carefully: no diagnosis, cure, treatment, or guaranteed-outcome claims.
+The Course page should explain the self-guided framework before displaying the price. It should state the confirmed curriculum, access expectations, learning cadence, resources, and educational boundaries. It should make the Course feel complete for its intended buyer. It must not be framed as an inadequate teaser for Navigator.
 
-The page must show the Course as a complete standalone path. It should not position the \$199 purchase as an incomplete teaser that only becomes useful at \$499.
+**Primary CTA:** `Start Upstream`  
+**Destination:** approved Kajabi \$199 Course checkout.
 
-### Upstream Navigator \$499 page
+### Upstream Navigator — \$499/year page
 
-The Navigator page should open with the problem that Navigator solves: a buyer who wants the Course plus the specifically named additional layer of support. It must then list the confirmed Course entitlement and the confirmed Navigator-only entitlements separately.
+The Navigator page should describe a separate annual membership. It should compare Navigator with the Course using only confirmed differences. It should make the annual recurring charge prominent near the CTA, state the renewal cadence, link to cancellation/refund terms, and state what happens to access after a cancellation or failed renewal.
 
-Do not use “personalization,” “guidance,” “navigation,” “support,” “community,” “consultation,” or “implementation help” as vague sales language. Each term must resolve to a specific deliverable, owner, cadence, access duration, and boundary.
+**Primary CTA:** `Join Upstream Navigator — \$499/year`  
+**Destination:** approved Kajabi annual Navigator checkout.
 
-### \$99 post-purchase OCU page
+### Upstream Course OCU — \$99 post-purchase page
 
-The OCU should be short. It should say that the purchaser has just taken the first step, explain why Upstream is the logical next educational layer, display the normal \$199 price and the one-time \$99 post-purchase price, list only confirmed Course inclusions, and present a clear **Yes, add Upstream for \$99** action and a respectful decline action.
+The OCU page should make one decision easy. The buyer has just taken a first step and can add the self-guided Upstream Course at the restricted post-purchase price. It should list confirmed Course inclusions and clearly show that Navigator is not included.
 
-The OCU should not use an invented countdown, fabricated scarcity, a fake “special” justification, or claims that the purchaser will miss a health outcome. Any time-based restriction must be technically true and documented.
+**Acceptance CTA:** `Yes, add Upstream for \$99`  
+**Decline CTA:** `No thanks, continue to my access`
+
+No invented countdown, fabricated scarcity, unrelated upsell, medical claim, diagnosis, cure, treatment promise, or guaranteed outcome may appear on any page.
 
 ## Facts that must be locked before public release
 
-| Decision | Why it matters |
+| Required decision | Why it is required |
 |---|---|
-| Exact Upstream Course curriculum, bonuses, downloads, and duration of access | Determines what the \$199 and \$99 offers may truthfully promise. |
-| Exact Navigator-only inclusions | Determines whether Navigator needs a second Kajabi product and how the \$499 difference is explained. |
-| Navigator delivery owner, cadence, access duration, and cancellation/refund terms | Prevents a premium offer with vague fulfillment. |
-| Whether Course buyers receive full credit toward Navigator | Determines the later upgrade path and pricing language. |
-| Which Kajabi source offer(s) trigger the \$99 OCU | Prevents a \$99 offer from being shown in the wrong funnel. |
-| Whether the \$99 OCU is one time per purchaser and how repeat buyers are excluded | Prevents duplicate access and unwanted repeat charges. |
-| Exact checkout URLs, product IDs, offer IDs, and approved post-purchase pages | Required for safe CTA maps and measurement. |
-| Guarantee and terms language | Must be factual and consistent across the Course, Navigator, OCU, checkout, and follow-up email. |
-| Shopify-to-Kajabi entitlement approach | Required before a Shopify buyer is ever shown a paid Kajabi-access promise. |
+| Exact Course curriculum, resources, and access duration | Defines the promise on both the \$199 and \$99 Course paths. |
+| Exact Navigator-only deliverables and annual access rules | Defines the distinct \$499/year membership value. |
+| Whether Navigator includes Course access | Default architecture: **no**. If yes, that must be a deliberate, documented entitlement change. |
+| Navigator renewal, cancellation, refund, failed-payment, and post-cancellation access policy | Required for the sales page, checkout, support, and lifecycle copy. |
+| The approved Kajabi source offer or offers for the \$99 OCU | Prevents the OCU appearing in the wrong buyer journey. |
+| Exact product IDs, offer IDs, checkout URLs, and post-purchase destinations | Required for CTA safety and exact-offer automation. |
+| The actual Kajabi-to-Klaviyo subscription and renewal event fields | Required before any Navigator flow is built or enabled. |
+| Shopify-to-Kajabi entitlement design | Required before Shopify buyers can be sold Kajabi access. |
 
 ## Measurement contract
 
-Keep the offer records distinct. Track **\$199 Course**, **\$99 Course OCU**, **\$499 Navigator**, and any later Course-to-Navigator upgrade as separate offer paths. Do not collapse the \$99 OCU into the \$199 Course revenue line; it must be visible as a separate post-purchase conversion rate and average-order-value contribution.
+Keep **\$199 Course**, **\$99 Course OCU**, **new Navigator annual starts**, **Navigator renewals**, **Navigator cancellations**, and **Navigator failed payments** as six distinct metrics. Do not merge Course buyers and active Navigator members. Do not treat a Course transaction as Navigator annual recurring revenue. Do not treat a Navigator annual payment as Course revenue unless Navigator is explicitly configured to grant Course access and that inclusion is separately reported.
 
-Kajabi should remain the financial source of truth for purchases processed in Kajabi. Shopify should remain the financial source of truth for purchases processed in Shopify. A cross-platform entitlement bridge, if later approved, should record the original transaction source and should not create a second revenue event.
+Kajabi is the financial authority for Kajabi payments. Shopify is the financial authority for Shopify payments. Klaviyo is a messaging and segmentation layer, not the revenue authority.
 
 ## Copy-ready implementation prompt
 
 ```text
-We are updating the Urban Monk’s Upstream offer architecture. Work in the existing project and its connected Kajabi account. Do not create a new project.
+We are updating the Urban Monk’s Upstream offer architecture. Work in the existing project and its connected Kajabi and Klaviyo accounts. Do not create a new project.
 
 The commercial decision is final:
-- Upstream Course is the standalone self-guided offer at \$199 one time.
-- Upstream Navigator is the premium, distinct offer at \$499 one time.
-- Upstream Course is also available as a restricted one-time post-purchase offer at \$99 for a qualifying front-end buyer.
-- The \$99 OCU is a price path for the same Upstream Course access. It is NOT a third course or duplicate product.
-- The \$499 offer must be called Upstream Navigator. Do not call it “Complete System,” because that label belongs to a different historic Interconnected concept.
+- Upstream Course is a standalone self-guided product at 199 USD, one-time payment.
+- Upstream Course may also be offered at 99 USD, one-time payment, only as a restricted post-purchase OCU for an approved qualifying buyer. This OCU grants the same Course access as the 199 USD Course Offer.
+- Upstream Navigator is a distinct annual membership at 499 USD per year. It has its own Kajabi Product, its own Kajabi annual subscription Offer, its own SKU/reporting identity, and its own Klaviyo lifecycle.
+- Navigator is not a bundle or an upgrade by default. Do not attach the Course to Navigator or claim Course access until the owner explicitly confirms that Navigator includes the Course.
+- Do not call Navigator “Complete System.”
 
 WORKING MODE AND SAFETY
-1. Build all new sales pages as preview/draft pages first.
-2. Create all Kajabi Products, Offers, and Upsell records in DRAFT status only. Do not publish an offer, make a checkout link public, change an existing checkout, attach an upsell to a live offer, change a price, alter email/SMS, change an automation, modify Shopify, alter a pixel, move traffic, or make a DNS/domain change without a separate, explicit approval.
-3. Before writing final copy or creating products, audit the existing Upstream Course and Navigator assets. Reuse an existing product if it is the correct product. Do not duplicate products because of a price difference.
-4. Do not invent curriculum elements, bonuses, coaching, community, consultation, testing, outcomes, guarantees, scarcity, reviews, testimonials, or health claims. If a factual inclusion is not verified, mark it `OWNER INPUT REQUIRED` and leave it out of public-facing copy.
-5. Keep all health language educational. Do not claim diagnosis, treatment, cure, prevention, guaranteed outcomes, or that a test will find a root cause.
+1. Build sales pages as preview/draft pages first.
+2. Create Kajabi Products, Offers, Upsells, Klaviyo segments, and Klaviyo flows in DRAFT only. Do not publish, activate, attach an OCU to a live offer, send a message, change price, alter checkout, modify an existing automation, alter Shopify, change tracking, change traffic, or change DNS without separate written approval.
+3. Before creating anything, audit existing Upstream products, offers, subscription records, and Klaviyo purchase/subscription event fields. Reuse the correct existing product only when its confirmed access and content match the new definition.
+4. Do not invent curriculum items, bonuses, community, consultation, coaching, testing, outcomes, guarantees, refunds, cancellation terms, scarcity, reviews, testimonials, or health claims. Mark missing facts as OWNER INPUT REQUIRED and omit them from public copy.
+5. Keep health language educational. Do not claim diagnosis, treatment, cure, prevention, guaranteed outcomes, or that a test will find a root cause.
 
-DELIVERABLE A — OFFER INVENTORY BEFORE BUILDING
-Return a concise inventory table showing:
-- existing Upstream products, offers, prices, access rules, and post-purchase settings;
-- existing Navigator products, offers, prices, access rules, and post-purchase settings;
-- the current Kajabi \$67 and \$99 Interconnected front-end offers, including exact offer IDs;
-- whether a native Kajabi upsell can be attached to each proposed source offer;
-- all missing facts that prevent accurate public copy.
+DELIVERABLE A — READ-ONLY INVENTORY
+Return a concise table with:
+- all existing Upstream Course products and offers, including price, access, status, offer ID, and checkout URL;
+- all existing Navigator products and offers, including price, access, subscription state, status, offer ID, and checkout URL;
+- the current Kajabi Interconnected 67 USD and 99 USD source offers, including exact offer IDs and present post-purchase upsells;
+- the Kajabi-to-Klaviyo purchase, renewal, cancellation, and failed-payment event fields available for exact-offer segmentation;
+- every missing fact that prevents accurate public copy or reliable annual-member automation.
 
-Do not make a live change during this audit.
+Make no live change during this audit.
 
 DELIVERABLE B — DRAFT KAJABI CATALOG
-After the inventory is reviewed, create the following records in DRAFT only. Record every final product ID, offer ID, and preview checkout URL in an offer registry.
+After the inventory is reviewed, create the following records in DRAFT only. Create an internal registry with final product IDs, offer IDs, preview checkout URLs, entitlement keys, price, billing type, and post-purchase setting.
 
-1. PRODUCT: `[DRAFT] Upstream Course`
-   - Create this only if a suitable existing Upstream Course product does not already exist.
-   - Add only confirmed modules, lessons, downloads, and access settings.
-   - Use a course-specific thumbnail and description only after the content inventory is confirmed.
+1. PRODUCT: [DRAFT] Upstream Course
+   - Create only if no suitable existing Course Product exists.
+   - Add only confirmed Course modules, resources, and access settings.
 
-2. OFFER: `[DRAFT] Upstream Course — Standard — \$199`
-   - Attach the Upstream Course product.
-   - One-time payment: \$199 USD.
-   - Keep the Offer in Draft.
-   - Configure a review-only post-purchase destination: buyer library or approved draft thank-you page.
-   - Do not activate additional marketing automations.
+2. OFFER: [DRAFT] Upstream Course — Standard — 199 USD
+   - Attach Upstream Course.
+   - One-time payment: 199 USD.
+   - Draft status. No new marketing automation.
 
-3. OFFER: `[DRAFT] Upstream Course — Qualified Buyer OCU — \$99`
-   - Attach the SAME Upstream Course product. Do not create a separate \$99 course product.
-   - One-time payment: \$99 USD.
-   - Keep the Offer in Draft.
-   - Create a separate reusable Kajabi Upsell page with OCU-specific copy. Because upsell pages can be reused across offers, do not reuse a page whose copy is meant for another source funnel.
-   - Do NOT attach it to any live front-end offer until I explicitly name the source offer(s) and approve the attachment.
+3. OFFER: [DRAFT] Upstream Course — Qualified Buyer OCU — 99 USD
+   - Attach the SAME Upstream Course Product.
+   - One-time payment: 99 USD.
+   - Create a separate reusable Kajabi Upsell page with OCU-specific copy.
+   - Draft status. Do not attach it to any live source offer until I explicitly name and approve the source offer or offers.
 
-4. NAVIGATOR ENTITLEMENT
-   - First inspect the exact Navigator-specific delivery. If Navigator only changes price or marketing language, do not create a separate product merely to justify it.
-   - If Navigator includes real, distinct deliverables, create `[DRAFT] Upstream Navigator Resources` as a separate product or use the correct existing product. Add only confirmed content/services.
+4. PRODUCT: [DRAFT] Upstream Navigator
+   - This is separate from the Course Product.
+   - Add only verified Navigator-specific curriculum, membership components, resources, and access terms.
+   - Do not include Course access unless I explicitly approve it.
 
-5. OFFER: `[DRAFT] Upstream Navigator — \$499`
-   - Attach Upstream Course plus the confirmed Navigator-specific product only when applicable.
-   - One-time payment: \$499 USD.
-   - Keep the Offer in Draft.
-   - Do not imply the Navigator is medical care or make any unverified claim about outcomes, coaching, testing, or access.
+5. OFFER: [DRAFT] Upstream Navigator — Annual — 499 USD/year
+   - Attach the Upstream Navigator Product.
+   - Payment type: Subscription.
+   - Amount: 499 USD.
+   - Billing interval: yearly.
+   - Do not add a trial, setup fee, or Course Product unless I explicitly approve each one.
+   - Draft status. Set no public destination and activate no automation.
 
-6. OPTIONAL UPGRADE OFFERS
-   - Do not create these until I approve a credit policy.
-   - If I approve full credit for prior Course purchases, prepare—but do not publish—two upgrade offers: \$300 from the \$199 Course and \$400 from the \$99 OCU Course.
+6. Do not create Course-to-Navigator upgrade offers unless I separately approve an upgrade-credit policy.
 
-DELIVERABLE C — PREVIEW-ONLY SALES PAGES
-Create three draft/preview pages, using the existing Urban Monk visual system and keeping all checkout CTAs disabled or linked only to clearly marked preview placeholders until I approve exact destinations.
+DELIVERABLE C — DRAFT KLAVIYO LIFECYCLE
+Create a draft-only segmentation and flow specification. Do not turn on any flow or send any message.
 
-PAGE 1: `Upstream Course — \$199`
-- Explain the core framework in plain language.
-- Include: who it is for, what the learner receives, how the curriculum is organized, access expectations, and clear educational boundaries.
-- Include a comparison block that makes the Course self-contained and shows how Navigator differs only through verified Navigator-specific inclusions.
-- Primary CTA: `Start Upstream`.
+1. Segment or trigger definition: Upstream Course 199 Buyer
+   - Trigger only from the exact 199 USD Course Offer ID.
+   - Reporting key: upstream_course_199.
 
-PAGE 2: `Upstream Navigator — \$499`
-- Explain the Navigator as the premium option after the Course has been introduced.
-- Present a transparent Course vs. Navigator comparison.
-- List Navigator-only inclusions only when verified.
-- Primary CTA: `Choose Upstream Navigator`.
+2. Segment or trigger definition: Upstream Course 99 OCU Buyer
+   - Trigger only from the exact 99 USD OCU Offer ID.
+   - Reporting key: upstream_course_99_ocu.
 
-PAGE 3: `Upstream Course OCU — \$99`
-- This is a short post-purchase page, not a long sales page.
-- Headline direction: the buyer has just taken a meaningful first step and can add the deeper self-guided Upstream framework now.
-- Show the normal \$199 price and the restricted post-purchase \$99 price only if the price policy is approved.
-- List only confirmed Course inclusions.
-- Acceptance CTA: `Yes, add Upstream for \$99`.
-- Decline CTA: `No thanks, continue to my access`.
-- No fake countdown, invented urgency, unrelated upsells, or unsupported health claims.
+3. Segment or trigger definition: Active Upstream Navigator Annual Member
+   - Trigger only from the exact Navigator annual Offer ID plus verified active subscription/payment state.
+   - Reporting key: upstream_navigator_annual_499.
+
+4. Prepare, but do not activate, Navigator lifecycle branches for: successful initial annual payment; successful annual renewal; cancellation; payment failure; and access expiration.
+   - First prove the exact Kajabi/Klaviyo event names and fields for each state.
+   - Do not use a loose product-name match, a tag alone, or price alone as a trigger.
+   - Do not mix Course and Navigator communications.
+
+5. Prepare an owner-review table that shows the intended message purpose, exact entry event, exclusions, consent requirement, and exit condition for each draft branch.
+
+DELIVERABLE D — PREVIEW-ONLY SALES PAGES
+Build three preview pages in the existing Urban Monk visual system. Keep checkout CTAs disabled or linked only to clearly labeled preview placeholders until I approve exact destinations.
+
+PAGE 1: Upstream Course — 199 USD
+- Explain the self-guided framework and confirmed inclusions.
+- State access expectations and educational boundaries.
+- Make clear that the Course is complete for a self-guided buyer.
+- Primary CTA: Start Upstream.
+
+PAGE 2: Upstream Navigator — 499 USD/year
+- Present Navigator as a separate annual membership.
+- State exactly what is included, for whom it is intended, the annual billing cadence, and the relevant cancellation/refund/access terms once verified.
+- Include a factual comparison with the Course, based only on confirmed differences.
+- Primary CTA: Join Upstream Navigator — 499 USD/year.
+
+PAGE 3: Upstream Course OCU — 99 USD
+- Keep this post-purchase page short and focused.
+- Show the normal 199 USD Course price and the restricted post-purchase 99 USD price only after the pricing policy is approved.
+- State that it includes the Course, not Navigator.
+- Acceptance CTA: Yes, add Upstream for 99 USD.
+- Decline CTA: No thanks, continue to my access.
 
 DESIGN REQUIREMENTS
-- Use the existing Urban Monk aesthetic: calm dark blue-green context areas, warm white reading canvas, clear teal CTA buttons, large type, high contrast, and excellent mobile spacing.
-- Keep the Course and Navigator comparison above the fold on desktop where practical, and easy to scan on mobile.
-- Treat the \$99 page as a focused one-decision page.
-- Use a single named CTA-destination registry. Do not scatter or invent checkout URLs.
+- Use the established Urban Monk visual language: calm dark blue-green context areas, warm white reading canvas, clear teal CTA buttons, high contrast, and strong mobile spacing.
+- Make the annual recurring charge prominent on every Navigator page and checkout handoff.
+- Create a named CTA-destination registry. Do not scatter or invent checkout URLs.
 
-FUNNEL AND ENTITLEMENT RULES
-- The \$99 OCU may be configured only on Kajabi source offers in the first release, because Kajabi automatically grants access to the attached product after the customer buys its Offer.
-- Do not offer the \$99 Kajabi Course OCU from Shopify/Zipify until a separately approved and tested Shopify-to-Kajabi paid-order entitlement bridge exists.
-- If later asked to add the \$99 OCU to Shopify, first provide an implementation design covering idempotent payment handling, email/customer matching, Kajabi access granting, refund/revocation, failure recovery, access email ownership, and a safe test plan. Do not build or activate it without approval.
-- Keep the current Interconnected \$67/\$99 price test separate from this new offer architecture. Do not change multiple pricing, checkout, routing, and messaging variables at once.
+PLATFORM BOUNDARIES
+- The 99 USD Course OCU may be configured only on approved Kajabi source offers in the first release.
+- Do not place the Kajabi Course OCU or Navigator annual membership into Shopify/Zipify until a separately approved and tested Shopify-to-Kajabi entitlement bridge exists.
+- If asked to add Shopify parity later, first present a design covering payment idempotency, email/customer matching, Kajabi entitlement grant and revocation, annual renewal/cancellation state, refunds, access email ownership, failure recovery, and a no-charge test plan.
+- Keep the current Interconnected 67 USD/99 USD price test separate from this offer build.
 
 MEASUREMENT REQUIREMENTS
-- Create an internal offer registry documenting product IDs, offer IDs, exact draft checkout URLs, source funnel, price, entitlements, upsell relationship, and post-purchase destination.
-- Keep \$199 Course, \$99 OCU Course, \$499 Navigator, and future upgrades as separate conversion and revenue paths.
-- Preserve Kajabi as the financial authority for Kajabi payments. Do not create duplicate purchase events or revenue records.
+- Keep Course 199, Course 99 OCU, Navigator annual starts, Navigator annual renewals, Navigator cancellations, and Navigator payment failures as separate paths.
+- Use exact Offer IDs as the reporting key and keep a product/offer registry.
+- Kajabi is the financial authority for Kajabi payments. Klaviyo is the messaging and segmentation layer only.
 
 REQUIRED REVIEW BEFORE ANY PUBLICATION
-Before asking me to publish or attach anything, provide:
-1. the product/offer/upsell registry with IDs and preview links;
-2. a confirmed inclusion matrix for Course versus Navigator;
-3. the three preview-page URLs and desktop/mobile screenshots;
-4. the exact proposed source offer(s) for the \$99 OCU;
-5. all unresolved facts and destination placeholders;
-6. a test plan that uses no real charge unless I explicitly approve it; and
-7. a rollback plan.
+Before asking for publication or activation, provide:
+1. the Kajabi product/offer registry with draft IDs and preview URLs;
+2. the confirmed Course-versus-Navigator inclusion matrix;
+3. the annual billing, cancellation, refund, access, and renewal policy;
+4. the Klaviyo event-field map and draft flow-entry/exclusion table;
+5. the three preview-page URLs and desktop/mobile screenshots;
+6. the exact proposed source offer or offers for the Course OCU;
+7. all unresolved facts and placeholders; and
+8. a test plan without a real charge plus a rollback plan.
 
-Stop after the draft build and review. Do not publish, attach the OCU to a live offer, send email, change the front-end funnel, or make any live traffic change.
+Stop after the draft build and review. Do not publish, attach an OCU to a live offer, enable a Klaviyo flow, send email, change the front-end funnel, or make a traffic change.
 ```
 
 ## References
 
 [1]: https://help.kajabi.com/articles/sales/offers/create-an-offer "Kajabi Help Center — Create an Offer"
-[2]: https://help.kajabi.com/articles/sales/offers/manage-upsells-in-the-purchase-flow "Kajabi Help Center — Manage Upsells in the Purchase Flow"
-[3]: https://help.kajabi.com/articles/sales/offers/what-happens-when-a-customer-purchases-my-offer "Kajabi Help Center — Customer Offer Purchase Experience"
-[4]: https://theacademy.theurbanmonk.com/products/interconnected-series-self-guided "The Urban Monk Academy — Interconnected Series Self Guided"
-[5]: https://shop.theurbanmonk.com/products/gut-permeability-test-health-coach-call-199-member-offer "The Urban Monk — Gut Permeability Test and 1-Hour Health Coach Call"
+[2]: https://help.kajabi.com/articles/sales/offers/how-to-create-a-subscription-offer "Kajabi Help Center — Create a Subscription Offer"
+[3]: https://help.kajabi.com/articles/sales/offers/manage-upsells-in-the-purchase-flow "Kajabi Help Center — Manage Upsells in the Purchase Flow"
+[4]: https://help.kajabi.com/articles/sales/offers/what-happens-when-a-customer-purchases-my-offer "Kajabi Help Center — Customer Offer Purchase Experience"
+[5]: https://theacademy.theurbanmonk.com/products/interconnected-series-self-guided "The Urban Monk Academy — Interconnected Series Self Guided"

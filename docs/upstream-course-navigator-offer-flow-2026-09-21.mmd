@@ -1,20 +1,29 @@
 flowchart TB
-    A[Qualified prospect] --> B[Upstream Course sales page]
-    B --> C[$199 Upstream Course\nKajabi Offer]
-    B --> D[$499 Upstream Navigator\nKajabi Offer]
+  subgraph DIRECT[Dedicated Upstream sales]
+    direction TB
+    A[Qualified prospect] --> B[Upstream sales page]
+    B --> C[$199 Upstream Course\nKajabi one-time Offer]
     C --> E[Upstream Course access]
-    D --> E
-    D --> F[Verified Navigator-only entitlement]
+    B --> D[$499/year Upstream Navigator\nKajabi annual subscription Offer]
+    D --> F[Navigator-only annual membership access]
+  end
 
-    G[Approved Kajabi front-end offer\n$67 or $99 Interconnected] --> H[Post-purchase $99 Upstream Course OCU]
-    H --> E
+  subgraph KAJABI_OCU[Approved Kajabi front-end purchase]
+    direction TB
+    G[Approved $67 or $99\nInterconnected Offer] --> H[Post-purchase $99\nUpstream Course OCU]
+    H --> I[Upstream Course access\nSame entitlement as $199 Course]
+  end
 
-    I[Shopify LP-3 buyer] --> J{Approved Kajabi\nentitlement bridge?}
-    J -->|No| K[Do not show the $99 Kajabi OCU]
-    J -->|Yes, after testing| L[$99 Shopify OCU or Kajabi follow-up]
-    L --> E
+  subgraph SHOPIFY[Shopify LP-3 purchase]
+    direction TB
+    J[Shopify LP-3 buyer] --> K{Approved Kajabi\nentitlement bridge?}
+    K -->|No| L[Do not show a Kajabi Course\nor Navigator OCU]
+    K -->|Yes, after testing| M[$99 Course OCU or\nseparate Kajabi follow-up]
+    M --> N[Grant only the approved\nKajabi Course entitlement]
+  end
 
-    style C fill:#0f766e,color:#ffffff,stroke:#0f766e
-    style D fill:#164e63,color:#ffffff,stroke:#164e63
-    style H fill:#b45309,color:#ffffff,stroke:#b45309
-    style K fill:#fef3c7,color:#78350f,stroke:#d97706
+  style C fill:#0f766e,color:#ffffff,stroke:#0f766e
+  style D fill:#164e63,color:#ffffff,stroke:#164e63
+  style F fill:#164e63,color:#ffffff,stroke:#164e63
+  style H fill:#b45309,color:#ffffff,stroke:#b45309
+  style L fill:#fef3c7,color:#78350f,stroke:#d97706

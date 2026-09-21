@@ -75,7 +75,7 @@ This is not an exhaustive triage guide. If you are concerned about a symptom or 
 
 ## Educational disclaimer
 
-This handout provides wellness education only. It is not medical care, medical advice, diagnosis, or treatment, and it cannot determine whether you have a barrier problem, dysbiosis, food intolerance, inflammatory bowel disease, infection, or another condition. Individual considerations—including pregnancy, age, disability, allergies, chronic disease, eating-disorder history, medication interactions, and access to food—can change what is appropriate. Consult a qualified clinician or registered dietitian for individualized guidance.
+This handout provides wellness education only. It is not medical care, medical advice, diagnosis, or treatment, and it cannot determine whether you have a barrier problem, dysbiosis, food intolerance, inflammatory bowel disease, infection, or another condition. Individual considerations—including pregnancy, age, disability, allergies, chronic disease, eating-disorder history, medication interactions, and access to food—can change what is appropriate. Consult a qualified clinician or licensed nutritionist for individualized guidance.
 
 Probiotic products are not interchangeable; effects can differ by product and strain, and supplements do not generally require FDA approval before marketing. People who are seriously ill or immunocompromised, and caregivers of premature infants, should seek clinician guidance before using probiotics. [6]
 

@@ -1,0 +1,11 @@
+{
+  "task_kind": "new-document",
+  "output": "pdf",
+  "signals": ["learner handout", "wellness education"],
+  "hard_constraints": ["five standalone PDFs", "accessible typography", "education-only disclaimer"],
+  "content_features": {
+    "code_blocks": 0,
+    "defined_terms": 5,
+    "portrait_images": 0
+  }
+}

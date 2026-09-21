@@ -1,0 +1,20 @@
+flowchart TB
+    A[Qualified prospect] --> B[Upstream Course sales page]
+    B --> C[$199 Upstream Course\nKajabi Offer]
+    B --> D[$499 Upstream Navigator\nKajabi Offer]
+    C --> E[Upstream Course access]
+    D --> E
+    D --> F[Verified Navigator-only entitlement]
+
+    G[Approved Kajabi front-end offer\n$67 or $99 Interconnected] --> H[Post-purchase $99 Upstream Course OCU]
+    H --> E
+
+    I[Shopify LP-3 buyer] --> J{Approved Kajabi\nentitlement bridge?}
+    J -->|No| K[Do not show the $99 Kajabi OCU]
+    J -->|Yes, after testing| L[$99 Shopify OCU or Kajabi follow-up]
+    L --> E
+
+    style C fill:#0f766e,color:#ffffff,stroke:#0f766e
+    style D fill:#164e63,color:#ffffff,stroke:#164e63
+    style H fill:#b45309,color:#ffffff,stroke:#b45309
+    style K fill:#fef3c7,color:#78350f,stroke:#d97706

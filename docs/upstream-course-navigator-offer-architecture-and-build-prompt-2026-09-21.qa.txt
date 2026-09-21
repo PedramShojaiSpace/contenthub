@@ -1,0 +1,3 @@
+PDF QA — 2026-09-21
+
+The corrected 12-page Upstream architecture PDF now renders price values as plain currency text. Visual review of pages 1–2 confirmed a readable title page, clear hierarchy, intact callout formatting, and a legible offer/entitlement table. The accompanying offer-flow diagram rendered at 3120×1144 and clearly separates direct Course/Navigator sales, the Kajabi $99 OCU path, and the gated Shopify entitlement path.

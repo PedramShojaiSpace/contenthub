@@ -1,0 +1,5 @@
+Visual QA — 2026-09-21
+
+- Kajabi Module 1 thumbnail: 2560×1440 PNG, readable dark-teal negative space on the left and a high-resolution warm amber/teal gut-barrier visual on the right. No generated text, logos, or obvious artifacts observed.
+- Module 1 learner handout PDF: 5 pages, headings, callout, worksheet table, escalation guidance, and references render legibly. The document is print-ready; its final references page has substantial intentional whitespace after the short reference list.
+- Module 1 video-script PDF: 4 pages, title, runtime, teaching-move headings, and body text render legibly. The script is suitable for a production team to read from or print.

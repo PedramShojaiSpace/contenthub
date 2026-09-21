@@ -49,7 +49,7 @@ A more grounded approach is to notice the pattern you already have. Did meals ch
 
 We are not assigning blame. We are collecting context.
 
-For a meaningful nutrition change—especially with a medical condition, pregnancy, allergies, disordered-eating history, or a restrictive diet—bring in an appropriate clinician or registered dietitian. Personalization, in the right hands, is a safety practice.
+For a meaningful nutrition change—especially with a medical condition, pregnancy, allergies, disordered-eating history, or a restrictive diet—bring in an appropriate clinician or licensed nutritionist. Personalization, in the right hands, is a safety practice.
 
 ## Teaching Move 4: Put medicines and measurements in the right frame
 

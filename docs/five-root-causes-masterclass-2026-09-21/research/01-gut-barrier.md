@@ -79,7 +79,7 @@ This wording encourages personal data and shared decision-making without promisi
 - Probiotics are not interchangeable. NCCIH notes that effects may differ by product and strain, many supplements do not require FDA approval before marketing, and safety data are limited for some populations. People who are seriously ill or immunocompromised, and caregivers of premature infants, should seek clinician guidance; severe or fatal infections have been reported in premature infants receiving probiotics. [6]
 - Encourage timely evaluation for blood in stool, black/tarry stool, unexplained weight loss, severe or worsening abdominal pain, persistent vomiting, dehydration, fever, fainting, or symptoms that persist or impair quality of life. Emergency services may be appropriate for severe or rapidly worsening symptoms.
 - Protect privacy. Personal symptom, stool, medication, and health data should be stored securely, shared only with consent, and not uploaded to an unreviewed commercial service without understanding its privacy terms.
-- Use accessible language and avoid shame. Food access, culture, disability, pregnancy, age, allergies, eating-disorder history, chronic disease, and medication interactions can change what is reasonable. Refer individualized nutrition questions to a registered dietitian or clinician.
+- Use accessible language and avoid shame. Food access, culture, disability, pregnancy, age, allergies, eating-disorder history, chronic disease, and medication interactions can change what is reasonable. Refer individualized nutrition questions to a licensed nutritionist or clinician.
 
 ## References
 

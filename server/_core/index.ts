@@ -48,6 +48,10 @@ import {
   resolveGenericKajabiUpsellCents,
   resolveKajabiKnownPriceCents,
 } from "../interconnectedUpsellAttribution";
+import {
+  classifyInterconnectedKajabiLifecyclePurchase,
+  isKajabiKlaviyoBuyerEventEnabled,
+} from "../interconnectedKajabiBuyerLifecycle";
 import { normalizeKajabiPurchase, parseKajabiWebhookPayload } from "../kajabiWebhookPayload";
 import { registerUnbounceKlaviyoLeadBridge } from "../unbounceKlaviyoLeadBridge";
 import { registerUnbounceNativeInterconnectedWebhook } from "../unbounceNativeInterconnectedWebhook";
@@ -1922,6 +1926,84 @@ async function startServer() {
       if (duplicateWebhookPurchase) {
         return res.json({ ok: true, duplicate: true, capiSent: false, purchaseEventId, email, amount, funnelSource, isMetaAttributed });
       }
+
+      // ── Staged Kajabi → Klaviyo paid-buyer handoff ─────────────────────────
+      // The buyer metric is deliberately off unless the owner has supplied the
+      // exact $99 Upstream OCU identifier and reviewed the draft Klaviyo flow.
+      // Classification is exact-ID-only: price and generic webhook payloads are
+      // never sufficient proof of the base offer or the digital OCU.
+      const lifecycleClassification = classifyInterconnectedKajabiLifecyclePurchase({
+        offerId,
+        upsellId,
+        configuredUpstreamOcuOfferId: ENV.kajabiUpstreamCourseOcuId,
+      });
+      const buyerLifecycleEnabled = isKajabiKlaviyoBuyerEventEnabled(
+        ENV.kajabiKlaviyoBuyerEventEnabled,
+      );
+      let klaviyoBuyerEvent: {
+        attempted: boolean;
+        accepted: boolean;
+        kind: string | null;
+      } = { attempted: false, accepted: false, kind: null };
+
+      if (buyerLifecycleEnabled && lifecycleClassification.kind !== "not_applicable") {
+        try {
+          const { createKlaviyoPurchaseLifecycleEvent } = await import("../klaviyo");
+          const firstName = name.split(/\s+/)[0] || undefined;
+
+          if (lifecycleClassification.kind === "base_buyer") {
+            const receipt = await createKlaviyoPurchaseLifecycleEvent({
+              eventName: lifecycleClassification.eventName,
+              email,
+              firstName,
+              uniqueId: `kajabi-interconnected-buyer-${orderId}`,
+              value: lifecycleClassification.baseRevenueCents / 100,
+              properties: {
+                purchase_key: orderId,
+                base_offer_id: lifecycleClassification.baseOfferId,
+                base_offer_tier: lifecycleClassification.baseOfferTier,
+                base_revenue_cents: lifecycleClassification.baseRevenueCents,
+                entry_platform: "kajabi",
+                funnel_path: "kajabi_klaviyo",
+                upstream_ocus_status: "pending",
+              },
+            });
+            klaviyoBuyerEvent = {
+              attempted: true,
+              accepted: receipt.accepted,
+              kind: lifecycleClassification.kind,
+            };
+            if (!receipt.accepted) {
+              console.warn(`[kajabi/purchase] Klaviyo base-buyer event not accepted (${receipt.httpStatus})`);
+            }
+          } else {
+            const receipt = await createKlaviyoPurchaseLifecycleEvent({
+              eventName: lifecycleClassification.eventName,
+              email,
+              firstName,
+              uniqueId: `kajabi-upstream-ocus-${orderId}`,
+              value: lifecycleClassification.upstreamOcuPriceCents / 100,
+              properties: {
+                purchase_key: orderId,
+                upstream_ocus_offer_id: lifecycleClassification.upstreamOcuOfferId,
+                upstream_ocus_price_cents: lifecycleClassification.upstreamOcuPriceCents,
+                entry_platform: "kajabi",
+              },
+            });
+            klaviyoBuyerEvent = {
+              attempted: true,
+              accepted: receipt.accepted,
+              kind: lifecycleClassification.kind,
+            };
+            if (!receipt.accepted) {
+              console.warn(`[kajabi/purchase] Klaviyo Upstream OCU event not accepted (${receipt.httpStatus})`);
+            }
+          }
+        } catch (klaviyoError: any) {
+          console.warn(`[kajabi/purchase] Klaviyo buyer event failed: ${klaviyoError?.message ?? "unknown"}`);
+        }
+      }
+
       const capiReceipt = await sendCapiEventWithReceipt({
         eventName: "Purchase",
         eventId: purchaseEventId,
@@ -1972,7 +2054,16 @@ async function startServer() {
         }
       }
       console.log(`[kajabi/purchase] CAPI Purchase sent for ${email} — funnel: ${funnelSource}, amount: $${amount}, event_id: ${purchaseEventId}, accepted: ${capiReceipt.accepted}`);
-      res.json({ ok: true, capiSent: capiReceipt.accepted, purchaseEventId, email, amount, funnelSource, isMetaAttributed });
+      res.json({
+        ok: true,
+        capiSent: capiReceipt.accepted,
+        purchaseEventId,
+        email,
+        amount,
+        funnelSource,
+        isMetaAttributed,
+        klaviyoBuyerEvent,
+      });
     } catch (err: any) {
       console.error("[kajabi/purchase] Error:", err);
       res.status(500).json({ error: err?.message });

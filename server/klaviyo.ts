@@ -289,6 +289,63 @@ export async function pushInterconnectedEmailLead(opts: {
 }
 
 /**
+ * Creates a transaction-level Klaviyo event for a confirmed Kajabi purchase.
+ * This intentionally does not subscribe a profile to email or SMS marketing;
+ * it only supplies the metric that a consent-filtered buyer lifecycle flow can
+ * use as its trigger.
+ */
+export async function createKlaviyoPurchaseLifecycleEvent(input: {
+  eventName: string;
+  email: string;
+  firstName?: string;
+  uniqueId: string;
+  value: number;
+  properties: Record<string, string | number | boolean | null>;
+}): Promise<{ accepted: boolean; httpStatus: number; error?: string }> {
+  if (!ENV.klaviyoPrivateKey) {
+    return { accepted: false, httpStatus: 0, error: "Klaviyo private key is unavailable" };
+  }
+
+  const response = await fetch(`${KLAVIYO_BASE}/events/`, {
+    method: "POST",
+    headers: klaviyoHeaders(),
+    body: JSON.stringify({
+      data: {
+        type: "event",
+        attributes: {
+          properties: input.properties,
+          value: input.value,
+          value_currency: "USD",
+          unique_id: input.uniqueId,
+          metric: {
+            data: {
+              type: "metric",
+              attributes: { name: input.eventName },
+            },
+          },
+          profile: {
+            data: {
+              type: "profile",
+              attributes: {
+                email: input.email,
+                ...(input.firstName ? { first_name: input.firstName } : {}),
+              },
+            },
+          },
+        },
+      },
+    }),
+  });
+
+  if (response.status === 202) {
+    return { accepted: true, httpStatus: response.status };
+  }
+
+  const error = (await response.text()).slice(0, 1000);
+  return { accepted: false, httpStatus: response.status, error };
+}
+
+/**
  * Lightweight API test — verifies the key works by fetching account info.
  */
 export async function testKlaviyoConnection(): Promise<{ ok: boolean; accountName?: string; error?: string }> {

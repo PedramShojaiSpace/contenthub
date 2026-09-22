@@ -1,143 +1,186 @@
-# Interconnected: Kajabi Checkout with Klaviyo Buyer Lifecycle
+# Interconnected: Kajabi Checkout, $99 Upstream OCU, and Klaviyo Buyer Handoff
 
 **Author:** Manus AI  
 **Date:** 22 September 2026  
-**Status:** Scope and architecture only. No Kajabi offer, checkout, upsell, landing page, webhook, Klaviyo flow, email, SMS, tracking, page, price, traffic, or advertising setting was changed.
+**Status:** Revised architecture and staged implementation plan. No live checkout, offer, upsell, landing page, webhook, Klaviyo flow, email, SMS, tracking, traffic, or advertising setting has been changed by this scope.
 
-## Executive recommendation
+## The decision
 
-The proposed funnel is technically sound and is the cleanest way to preserve the **Kajabi-native $199 one-click upsell** while moving paid-buyer education, segmentation, and long-term nurture into **Klaviyo**.
+Use **Klaviyo to nurture the lead**, **Kajabi to take payment and fulfill the digital product**, and the existing Content Hub webhook receiver to tell Klaviyo when a lead has become a buyer.
 
-The core design is simple:
+The immediate upgrade is no longer testing. The Kajabi one-click upsell is the **Upstream Course at a one-time $99 price**, with $199 as the regular standalone price. This is the correct post-purchase offer because it is digital, high-margin, and aligned with the Interconnected education journey.
 
-> **Interconnected front-end page → Kajabi $67 or $99 checkout → Kajabi-native $199 upsell page with video → Kajabi course access → Content Hub purchase receiver → dedicated Klaviyo buyer event → Klaviyo paid-buyer lifecycle.**
+> **Klaviyo lead flow → tracked Kajabi $67 or $99 checkout → Kajabi-native $99 Upstream Course OCU → Kajabi fulfillment → signed purchase webhook → Klaviyo buyer event.**
 
-Kajabi remains the financial and entitlement authority. It processes the front-end purchase, presents the native one-click upsell, and grants product access. Klaviyo becomes the communication authority for marketing-consented buyers after purchase. The Content Hub is the controlled bridge: it receives a signed Kajabi purchase event, records the transaction, attributes it to the correct source path, creates a deduplicated Klaviyo buyer event, and suppresses messages that no longer apply.
+A lead who does not buy continues normally through the existing Klaviyo lead flow. A confirmed buyer leaves the prospect logic and enters a buyer-specific Klaviyo flow. Kajabi continues to deliver the purchased products and access; Klaviyo must not become the course-entitlement system.
 
-This avoids the weak point in the Shopify path: the buyer never needs to leave the post-purchase flow for a separate checkout. It also avoids a second weak point: a Kajabi email sequence does not provide the same buyer segmentation, event reporting, and long-term lifecycle control as Klaviyo.
+## The clean handoff in plain English
 
-## Current assets and boundaries
+1. **Keep the existing Klaviyo email sequence.** Its delayed Day 0 offer, education, and episode cadence remain the prospect experience.
+2. **Replace only the first-product checkout links.** The $67 and $99 CTAs point to their respective Kajabi offer checkout URLs through the existing Content Hub tracking bridge.
+3. **Let Kajabi do the conversion work.** The $67/$99 purchaser receives the $99 Upstream Course native one-click upsell with the video-led Kajabi presentation.
+4. **Let Kajabi fulfill.** Kajabi grants Interconnected and—if accepted—Upstream Course access, then sends its normal fulfilment communication.
+5. **Use the existing signed webhook.** Kajabi sends a Purchase Created event to `https://content.theurbanmonk.com/api/kajabi/purchase` after a successful base purchase.
+6. **Send a single Klaviyo buyer event.** The Content Hub creates `Interconnected Kajabi Buyer` for that confirmed base purchase. That event triggers the buyer flow and prevents further prospect messaging.
+7. **Track the OCU separately.** An accepted $99 Upstream Course purchase sends `Upstream Course OCU Accepted`. It is not a testing purchase and it must not start the buyer flow a second time.
 
-The currently published `interconnected.theurbanmonk.com` root and episode routes are **private screening pages**. They require an email-activated browser session and are unsuitable as paid-buyer library pages. They can remain the pre-purchase screening experience, provided the paid CTA is changed to the appropriate Kajabi checkout route.
+## Exact system responsibilities
 
-Kajabi can send a purchaser to an offer-specific **Kajabi landing page** after checkout. It cannot select an arbitrary external Content Hub page as that post-purchase destination. Therefore the immediate post-purchase orientation page must either be a Kajabi landing page or remain Kajabi’s native post-purchase surface. [1]
+| System | Owns | Does not own |
+|---|---|---|
+| **Klaviyo** | Lead nurture, buyer segmentation, buyer education, lifecycle messaging, event reporting, prospect suppression | Payment, course access, OCU checkout, inferred SMS consent |
+| **Kajabi** | $67/$99 checkout, $99 Upstream Course OCU, payment confirmation, product access, transactional/access delivery | Lead source attribution beyond the supplied checkout path, long-term buyer marketing segmentation |
+| **Content Hub** | Signed webhook verification, one-per-purchase buyer event, offer/tier classification, first-party ledger, source attribution, deduplication | Customer-facing course fulfillment |
 
-The existing Kajabi buyer sequence, `[DRAFT] Interconnected Paid Buyer Lifecycle — $67 + $99`, is not the recommended live delivery vehicle for this architecture. It is useful as a copy and timing repository, but the live lifecycle should be rebuilt as a Klaviyo metric-triggered flow so that it is driven by a verified purchase event and has measurable exits.
+## The checkout links to use
 
-## Recommended buyer journey
+The existing tracker already supports a Kajabi destination. Each Klaviyo button should call the current first-party bridge, then redirect to the specific Kajabi offer.
 
-| Stage | System of record | Buyer experience | Required control |
-|---|---|---|---|
-| 1. Paid screening | Interconnected front-end pages | Watches screening content and clicks the paid CTA | Preserve existing first-party lead and UTM capture. |
-| 2. Checkout | Kajabi | Completes either the $67 control or $99 treatment checkout | Use distinct offer IDs and tagged checkout-start records. |
-| 3. Immediate upgrade | Kajabi | Sees the video-led $199 native one-click upsell | Keep the video, offer, price, and upsell design identical across $67/$99 arms unless intentionally tested. |
-| 4. Access and orientation | Kajabi | Receives course entitlement and reaches a Kajabi post-purchase orientation page | The access message must be a Kajabi product/transactional communication, not a marketing-flow substitute. |
-| 5. Buyer handoff | Content Hub | No added customer-facing step | Signed Kajabi purchase webhook records the qualifying base purchase and sends one buyer event to Klaviyo. |
-| 6. Buyer lifecycle | Klaviyo | Receives the paid-buyer email path only if marketing-eligible | Do not infer email or SMS consent. Exclude from free-screening emails after purchase. |
-| 7. Testing / Academy handoff | Klaviyo + Kajabi | Receives relevant next-step invitations after engagement | Suppress the $199 recovery when the Kajabi OCU is accepted; route test buyers to fulfillment. |
+| Arm | Exact Kajabi offer | Checkout URL | Recommended tracking label |
+|---|---:|---|---|
+| $67 control | `2151314475` | Confirm existing live $67 checkout URL before replacing buttons | `kajabi_klaviyo_67_v1` |
+| $99 treatment | `2151402817` | `https://theacademy.theurbanmonk.com/offers/ofRhsQvo/checkout` | `kajabi_klaviyo_99_v1` |
 
-## The Kajabi checkout and upsell layer
+The tracker link takes this form:
 
-The paid CTA from the Interconnected screening pages should first pass through a Content Hub checkout-start bridge. The bridge writes the source context and then redirects to one of two Kajabi offer checkouts:
+```text
+https://content.theurbanmonk.com/r/checkout?destination=<URL-ENCODED_KAJABI_CHECKOUT>&utm_source=klaviyo&utm_medium=email&utm_campaign=interconnected_14day&utm_content=<MESSAGE_KEY>&funnel_path=kajabi&email_key=<MESSAGE_KEY>
+```
 
-| Arm | Kajabi offer | Offer ID | Required source label |
-|---|---|---:|---|
-| Control | Interconnected $67 | `2151314475` | `kajabi_klaviyo_67_v1` |
-| Price treatment | Interconnected $99 | `2151402817` | `kajabi_klaviyo_99_v1` |
+The `destination` must be the exact Kajabi checkout URL. The `email_key` must be stable per message so the ledger can report the source email that created the checkout start.
 
-The existing Kajabi-native $199 one-click upsell should remain within each offer’s **Purchase flow**. It is the correct place for the video-led presentation because it preserves the saved-payment one-click action. The two base-price offers should use the same $199 upsell page, product, price, and fulfillment unless the upsell itself becomes a separately declared test.
+## The Kajabi setup
 
-After the buyer accepts or declines the one-click offer, Kajabi should direct them to a dedicated Kajabi landing page named, for example, **`Interconnected — You’re In`**. This page should include the course-access instruction, a calm “start here” orientation, the paid-library button, and a brief explanation of what happens next. It should not re-sell the $199 option that the buyer just considered.
+The live Kajabi offer map confirms the $67 and $99 front-end offers. It does **not** yet show an exact paid $99 Upstream Course offer or a confirmed new OCU identifier. The only currently discoverable matching Upstream offer is a $0 limited-access offer. That is expected while the new course offer is being built, but it means the connection must not guess at the new OCU ID.
 
-## The purchase-to-Klaviyo bridge
+Create or finish these **draft Kajabi records**:
 
-Kajabi supports offer-level **Purchase Created** webhooks and site-level **Payment Succeeded** webhooks. Purchase Created is the correct base-buyer trigger because it fires on the first payment for a one-time offer, subscription, or payment plan. Payment Succeeded should be retained for reconciliation and for tracking later OCU/renewal payments, but it must not start the buyer lifecycle by itself. [2] [3]
-
-The current Content Hub already has a signed Kajabi purchase receiver at `/api/kajabi/purchase`. It verifies the raw payload before processing, records a deduplicated Kajabi purchase, assigns a funnel source, creates first-party cohort credit, and sends the existing Meta Purchase diagnostic event. The scoped addition is a **Klaviyo buyer-event adapter**, not a new external service.
-
-For an eligible base purchase, the adapter should create exactly one Klaviyo event:
-
-| Event property | Purpose |
+| Item | Required configuration |
 |---|---|
-| `event_name` = `Interconnected Kajabi Buyer` | Dedicated, human-readable metric for the lifecycle flow. |
-| `purchase_key` | Stable Kajabi transaction identifier for idempotency. |
-| `offer_id` and `offer_tier` | Distinguishes $67 control from $99 treatment. |
-| `entry_platform` = `kajabi` | Keeps Kajabi revenue distinct from the Shopify challenger ledger. |
-| `funnel_path` | Records the exact page/CTA route, e.g. `kajabi_klaviyo_67_v1`. |
-| `base_revenue_cents` | Preserves base-sale reporting without treating the OCU as base revenue. |
-| `upsell_status` | Initially `pending`; later updated through a separate event/property if the Kajabi OCU settles. |
-| `paid_course_key` | Makes the entitlement and buyer type auditable. |
+| **Upstream Course Product** | The actual Kajabi course product that grants the $199 standalone course access. |
+| **Upstream Course – Standard Offer** | One-time $199 offer tied to the Upstream Course product. This is the standalone sales-page offer. |
+| **Upstream Course – Interconnected OCU** | One-time $99 offer tied to the same Upstream Course product. This is restricted to the post-purchase offer and should not be the default public sales-page checkout. |
+| **$67 Interconnected Purchase Flow** | The current $99 Upstream Course offer added as its only native one-click upsell. |
+| **$99 Interconnected Purchase Flow** | The same $99 Upstream Course offer added as its only native one-click upsell. |
+| **Post-purchase landing page** | A Kajabi buyer orientation page after accept or decline. It should contain access guidance and a paid-library button, not another upsell. |
 
-Klaviyo supports custom API events as metric-triggered flow sources. A metric-triggered flow can use event properties as trigger filters and profile properties as flow filters. [4] [5]
+The current `interconnected.theurbanmonk.com` routes remain screening-gated. They are suitable for the opt-in and email-screening experience, but they are not the post-purchase access page. Kajabi’s post-purchase selector directs buyers to a Kajabi Landing Page. [1]
 
-The adapter must **not** add the buyer to the existing free-screening list. It must not subscribe the buyer to SMS. It must not infer email marketing consent. It only creates the purchase event and updates permitted buyer-status profile properties.
+## The webhook and Klaviyo events
 
-## Klaviyo flow architecture
+The Content Hub already has a live signed receiver at:
 
-Create a new flow named:
+```text
+https://content.theurbanmonk.com/api/kajabi/purchase
+```
+
+Kajabi should send **Purchase Created** there for the base $67/$99 offers. This is the best trigger because it represents a one-time offer purchase or first payment, and therefore starts the buyer lifecycle only once. [2]
+
+The receiver already verifies the request, normalizes Kajabi’s purchase data, de-duplicates by the stable transaction ID, records the Kajabi purchase, and assigns Interconnected cohort credit. The Klaviyo event adapter is now **implemented in a disabled state** and is covered by focused regression tests. It has no effect until the two explicit activation settings below are present.
+
+| Incoming confirmed purchase | Klaviyo result | Reason |
+|---|---|---|
+| $67 base offer `2151314475` | `Interconnected Kajabi Buyer` | Starts the buyer flow once. |
+| $99 base offer `2151402817` | `Interconnected Kajabi Buyer` | Starts the same buyer flow once with the treatment label. |
+| $99 Upstream Course OCU | `Upstream Course OCU Accepted` | Updates buyer status and suppresses future Upstream promotion; does not re-enroll the buyer flow. |
+| Any other Kajabi purchase | No Interconnected buyer event | Keeps unrelated Kajabi revenue and lifecycle paths separate. |
+
+Klaviyo’s Events API allows a server-side custom metric tied to the buyer’s profile. Its `unique_id` prevents a duplicate delivery of the same Kajabi transaction from creating another event. [3]
+
+The event payload will be non-sensitive and include only the buyer email/name necessary for Klaviyo identification plus the purchase classification:
+
+```text
+Interconnected Kajabi Buyer
+  purchase_key: <Kajabi transaction ID>
+  base_offer_id: 2151314475 or 2151402817
+  base_offer_tier: 67_control or 99_treatment
+  entry_platform: kajabi
+  funnel_path: kajabi_klaviyo_67_v1 or kajabi_klaviyo_99_v1
+  base_revenue_cents: 6700 or 9900
+  upstream_ocus_status: pending
+```
+
+```text
+Upstream Course OCU Accepted
+  purchase_key: <Kajabi OCU transaction ID>
+  upstream_ocus_offer_id: <exact ID after Kajabi creates it>
+  upstream_ocus_price_cents: 9900
+  entry_platform: kajabi
+```
+
+Neither event subscribes a person to email marketing or SMS. Existing consent stays exactly as it is. The transactional course-access message remains in Kajabi.
+
+### Staged implementation state
+
+The Content Hub now classifies the two base offers by their exact IDs and has a separate exact-ID-only classifier for the $99 Upstream OCU. It will not infer a buyer tier or an Upstream acceptance from a price, a title, or an incomplete generic Kajabi webhook payload.
+
+| Configuration | Current state | Purpose |
+|---|---|---|
+| `KAJABI_KLAVIYO_BUYER_EVENT_ENABLED` | Disabled / absent | Must equal `true` before the receiver calls Klaviyo. |
+| `KAJABI_UPSTREAM_COURSE_OCU_ID` | Blank | Must be the exact new Kajabi $99 Upstream OCU offer or upsell identifier. |
+| Klaviyo private key | Existing server credential | Used only after the dispatch gate is enabled. |
+| Klaviyo metric-triggered buyer flow | Not created or published | Must be draft-reviewed before the dispatch gate is enabled. |
+
+The adapter creates a server-side Klaviyo event with a stable transaction-based `unique_id`. A Kajabi webhook retry for the same transaction therefore cannot create a second buyer-flow enrollment. It does not subscribe the person to email or SMS.
+
+## Klaviyo flow configuration
+
+The existing lead sequence remains the prospect flow. Add a **flow filter** so a person is not eligible to continue once they have performed `Interconnected Kajabi Buyer` after entering that flow.
+
+Create one new draft flow:
 
 > **`[DRAFT] Interconnected Kajabi Buyer Lifecycle — Event Trigger`**
 
-The trigger is the custom metric `Interconnected Kajabi Buyer`. Its trigger filter allows only offer IDs `2151314475` and `2151402817`. A flow filter prevents re-entry for an already active purchase key. A second filter prevents marketing sends to profiles without email marketing eligibility.
+| Trigger or exit | Action |
+|---|---|
+| Trigger: `Interconnected Kajabi Buyer` | Enroll the confirmed buyer only once. |
+| Trigger filter | `base_offer_id` equals the $67 or $99 exact base-offer ID. |
+| Flow filter | Email marketing eligibility is true before a marketing email is sent. |
+| Immediate action | No marketing send. Kajabi owns the access email and immediate product delivery. |
+| `Upstream Course OCU Accepted` | Exit the OCU-recovery branch and mark the profile as owning Upstream Course. |
+| Future testing purchase | Exit any testing-promotion branch and hand off to testing fulfilment. |
+| Unpurchased prospect | No event is created; they remain in the existing Klaviyo lead sequence. |
 
-| Timing | Klaviyo action | Required gate |
-|---|---|---|
-| Immediately | Do not replace Kajabi’s access/entitlement message. Record buyer event and profile state only. | The transactional access path must work independently of Klaviyo marketing consent. |
-| +30 minutes | Optional $199 recovery email | Send only if the Content Hub has not received the corresponding Kajabi OCU purchase/updated total and the profile is email-marketing eligible. |
-| Day 1 | Paid orientation | Use the paid Kajabi course route; no free-screening language. |
-| Day 3 | Series activation | Continue the paid course. |
-| Day 6 | Protocol engagement | Only when the underlying asset is published and buyer-accessible. |
-| Day 9 | Testing education | Link to the approved $199 member-testing destination; exit if the buyer has already acquired it. |
-| Day 13 | Live or evergreen education | Use a verified current registration or replay destination only. |
-| Day 17 | Decision support | Buyer-specific next-step hub or approved alternative. |
-| Day 24 | Re-engagement | Return to paid course / guide. |
-| Day 30 | Core funnel / Academy handoff | Use the verified next live education or Academy pathway. |
+The first buyer email can go after the current expected delay, but it should be a paid-buyer orientation and course-use message—not a replacement for Kajabi’s access email. A short OCU recovery email is optional and should be sent only to buyers who **declined** the Upstream Course OCU, are marketing-eligible, and have not purchased that exact $99 Upstream offer. This recovery is a separate decision, not a prerequisite to the handoff.
 
-The current free-screening Klaviyo flow must receive a purchase exit. A buyer who converts on Kajabi should stop receiving “free screening” framing immediately. The paid-buyer flow must also exit when a qualifying $199 test purchase occurs, handing off to the existing test fulfillment sequence.
-
-## Revenue, attribution, and measurement
-
-The same named source path must appear in the checkout-start record, buyer event, first-party purchase credit, and reporting view. This creates an independent `Kajabi + Klaviyo` path that can be compared cleanly with the current `Kajabi + Kajabi Email` control and the `Klaviyo + Shopify` challenger.
+## Measurement contract
 
 | Metric | Authority | Definition |
 |---|---|---|
-| Base buyer and base revenue | Kajabi purchase record | Paid, non-refunded $67/$99 offer purchase. |
-| OCU attach rate | Kajabi transaction / payment event | $199 OCU transactions divided by eligible base buyers. |
-| Buyer activation | Klaviyo | Paid-library or paid-episode click within 72 hours. |
-| Testing progression | Kajabi/Shopify based on final destination | Qualified $199 member-offer purchase after the base offer. |
-| Booked ROAS | First-party revenue ÷ destination-tagged Meta spend | Use Kajabi cleared revenue for this path; Meta Purchase value is diagnostic only. |
-| Lifecycle influence | Klaviyo event and click reporting | Report separately from booked revenue; do not treat an open as a sale. |
+| Base buyer and base revenue | Kajabi | Paid, non-refunded $67/$99 base offer purchase. |
+| Upstream OCU attach rate | Kajabi | Accepted $99 Upstream OCU transactions ÷ eligible base buyers. |
+| Buyer conversion | Content Hub | Distinct `Interconnected Kajabi Buyer` events ÷ qualified Klaviyo leads. |
+| Course activation | Klaviyo | Paid-library / course click within the chosen early-use window. |
+| Booked ROAS | First-party Kajabi revenue ÷ destination-tagged Meta spend | Meta purchase columns remain diagnostic only. |
+| Later testing progression | First-party purchase ledger | Report separately; do not include it in immediate OCU economics. |
 
-## Viable ways to implement it
+## Two viable ways to deploy the handoff
 
 | Approach | Tradeoffs | Cost | Setup complexity |
 |---|---|---:|---|
-| **A. Kajabi checkout + Kajabi OCU + Content Hub → Klaviyo event flow** | Preserves the strong Kajabi video OCU; gives Klaviyo full lifecycle control and clean event-level reporting; keeps transaction and entitlement authority in Kajabi. Requires a scoped webhook/event adapter and a new draft Klaviyo flow. | Existing platform capacity | Moderate |
-| **B. Kajabi checkout + Kajabi OCU + Kajabi buyer sequence** | Fastest because the draft Kajabi sequence already exists. Less clean measurement, weaker suppression logic for the OCU, and a second system for buyer lifecycle reporting. | Existing platform capacity | Lower |
+| **A. Event-based buyer handoff (recommended)** | The Content Hub sends one deduplicated Klaviyo purchase event when Kajabi confirms the base purchase. This gives clean enrollment, suppression, reporting, and a distinct OCU-accepted signal. | Existing platform capacity | Moderate |
+| **B. Kajabi automation adds a tag/list membership** | Faster to configure but fragile: tags can be applied or removed manually, do not carry transaction-level deduplication, and are weaker for source/tier reporting. | Existing platform capacity | Low |
 
-Approach A is the architecture that best fits the stated goal: **Kajabi closes the sale and handles the one-click upsell; Klaviyo owns the buyer relationship after a confirmed purchase.**
+Approach A best matches the desired rule: **Klaviyo follows the lead until a confirmed Kajabi purchase changes the relationship to buyer.**
 
-## Required pre-build decisions and approval gates
+## What is required before activation
 
-1. Confirm whether the existing Kajabi $199 OCU already uses the desired video page for both base offers. If it does not, finalize that configuration in draft before moving traffic.
-2. Create or identify the Kajabi post-purchase landing page. The current `interconnected.theurbanmonk.com` screening pages cannot be used as this page because they are external and screening-gated.
-3. Confirm the access-delivery mechanism and course entitlement experience for both $67 and $99 offers.
-4. Choose the buyer lifecycle destinations that remain unresolved: protocol, companion guide, masterclass, webinar/evergreen event, community, and buyer next-step hub.
-5. Approve a new custom Klaviyo metric, a new draft flow, and the exact control/treatment source labels.
-6. Approve one controlled internal test for each offer and one accept/decline Kajabi OCU scenario. No paid traffic should be redirected until this proves one buyer event, one lifecycle enrollment, correct access, correct suppression, and correct revenue ledger entry.
+1. Finish the $199 standard Upstream Course offer and $99 restricted OCU offer in Kajabi.
+2. Capture the exact $99 OCU offer ID or upsell ID from Kajabi. Do not classify it from price alone.
+3. Confirm the $99 OCU is attached to both the $67 and $99 base offers and uses the intended video-led presentation.
+4. Confirm the Kajabi `Purchase Created` webhook points to the existing Content Hub receiver.
+5. Create the new draft Klaviyo event-triggered buyer flow using the two event names above; the server-side adapter is already staged.
+6. Run one internal control-offer test and one treatment-offer test, with both OCU accept and OCU decline outcomes. Validate one transaction record, one Klaviyo buyer event, correct prospect exit, correct Kajabi access, correct OCU status, and no SMS enrollment.
+7. Obtain explicit approval before publishing the new Klaviyo flow or moving a paid traffic destination.
 
-## Explicitly out of scope until approval
+## Explicitly not changed
 
-This scope does not create, activate, modify, or publish an offer, upsell, landing page, redirect, webhook, Klaviyo flow, email, SMS, product access setting, checkout, ad, budget, or traffic allocation. It also does not change the current Shopify/Klaviyo or Kajabi control arms.
+This document does not change the current Shopify/Klaviyo challenger, the existing Kajabi control, any ads or budgets, customer-facing email content, phone/SMS consent, Kajabi offer settings, checkout paths, product access, or traffic allocation.
 
 ## References
 
 [1]: https://help.kajabi.com/articles/sales/offers/how-to-send-customers-to-a-landing-page-after-checkout "Send customers to a landing page after checkout"
 
-[2]: https://help.kajabi.com/articles/api-integrations/webhooks/webhooks-explained "Use webhooks with Kajabi"
+[2]: https://help.kajabi.com/articles/api-integrations/webhooks/what-information-is-sent-with-outbound-webhooks "Outbound webhook data reference"
 
-[3]: https://help.kajabi.com/articles/api-integrations/webhooks/what-information-is-sent-with-outbound-webhooks "Outbound webhook data reference"
-
-[4]: https://help.klaviyo.com/hc/en-us/articles/360003057151 "How to create a metric-triggered flow"
-
-[5]: https://developers.klaviyo.com/en/docs/custom_event_tracking "Track API metrics with JavaScript"
+[3]: https://developers.klaviyo.com/en/reference/create_event "Create Event"

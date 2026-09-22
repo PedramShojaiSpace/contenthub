@@ -19,6 +19,11 @@ export const ENV = {
   heygenVoiceId: process.env.HEYGEN_VOICE_ID ?? "",
   supadataApiKey: process.env.SUPADATA_API_KEY ?? "",
   klaviyoPrivateKey: process.env.KLAVIYO_PRIVATE_KEY ?? "",
+  // Staged Kajabi → Klaviyo buyer-event bridge. The dispatch gate is disabled
+  // by default until the exact $99 Upstream OCU identifier and draft Klaviyo
+  // event-triggered flow have been reviewed.
+  kajabiKlaviyoBuyerEventEnabled: process.env.KAJABI_KLAVIYO_BUYER_EVENT_ENABLED ?? "",
+  kajabiUpstreamCourseOcuId: process.env.KAJABI_UPSTREAM_COURSE_OCU_ID ?? "",
   sendyBaseUrl: process.env.SENDY_BASE_URL ?? "",
   sendyApiKey: process.env.SENDY_API_KEY ?? "",
 };

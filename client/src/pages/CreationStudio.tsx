@@ -444,11 +444,13 @@ export default function CreationStudio() {
       if (isStrikeZone) {
         toast.success(`\u26a1 Strike Zone keyword loaded: "${seoKeyword}" (pos ${posNum.toFixed(1)}) \u2014 SEO brief injected!`);
       } else if (urlTitle) {
-        toast.success(`Scoreboard recommendation loaded: "${urlTitle}" \u2014 ready to generate!`);
+        toast.success(`Scoreboard recommendation loaded: "${urlTitle}" — ready to generate!`);
       } else {
-        toast.success(`SEO keyword loaded: "${seoKeyword}" \u2014 ready to generate!`);
+        toast.success(`SEO keyword loaded: "${seoKeyword}" — ready to generate!`);
       }
-      window.history.replaceState({}, "", "/studio");
+      // Preserve the bundle-aware pathname. Replacing it with `/studio`
+      // strands a refreshed Hub session on the root-level blank route.
+      window.history.replaceState({}, "", window.location.pathname);
     }
 
     // Pick up context launched from Reddit Intelligence tool
@@ -465,7 +467,7 @@ export default function CreationStudio() {
         setIdea(ideaText);
         toast.success(`Reddit thread loaded — ready to generate content!`);
       }
-      window.history.replaceState({}, "", "/studio");
+      window.history.replaceState({}, "", window.location.pathname);
     }
 
     // Pick up context launched from LLM Projects queue
@@ -494,7 +496,7 @@ export default function CreationStudio() {
         toast.success(`LLM Project asset loaded — ${PLATFORM_LABELS[targetPlatform] ?? assetType} ready to generate!`);
       }
       // Clean URL without reload
-      window.history.replaceState({}, "", "/studio");
+      window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
 

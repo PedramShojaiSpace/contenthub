@@ -46,7 +46,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useLocation } from "wouter";
+import { getHubPublicHref } from "@/lib/hubRouteResolver";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -444,7 +444,6 @@ function TargetRow({
   usedKeywords?: Set<string>;
   usedKeywordDetails?: Array<{ keyword: string; title: string; publishUrl: string | null }>;
 }) {
-  const [, setLocation] = useLocation();
   const [expanded, setExpanded] = useState(false);
   const [editingUrl, setEditingUrl] = useState(false);
   const [urlDraft, setUrlDraft] = useState(target.publishedUrl ?? "");
@@ -585,11 +584,10 @@ function TargetRow({
         {/* Create content buttons */}
         <div className="flex gap-1 shrink-0">
           <button
-            onClick={() =>
-              setLocation(
-                `/video-production?keyword=${encodeURIComponent(target.keyword)}`
-              )
-            }
+            onClick={() => {
+              const search = `?keyword=${encodeURIComponent(target.keyword)}`;
+              window.location.assign(getHubPublicHref("/video-production", search));
+            }}
             title="Create Video Script"
             className="p-1.5 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
           >
@@ -612,7 +610,11 @@ function TargetRow({
                 // long-tail keyphrase variant rather than reusing the pillar.
                 params.set("contentAngle", target.notes);
               }
-              setLocation(`/studio?${params.toString()}`);
+              // Keyword Strategy ships in the Content bundle while Creation
+              // Studio ships in the Core bundle. Wouter navigation from the
+              // Content base would otherwise drop the `/hub` prefix and land
+              // on the blank root-level `/studio` path.
+              window.location.assign(getHubPublicHref("/studio", `?${params.toString()}`));
             }}
             title="Create Blog Post"
             className="p-1.5 rounded-md hover:bg-emerald-50 text-muted-foreground hover:text-emerald-700 transition-colors"

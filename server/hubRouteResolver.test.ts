@@ -34,6 +34,12 @@ describe("Hub cross-bundle route resolver", () => {
       .toBe("/hub/interconnected-email-revenue");
   });
 
+  it("routes Creation Studio to the canonical Core Hub URL", () => {
+    expect(getHubBundleForPath("/studio")).toBe("core");
+    expect(getHubPublicHref("/studio", "?keyword=gut%20health&platform=blog"))
+      .toBe("/hub/studio?keyword=gut%20health&platform=blog");
+  });
+
   it("normalizes a full wrong-bundle URL before redirecting to its owner", () => {
     expect(getHubPublicHref("/hub/core/video-production", "?source=deep-link"))
       .toBe("/hub/content/video-production?source=deep-link");

@@ -28,4 +28,13 @@ describe("Kajabi purchase webhook receiver", () => {
     expect(source).toContain("if (duplicateWebhookPurchase) {");
     expect(source).toContain("duplicate: true, capiSent: false");
   });
+
+  it("keeps the Kajabi-to-Klaviyo buyer handoff exact-ID-only and disabled by default", () => {
+    expect(source).toContain("classifyInterconnectedKajabiLifecyclePurchase");
+    expect(source).toContain("isKajabiKlaviyoBuyerEventEnabled");
+    expect(source).toContain("configuredUpstreamOcuOfferId: ENV.kajabiUpstreamCourseOcuId");
+    expect(source).toContain("if (buyerLifecycleEnabled && lifecycleClassification.kind !== \"not_applicable\")");
+    expect(source).toContain("kajabi-interconnected-buyer-${orderId}");
+    expect(source).toContain("kajabi-upstream-ocus-${orderId}");
+  });
 });

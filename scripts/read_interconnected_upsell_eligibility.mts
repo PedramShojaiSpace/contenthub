@@ -53,7 +53,11 @@ async function main() {
     afterZipifyPublication: 0,
     unknownTime: 0,
   };
+  let triggerOrdersWith199Offer = 0;
   for (const order of eligibleTriggerOrders) {
+    if (order.lineItems?.nodes?.some((line) => line.sku === "FIT-22-OCUS-199")) {
+      triggerOrdersWith199Offer += 1;
+    }
     const gateway = order.paymentGatewayNames?.join(" + ") || "(missing)";
     const money = order.totalPriceSet?.shopMoney;
     const entry = byGateway.get(gateway) ?? { orders: 0, revenue: 0, currency: money?.currencyCode ?? "USD" };
@@ -72,6 +76,7 @@ async function main() {
     zipifyPublishedAt: new Date(zipifyPublishedAt).toISOString(),
     paidNonCancelledInterconnectedTriggerOrders: eligibleTriggerOrders.length,
     byPublicationStatus,
+    triggerOrdersWith199Offer,
     paymentGatewayGroups: [...byGateway.entries()].map(([paymentGateway, value]) => ({
       paymentGateway,
       orders: value.orders,

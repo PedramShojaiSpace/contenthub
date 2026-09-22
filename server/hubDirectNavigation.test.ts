@@ -29,4 +29,15 @@ describe("high-risk Hub navigation", () => {
     expect(intelligenceDashboard).toContain("getHubPublicHref");
     expect(intelligenceDashboard).not.toContain('href="/studio"');
   });
+
+  it("keeps keyword-topic handoffs on the bundle-aware Studio route", () => {
+    const keywordStrategy = source("pages/KeywordStrategy.tsx");
+    const creationStudio = source("pages/CreationStudio.tsx");
+
+    expect(keywordStrategy).toContain("getHubPublicHref");
+    expect(keywordStrategy).toContain('getHubPublicHref("/studio"');
+    expect(keywordStrategy).not.toContain("setLocation(`/studio?");
+    expect(creationStudio).not.toContain('window.history.replaceState({}, "", "/studio")');
+    expect(creationStudio).toContain("window.location.pathname");
+  });
 });

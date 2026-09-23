@@ -4,6 +4,8 @@
 **Prepared:** 23 September 2026  
 **Purpose:** Load the approved, Content-Hub-optimized HTML into the existing **draft** buyer sequence for review. **Do not activate, enroll anyone, or attach an offer trigger during this task.**
 
+> **Link hotfix — 23 September 2026:** The original HTML package contains literal `{{TOKEN}}` placeholders inside `href` values. Those are not functioning email destinations. Replace only the approved tokens with the real URLs in the companion **Kajabi Interconnected Email Link Hotfix** guide before sending a test. If a token does not have an approved destination, hold that email; do not send it with a raw token, `#`, or an improvised link.
+
 ---
 
 ## What is already in place
@@ -37,7 +39,7 @@ Do **not** work in the existing free-screening / lead-nurture flow. Do **not** c
 | Paste only the supplied HTML **fragment** into the main body/text block. | Do not paste an HTML file into the subject line, preview line, header, footer, or the entire template source. |
 | Preserve Kajabi’s existing footer and unsubscribe controls. | Do not delete the physical address, unsubscribe link, sender identity, or compliance footer. |
 | Save after every individual message. | Do not make a batch of unsaved changes. |
-| Preserve unresolved `{{TOKEN}}` text exactly if it appears in the supplied HTML. | Do not invent URLs, use a placeholder `#`, or send a buyer-facing test with raw tokens. |
+| Replace only the specifically approved `{{TOKEN}}` values with their full `https://` or `mailto:` destinations before testing. | Do not invent URLs, use a placeholder `#`, or send a buyer-facing test with raw tokens. |
 | Stop and record a screenshot if a save does not confirm. | Do not repeatedly click through a blank/extension page or overwrite a body you cannot verify. |
 
 ---
@@ -72,7 +74,7 @@ Repeat this exact procedure for each of the ten rows above.
 1. Go to `https://app.kajabi.com/admin/email_sequences/2148891667`.
 2. Find the message by its internal title in the table above.
 3. Click the message title or **Edit**. Confirm the internal title, day, subject, and preview text match the table before changing anything.
-4. Open the matching `.html` file from the ZIP with a **plain-text editor**.
+4. Open the matching `.html` file from the ZIP with a **plain-text editor**. Before copying, use the companion hotfix guide to replace only approved raw `{{TOKEN}}` values with their full destination URLs.
 5. Select all of the file contents and copy them. Do not copy only the visible text in a browser preview; copy the actual HTML source.
 
 ### 2. Open only the main email body
@@ -118,13 +120,14 @@ The previous automated attempt encountered browser/editor instability. Jim shoul
 
 ## Destination/token worksheet — required before buyer-facing activation
 
-The current canonical HTML intentionally preserves unresolved destinations. A raw `{{TOKEN}}` must never reach a buyer.
+The original canonical HTML intentionally preserved unresolved destinations. A raw `{{TOKEN}}` must never reach a buyer and is the reason the current test-email links do not work. Use the companion hotfix guide to resolve only the approved values below before sending a test.
 
 | Token | Safe status today | Allowed action for Jim during staging | Required before activation |
 |---|---|---|---|
-| `{{PAID_LIBRARY_URL}}` | Verified | May replace with `https://theacademy.theurbanmonk.com/library` | Click-test while logged out and as a buyer if possible. |
-| `{{PAID_EPISODE_1_URL}}` | Verified | May replace with `https://theacademy.theurbanmonk.com/products/interconnected-series-self-guided` | Verify an entitled buyer reaches the course after sign-in. |
-| `{{PAID_SERIES_CONTINUE_URL}}` | Verified | May replace with `https://theacademy.theurbanmonk.com/products/interconnected-series-self-guided` | Verify buyer access after sign-in. |
+| `{{PAID_LIBRARY_URL}}` | Verified | Replace with `https://theacademy.theurbanmonk.com/library` | Click-test while logged out and as a buyer if possible. |
+| `{{PAID_EPISODE_1_URL}}` | Verified | Replace with `https://theacademy.theurbanmonk.com/products/interconnected-series-self-guided` | Verify an entitled buyer reaches the course after sign-in. |
+| `{{PAID_SERIES_CONTINUE_URL}}` | Verified | Replace with `https://theacademy.theurbanmonk.com/products/interconnected-series-self-guided` | Verify buyer access after sign-in. |
+| `{{SUPPORT_EMAIL}}` | Verified | Replace with `support@theurbanmonk.com` in both the visible text and `mailto:` value. | Send a test and verify that the support link opens a new email addressed to support. |
 | `{{TESTING_MEMBER_OFFER_URL}}` | Strategy changed | **Leave unresolved.** The sequence’s old $199 testing path conflicts with the new $99 Upstream OCU direction. | Owner must provide the approved current offer/checkout destination and revised copy. |
 | `{{STARTER_PROTOCOL_URL}}` | Not published | **Leave unresolved.** | Publish the Gut Restoration Protocol and supply its buyer-accessible URL, or remove the promise from the copy. |
 | `{{NEXT_WEBINAR_OR_EVERGREEN_URL}}` | Not supplied | **Leave unresolved.** | Owner must provide the current webinar registration or evergreen replay URL. |

@@ -24,5 +24,7 @@ describe("Interconnected Klaviyo treatment exit-intent recovery", () => {
     expect(source).toContain("89xb1oskij");
     expect(source).not.toContain("10cdtpm3il");
     expect(source).toContain("buildInterconnectedKlaviyoCheckoutUrl(window.location.search)");
+    expect(source).toContain("Secure Kajabi checkout");
+    expect(source).not.toContain("Secure Shopify checkout");
   });
 });

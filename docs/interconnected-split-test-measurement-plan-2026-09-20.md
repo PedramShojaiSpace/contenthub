@@ -2,7 +2,9 @@
 
 **Prepared by:** Manus AI  
 **Date:** September 20, 2026  
-**Status:** Measurement plan only. It does not activate ads, re-route visitors, modify a Kajabi offer, or change an existing campaign.
+**Status:** Historical measurement plan; see the September 23 checkout-cutover note below for the current path definition.
+
+> **Checkout cutover — September 23, 2026:** The Klaviyo thank-you CTA now directs to the same published **Kajabi $67 checkout** as the Kajabi path, while retaining the `ko_klaviyo` lead cohort and the first-party Klaviyo checkout-touch ledger. Therefore, the historic **Klaviyo/Shopify** destination-path cohort ends at the cutover. Do not blend post-cutover Klaviyo/Kajabi purchases with pre-cutover Klaviyo/Shopify results or continue to call the combined data a Shopify destination arm. From the cutover forward, the operational comparison is **Klaviyo-acquisition → Kajabi-checkout** versus the existing Kajabi path; the payment/OCU stack is held constant and the remaining material differences are entry page, lead transport, and nurture. The linked $99 Upstream OCU is a Kajabi-native post-purchase offer and is reported as a separate tier. Detailed implementation record: `docs/klaviyo-thank-you-kajabi-checkout-swap-2026-09-23.md`.
 
 ## The core recommendation
 

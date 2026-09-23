@@ -4,17 +4,17 @@ import {
   INTERCONNECTED_KLAVIYO_199_CONTENT,
   INTERCONNECTED_KLAVIYO_THANK_YOU_FUNNEL_PATH,
   INTERCONNECTED_KLAVIYO_THANK_YOU_MESSAGE_KEY,
-  INTERCONNECTED_KLAVIYO_THANK_YOU_PRODUCT_URL,
+  INTERCONNECTED_KLAVIYO_THANK_YOU_CHECKOUT_URL,
   INTERCONNECTED_KLAVIYO_TREATMENT_CONTENT,
   buildInterconnectedKlaviyo199CheckoutUrl,
   buildInterconnectedKlaviyoCheckoutUrl,
 } from "../client/src/lib/interconnectedKlaviyoCheckout";
 
 describe("Klaviyo Thank You B treatment checkout handoff", () => {
-  it("uses the first-party bridge and the approved Shopify product page", () => {
+  it("uses the first-party bridge and the approved Kajabi $67 checkout", () => {
     const url = new URL(buildInterconnectedKlaviyoCheckoutUrl("?utm_medium=email&fbclid=meta-click"), "https://content.theurbanmonk.com");
     expect(url.pathname).toBe("/r/checkout");
-    expect(url.searchParams.get("destination")).toBe(INTERCONNECTED_KLAVIYO_THANK_YOU_PRODUCT_URL);
+    expect(url.searchParams.get("destination")).toBe(INTERCONNECTED_KLAVIYO_THANK_YOU_CHECKOUT_URL);
     expect(url.searchParams.get("utm_source")).toBe("klaviyo");
     expect(url.searchParams.get("utm_medium")).toBe("email");
     expect(url.searchParams.get("utm_campaign")).toBe("interconnected_14day");

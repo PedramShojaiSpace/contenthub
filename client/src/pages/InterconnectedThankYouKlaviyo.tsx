@@ -388,7 +388,7 @@ export default function InterconnectedThankYouKlaviyo() {
         {label}
       </button>
       <p className="text-gray-500 text-xs mt-3">
-        🔒 Secure Shopify checkout · review the complete protocol · 30-day money-back guarantee · Instant access
+        🔒 Secure Kajabi checkout · immediate access to the complete protocol · 30-day money-back guarantee
       </p>
     </div>
   );
@@ -465,7 +465,7 @@ export default function InterconnectedThankYouKlaviyo() {
             >
               YES — Get All-Access for $67 Now →
             </button>
-            <p className="text-gray-500 text-xs mt-2">Secure Shopify checkout · review the complete protocol · Instant access · 30-day guarantee</p>
+            <p className="text-gray-500 text-xs mt-2">Secure Kajabi checkout · immediate access to the complete protocol · 30-day guarantee</p>
           </div>
 
           {/* Confirmation */}
@@ -799,7 +799,7 @@ export default function InterconnectedThankYouKlaviyo() {
             >
               No thanks, I’ll watch one episode at a time
             </button>
-            <p className="mt-5 text-xs text-gray-500">Secure Shopify checkout · 30-day money-back guarantee · Instant access</p>
+            <p className="mt-5 text-xs text-gray-500">Secure Kajabi checkout · 30-day money-back guarantee · immediate access</p>
           </div>
         </div>
       )}

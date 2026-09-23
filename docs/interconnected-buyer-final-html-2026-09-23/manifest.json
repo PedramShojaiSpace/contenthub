@@ -1,0 +1,97 @@
+{
+  "createdAt": "2026-09-23T17:51:47.699Z",
+  "package": "Interconnected Buyer Email — Final Paste-Ready HTML",
+  "status": "draft-only; do not activate or enroll",
+  "messages": [
+    {
+      "number": "01",
+      "filename": "01-access-delivery.html",
+      "internalTitle": "01 - Access Delivery (transactional review)",
+      "timing": "Immediately / Day 0",
+      "subject": "Your Interconnected access is ready",
+      "preview": "Start with the series when you are ready.",
+      "ctaDestination": "https://theacademy.theurbanmonk.com/library"
+    },
+    {
+      "number": "02",
+      "filename": "02-day-1-start-small.html",
+      "internalTitle": "02 - Day 1 Start Small",
+      "timing": "Day 1, 8:00 AM PDT",
+      "subject": "Start with one episode—not everything",
+      "preview": "The goal is not to finish it. It is to notice one thing.",
+      "ctaDestination": "https://theacademy.theurbanmonk.com/products/interconnected-series-self-guided"
+    },
+    {
+      "number": "03",
+      "filename": "03-day-1-paid-orientation.html",
+      "internalTitle": "03 - Day 1 Orientation",
+      "timing": "Day 1, 9:00 AM PDT",
+      "subject": "How to get more from every episode",
+      "preview": "One useful note beats an hour of passive watching.",
+      "ctaDestination": "https://theacademy.theurbanmonk.com/products/interconnected-series-self-guided"
+    },
+    {
+      "number": "04",
+      "filename": "04-day-3-series-activation.html",
+      "internalTitle": "04 - Day 3 Series Activation",
+      "timing": "Day 3, 8:00 AM PDT",
+      "subject": "Watch less, notice more",
+      "preview": "A slower approach can create a more useful map.",
+      "ctaDestination": "https://theacademy.theurbanmonk.com/products/interconnected-series-self-guided"
+    },
+    {
+      "number": "05",
+      "filename": "05-day-6-one-change.html",
+      "internalTitle": "05 - Day 6 One Change",
+      "timing": "Day 6, 8:00 AM PDT",
+      "subject": "Pick one thing this week",
+      "preview": "Not fifty changes. One change worth protecting.",
+      "ctaDestination": "https://theacademy.theurbanmonk.com/products/interconnected-series-self-guided"
+    },
+    {
+      "number": "06",
+      "filename": "06-day-9-patterns.html",
+      "internalTitle": "06 - Day 9 Pattern Mapping",
+      "timing": "Day 9, 8:00 AM PDT",
+      "subject": "Turn what you are noticing into a useful question",
+      "preview": "You do not need to guess. Start by observing more clearly.",
+      "ctaDestination": "https://theacademy.theurbanmonk.com/products/interconnected-series-self-guided"
+    },
+    {
+      "number": "07",
+      "filename": "07-day-13-connect-the-dots.html",
+      "internalTitle": "07 - Day 13 Connect the Dots",
+      "timing": "Day 13, 8:00 AM PDT",
+      "subject": "Connect the dots without forcing an answer",
+      "preview": "A useful health map starts with better questions.",
+      "ctaDestination": "https://theacademy.theurbanmonk.com/products/interconnected-series-self-guided"
+    },
+    {
+      "number": "08",
+      "filename": "08-day-17-keep-it-simple.html",
+      "internalTitle": "08 - Day 17 Keep It Simple",
+      "timing": "Day 17, 8:00 AM PDT",
+      "subject": "You do not need a perfect plan",
+      "preview": "The next useful step is the one you can actually take.",
+      "ctaDestination": "https://theacademy.theurbanmonk.com/products/interconnected-series-self-guided"
+    },
+    {
+      "number": "09",
+      "filename": "09-day-24-reengagement.html",
+      "internalTitle": "09 - Day 24 Re-engagement",
+      "timing": "Day 24, 8:00 AM PDT",
+      "subject": "One small change, protected",
+      "preview": "Coming back counts. You are not behind.",
+      "ctaDestination": "https://theacademy.theurbanmonk.com/library"
+    },
+    {
+      "number": "10",
+      "filename": "10-day-30-progress-review.html",
+      "internalTitle": "10 - Day 30 Progress Review",
+      "timing": "Day 30, 8:00 AM PDT",
+      "subject": "A month in—look back before you look forward",
+      "preview": "Notice what has shifted, then choose one next step.",
+      "ctaDestination": "https://theacademy.theurbanmonk.com/library"
+    }
+  ]
+}

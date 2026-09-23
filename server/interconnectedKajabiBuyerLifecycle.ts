@@ -1,5 +1,6 @@
 export const INTERCONNECTED_KAJABI_BUYER_EVENT = "Interconnected Kajabi Buyer";
 export const UPSTREAM_COURSE_OCU_ACCEPTED_EVENT = "Upstream Course OCU Accepted";
+export const INTERCONNECTED_KAJABI_UPSTREAM_99_OCU_OFFER_ID = "2151104453";
 
 export const INTERCONNECTED_KAJABI_BASE_OFFERS = {
   "2151314475": {
@@ -59,14 +60,15 @@ export function classifyInterconnectedKajabiLifecyclePurchase(input: {
     };
   }
 
-  const configuredUpstreamOcuOfferId = input.configuredUpstreamOcuOfferId?.trim() ?? "";
-  if (configuredUpstreamOcuOfferId && (
-    offerId === configuredUpstreamOcuOfferId || upsellId === configuredUpstreamOcuOfferId
-  )) {
+  // This is the verified live Kajabi $99 OCU. An environment value may override
+  // it only if the offer is intentionally replaced in a future approved test.
+  const upstreamOcuOfferId = input.configuredUpstreamOcuOfferId?.trim()
+    || INTERCONNECTED_KAJABI_UPSTREAM_99_OCU_OFFER_ID;
+  if (offerId === upstreamOcuOfferId || upsellId === upstreamOcuOfferId) {
     return {
       kind: "upstream_ocus_accepted",
       eventName: UPSTREAM_COURSE_OCU_ACCEPTED_EVENT,
-      upstreamOcuOfferId: configuredUpstreamOcuOfferId,
+      upstreamOcuOfferId,
       upstreamOcuPriceCents: 9900,
     };
   }
@@ -75,9 +77,8 @@ export function classifyInterconnectedKajabiLifecyclePurchase(input: {
 }
 
 /**
- * Live dispatch remains opt-in while Kajabi's exact Upstream OCU identifier,
- * offer attachment, and Klaviyo buyer flow are reviewed. This is intentionally
- * not a default-on migration switch.
+ * Live dispatch remains opt-in while the Klaviyo buyer flow is reviewed. This
+ * is intentionally not a default-on migration switch.
  */
 export function isKajabiKlaviyoBuyerEventEnabled(value: string | undefined): boolean {
   return value?.trim().toLowerCase() === "true";

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   INTERCONNECTED_KAJABI_BUYER_EVENT,
+  INTERCONNECTED_KAJABI_UPSTREAM_99_OCU_OFFER_ID,
   UPSTREAM_COURSE_OCU_ACCEPTED_EVENT,
   classifyInterconnectedKajabiLifecyclePurchase,
   isKajabiKlaviyoBuyerEventEnabled,
@@ -24,15 +25,24 @@ describe("Kajabi-to-Klaviyo buyer lifecycle classification", () => {
     });
   });
 
-  it("accepts the Upstream OCU only after its exact Kajabi identifier is configured", () => {
+  it("accepts the verified Upstream OCU only with its exact Kajabi identifier", () => {
     expect(classifyInterconnectedKajabiLifecyclePurchase({
-      upsellId: "upstream-ocus-99",
-      configuredUpstreamOcuOfferId: "upstream-ocus-99",
+      offerId: INTERCONNECTED_KAJABI_UPSTREAM_99_OCU_OFFER_ID,
     })).toEqual({
       kind: "upstream_ocus_accepted",
       eventName: UPSTREAM_COURSE_OCU_ACCEPTED_EVENT,
-      upstreamOcuOfferId: "upstream-ocus-99",
+      upstreamOcuOfferId: INTERCONNECTED_KAJABI_UPSTREAM_99_OCU_OFFER_ID,
       upstreamOcuPriceCents: 9900,
+    });
+  });
+
+  it("allows an explicit future identifier override without broadening price-based matching", () => {
+    expect(classifyInterconnectedKajabiLifecyclePurchase({
+      upsellId: "future-approved-ocus",
+      configuredUpstreamOcuOfferId: "future-approved-ocus",
+    })).toMatchObject({
+      kind: "upstream_ocus_accepted",
+      upstreamOcuOfferId: "future-approved-ocus",
     });
   });
 

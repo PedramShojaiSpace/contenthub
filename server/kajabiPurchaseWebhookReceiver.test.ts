@@ -37,4 +37,9 @@ describe("Kajabi purchase webhook receiver", () => {
     expect(source).toContain("kajabi-interconnected-buyer-${orderId}");
     expect(source).toContain("kajabi-upstream-ocus-${orderId}");
   });
+
+  it("does not book an ambiguous zero-value post-purchase webhook as either current OCU", () => {
+    expect(source).toContain('reason: "ambiguous_zero_value_post_purchase"');
+    expect(source).toContain("isKnownInterconnectedKajabiOcu({ offerId, upsellId })");
+  });
 });

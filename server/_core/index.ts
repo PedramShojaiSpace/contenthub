@@ -43,7 +43,7 @@ import { getDb } from "../db";
 import { videoVariantJobs } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import {
-  KAJABI_INTERCONNECTED_199_UPSELL_ID,
+  isKnownInterconnectedKajabiOcu,
   isInterconnectedKajabiAmount,
   resolveGenericKajabiUpsellCents,
   resolveKajabiKnownPriceCents,
@@ -1756,16 +1756,18 @@ async function startServer() {
         return res.json({ ok: false, reason: "no_email" });
       }
 
-      // Kajabi sometimes sends amount=0 in webhooks. Resolve known offer, upsell,
-      // and name identifiers first; this includes the active $199 OCU path.
+      // Kajabi sometimes sends amount=0 in webhooks. Resolve known offer and
+      // upsell identifiers first. The $99 Upstream Course and $199 testing OCU
+      // are each classified by their exact Kajabi offer ID.
       let knownPriceCents = resolveKajabiKnownPriceCents({ offerId, upsellId, offerName });
       const rawAmountCents = Math.round(rawAmount * 100);
       // ── Smart fallback for Kajabi upsell webhooks ────────────────────────
       // Kajabi's one-click upsell sends offer_name="Kajabi Purchase", offer_id="", amount=0
       // When we see this pattern, look up the buyer in our leads DB:
-      //   - If they have a prior $67 purchase → treat as $299 OCUS upsell
+      //   - If they have a prior $67 purchase → leave the post-purchase offer
+      //     unbooked until Kajabi supplies a raw amount or exact offer ID
       //   - If no prior purchase → treat as $67 All-Access Bundle (first purchase)
-      //   - Log the inference so we can audit it
+      //   - Log the classification result so it can be audited
       if (rawAmountCents === 0 && knownPriceCents === 0 && 
           (offerName === "Kajabi Purchase" || offerName === "") && email) {
         try {
@@ -1779,8 +1781,9 @@ async function startServer() {
             .where(eq(interconnectedLeads.email, email.toLowerCase()))
             .limit(1);
           if (lead && lead.createdAt && lead.createdAt > sixtyDaysAgo) {
-            // Check if they already bought the $67 offer. A generic zero-dollar
-            // webhook after that purchase is the active $199 Gut Test + Coach OCU.
+            // Check if they already bought the entry offer. A generic zero-value
+            // webhook after that purchase could represent either live OCU and is
+            // intentionally not assigned artificial revenue.
             const [priorBundle] = await db.select({ id: kajabiPurchasesTable.id })
               .from(kajabiPurchasesTable)
               .where(and(
@@ -1790,7 +1793,7 @@ async function startServer() {
               .limit(1);
             if (priorBundle) {
               knownPriceCents = resolveGenericKajabiUpsellCents({ rawAmountCents, knownPriceCents, hasPriorInterconnectedPurchase: true });
-              console.log(`[kajabi/purchase] Generic payload for ${email} — inferred $${knownPriceCents / 100} Interconnected OCU (has prior purchase, lead opted in ${Math.round((Date.now()-lead.createdAt)/86400000)}d ago)`);
+              console.warn(`[kajabi/purchase] Generic post-purchase payload is ambiguous — no revenue booked (has prior purchase, lead opted in ${Math.round((Date.now()-lead.createdAt)/86400000)}d ago)`);
             } else {
               knownPriceCents = resolveGenericKajabiUpsellCents({ rawAmountCents, knownPriceCents, hasPriorInterconnectedPurchase: false });
               console.log(`[kajabi/purchase] Generic payload for ${email} — inferred $67 Bundle (no prior purchase, lead opted in ${Math.round((Date.now()-lead.createdAt)/86400000)}d ago)`);
@@ -1803,6 +1806,16 @@ async function startServer() {
         } catch (inferErr) {
           console.warn(`[kajabi/purchase] Price inference failed for ${email}:`, inferErr);
         }
+      }
+      if (rawAmountCents === 0 && knownPriceCents === 0) {
+        // Two concurrent OCU pages are live. A generic Kajabi webhook cannot
+        // establish which offer was accepted, so it must not pollute revenue,
+        // ROAS, CAPI Purchase, or the buyer lifecycle event stream.
+        return res.status(202).json({
+          ok: true,
+          skipped: true,
+          reason: "ambiguous_zero_value_post_purchase",
+        });
       }
       // Use rawAmount if non-zero, otherwise fall back to known price map
       const amount = rawAmountCents > 0 ? rawAmount : knownPriceCents / 100;
@@ -1820,7 +1833,9 @@ async function startServer() {
       const amountCents = rawAmountCents > 0 ? rawAmountCents : knownPriceCents;
       let funnelSource = "unknown";
       const offerNameLower = offerName.toLowerCase();
-      if (offerId === "2150211911" || offerId === "2151031660") {
+      if (isKnownInterconnectedKajabiOcu({ offerId, upsellId })) {
+        funnelSource = "interconnected";
+      } else if (offerId === "2150211911" || offerId === "2151031660") {
         funnelSource = offerId === "2151031660" ? "upstream_webinar" : "interconnected";
       } else if (offerNameLower.includes("upstream") || offerNameLower.includes("microbiome") || offerNameLower.includes("gut check")) {
         funnelSource = "upstream_webinar";
@@ -1878,7 +1893,7 @@ async function startServer() {
               kajabiOrderId: orderId,
               isEmailListBuyer: 0,
               isMetaAttributed,
-              notes: `offer_id:${offerId} | upsell_id:${upsellId}${upsellId === KAJABI_INTERCONNECTED_199_UPSELL_ID ? " | $199 Interconnected OCU" : ""}${normalized.hasMultipleOffers ? " | combined_payment_transaction" : ""}`,
+              notes: `offer_id:${offerId} | upsell_id:${upsellId}${isKnownInterconnectedKajabiOcu({ offerId, upsellId }) ? ` | current Interconnected OCU $${amountCents / 100}` : ""}${normalized.hasMultipleOffers ? " | combined_payment_transaction" : ""}`,
               purchasedAt: Date.now(),
             });
             console.log(`[kajabi/purchase] DB record saved for ${email} — funnel: ${funnelSource}, amount: $${amount}, meta_attributed: ${isMetaAttributed}`);

@@ -56,10 +56,11 @@ const AMOUNT_TO_TIER: Record<number, { tier: string; label: string; priceCents: 
 };
 
 // The Command Center's current-funnel ROAS must use only the active entry offer
-// and the current $199 OCUS. Matching on price alone is insufficient because the
-// academy has other offers at overlapping price points.
+// plus the two current Kajabi post-purchase offers. Matching on price alone is
+// insufficient because the Academy has other offers at overlapping price points.
 export const CURRENT_INTERCONNECTED_OFFER_TIERS = {
   "2151314475": { tier: "67", label: "Interconnected $67 Bundle OTO", priceCents: 6700 },
+  "2151104453": { tier: "99_upstream_ocus", label: "Upstream: Complete Microbiome Solution ($99 OCUS)", priceCents: 9900 },
   "2151333044": { tier: "199", label: "Gut Permeability + Food Sensitivity Test w/ Coach ($199 OCUS)", priceCents: 19900 },
 } as const;
 
@@ -180,10 +181,10 @@ function isCurrentInterconnectedOfferId(offerId: string): offerId is CurrentInte
 }
 
 /**
- * Isolate only the active Interconnected entry offer and current $199 OCUS from
- * Kajabi's site-wide transaction feed. The public API ignores offer filters, so
- * the offer relationship must be checked locally rather than inferring the funnel
- * from amount alone.
+ * Isolate only the active Interconnected entry offer and current $99/$199 OCUs
+ * from Kajabi's site-wide transaction feed. The public API ignores offer
+ * filters, so the offer relationship must be checked locally rather than
+ * inferring the funnel from amount alone.
  */
 export function summarizeCurrentInterconnectedTransactions(
   rows: KajabiTransactionRow[],

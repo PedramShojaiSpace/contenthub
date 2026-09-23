@@ -98,9 +98,9 @@ function EntryPriceBenchmark() {
   const [entryPrice, setEntryPrice] = useState(67);
   const [ocusRate, setOcusRate] = useState(15);
   const [cpl, setCpl] = useState(2.4);
-  const revenue = entryPrice + (ocusRate / 100) * 199;
+  const revenue = entryPrice + (ocusRate / 100) * 99;
   const target = (roas: number) => (100 * roas * cpl) / revenue;
-  return <Card className="border-2 border-emerald-400"><CardHeader className="pb-2"><CardTitle className="text-sm">Team Benchmarks — Entry Price + $199 OCUS</CardTitle></CardHeader><CardContent className="space-y-3"><div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><label className="text-xs font-medium">Entry price<select value={entryPrice} onChange={e => setEntryPrice(Number(e.target.value))} className="mt-1 w-full rounded-md border bg-background px-2 py-1.5"><option value={49}>$49 test</option><option value={67}>$67 current</option><option value={99}>$99 test</option></select></label><label className="text-xs font-medium">$199 OCUS rate<input type="number" value={ocusRate} onChange={e => setOcusRate(Number(e.target.value) || 0)} className="mt-1 w-full rounded-md border bg-background px-2 py-1.5" /></label><label className="text-xs font-medium">Verified CPL<input type="number" step="0.01" value={cpl} onChange={e => setCpl(Number(e.target.value) || 0)} className="mt-1 w-full rounded-md border bg-background px-2 py-1.5" /></label></div><div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center"><div><p className="font-black">{fmtDollars(revenue)}</p><p className="text-xs text-muted-foreground">Revenue / buyer</p></div><div><p className="font-black">{target(1).toFixed(2)}%</p><p className="text-xs text-muted-foreground">Break-even</p></div><div><p className="font-black text-blue-600">{target(1.5).toFixed(2)}%</p><p className="text-xs text-muted-foreground">1.5x ROAS</p></div><div><p className="font-black text-violet-600">{target(2).toFixed(2)}%</p><p className="text-xs text-muted-foreground">2.0x ROAS</p></div></div></CardContent></Card>;
+  return <Card className="border-2 border-emerald-400"><CardHeader className="pb-2"><CardTitle className="text-sm">Team Benchmarks — Entry Price + $99 Upstream OCUS</CardTitle></CardHeader><CardContent className="space-y-3"><div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><label className="text-xs font-medium">Entry price<select value={entryPrice} onChange={e => setEntryPrice(Number(e.target.value))} className="mt-1 w-full rounded-md border bg-background px-2 py-1.5"><option value={49}>$49 test</option><option value={67}>$67 current</option><option value={99}>$99 test</option></select></label><label className="text-xs font-medium">$99 Upstream OCUS rate<input type="number" value={ocusRate} onChange={e => setOcusRate(Number(e.target.value) || 0)} className="mt-1 w-full rounded-md border bg-background px-2 py-1.5" /></label><label className="text-xs font-medium">Verified CPL<input type="number" step="0.01" value={cpl} onChange={e => setCpl(Number(e.target.value) || 0)} className="mt-1 w-full rounded-md border bg-background px-2 py-1.5" /></label></div><div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center"><div><p className="font-black">{fmtDollars(revenue)}</p><p className="text-xs text-muted-foreground">Revenue / buyer</p></div><div><p className="font-black">{target(1).toFixed(2)}%</p><p className="text-xs text-muted-foreground">Break-even</p></div><div><p className="font-black text-blue-600">{target(1.5).toFixed(2)}%</p><p className="text-xs text-muted-foreground">1.5x ROAS</p></div><div><p className="font-black text-violet-600">{target(2).toFixed(2)}%</p><p className="text-xs text-muted-foreground">2.0x ROAS</p></div></div></CardContent></Card>;
 }
 
 // ── Landing Page Split Widget (Curt's external split) ───────────────────────
@@ -344,20 +344,22 @@ export default function InterconnectedCommandCenter() {
     void Promise.all([refetchOptPerf(), refetchFunnel()]);
   }
 
-  // ── Current $199 OCUS and separate historical $299 benchmark ────────────────
-  // $199 reflects the current OCU. $299 remains a historical comparison only.
-  const currentUpsellTier = funnelData?.tiers?.find(t => t.tier === '199');
-  const upsellCount = currentUpsellTier?.count ?? 0;
-  const upsellRevenue = (currentUpsellTier?.revenueCents ?? 0) / 100;
+  // ── Current Kajabi OCUs and separate historical $299 benchmark ──────────────
+  // Both live post-purchase offers are reported by their exact Kajabi offer ID.
+  // The $299 figure remains an all-time historical comparison only.
+  const upstreamOcuTier = funnelData?.tiers?.find(t => t.tier === '99_upstream_ocus');
+  const upstreamOcuCount = upstreamOcuTier?.count ?? 0;
+  const upstreamOcuRevenue = (upstreamOcuTier?.revenueCents ?? 0) / 100;
+  const testingOcuTier = funnelData?.tiers?.find(t => t.tier === '199');
+  const testingOcuCount = testingOcuTier?.count ?? 0;
+  const testingOcuRevenue = (testingOcuTier?.revenueCents ?? 0) / 100;
   const historical299Count = historical299Data?.upsellPurchases ?? 0;
   const historical299Revenue = (historical299Data?.upsellRevenueCents ?? 0) / 100;
   const historical299EntryPurchases = historical299Data?.entryPurchases ?? 0;
   const otoTier = funnelData?.tiers?.find(t => t.tier === '67');
   const otoCount = otoTier?.count ?? 0;
-  // Current $199 take rate = current $199 purchases / $67 OTO purchases.
-  const upsellTakeRate = otoCount > 0 ? (upsellCount / otoCount) * 100 : null;
-  // Cost per current $199 upsell = Meta spend / current $199 upsell purchases.
-  const costPerUpsell = upsellCount > 0 ? spend / upsellCount : null;
+  const upstreamOcuTakeRate = otoCount > 0 ? (upstreamOcuCount / otoCount) * 100 : null;
+  const testingOcuTakeRate = otoCount > 0 ? (testingOcuCount / otoCount) * 100 : null;
   const historical299TakeRate = historical299Data?.takeRatePct ?? null;
 
   // Tier breakdown — from funnel-only DB source
@@ -408,44 +410,43 @@ export default function InterconnectedCommandCenter() {
 
         <EntryPriceBenchmark />
 
-        {/* ★ CURRENT OCUS SPOTLIGHT: $199 Gut Permeability + Food Sensitivity Test */}
+        {/* ★ CURRENT KAJABI OCU SPOTLIGHT */}
         <Card className="border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20">
           <CardContent className="pt-4 pb-3 px-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <FlaskConical className="h-5 w-5 text-amber-600" />
-                <span className="font-bold text-sm text-amber-800 dark:text-amber-300">CURRENT KPI — $199 OCUS: Gut Permeability + Food Sensitivity Test w/ Coach</span>
+                <span className="font-bold text-sm text-amber-800 dark:text-amber-300">CURRENT KAJABI OCUs — tracked separately by exact offer ID</span>
               </div>
               <Badge className="bg-amber-500 text-white text-xs">Direct Kajabi source</Badge>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="text-center">
-                <p className="text-3xl font-black text-amber-700 dark:text-amber-300">{upsellCount}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Upsells Taken</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-lg border border-emerald-200 bg-white/70 dark:bg-black/10 p-3">
+                <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">$99 Upstream: Complete Microbiome Solution</p>
+                <div className="grid grid-cols-3 gap-2 mt-2 text-center">
+                  <div><p className="text-xl font-black text-emerald-700 dark:text-emerald-300">{upstreamOcuCount}</p><p className="text-[11px] text-muted-foreground">Accepted</p></div>
+                  <div><p className="text-xl font-black text-emerald-600">{upstreamOcuTakeRate !== null ? `${upstreamOcuTakeRate.toFixed(1)}%` : '—'}</p><p className="text-[11px] text-muted-foreground">of $67 buyers</p></div>
+                  <div><p className="text-xl font-black">{fmtDollars(upstreamOcuRevenue)}</p><p className="text-[11px] text-muted-foreground">revenue</p></div>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-3xl font-black text-emerald-600">{upsellTakeRate !== null ? `${upsellTakeRate.toFixed(1)}%` : '—'}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Take Rate (of $67 OTOs)</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl font-black text-blue-600">{costPerUpsell !== null ? fmtDollars(costPerUpsell) : '—'}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Cost Per Upsell</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl font-black text-foreground">{fmtDollars(upsellRevenue)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Upsell Revenue</p>
+              <div className="rounded-lg border border-amber-200 bg-white/70 dark:bg-black/10 p-3">
+                <p className="text-xs font-bold text-amber-800 dark:text-amber-300">$199 Testing + Coach Consultation</p>
+                <div className="grid grid-cols-3 gap-2 mt-2 text-center">
+                  <div><p className="text-xl font-black text-amber-700 dark:text-amber-300">{testingOcuCount}</p><p className="text-[11px] text-muted-foreground">Accepted</p></div>
+                  <div><p className="text-xl font-black text-amber-600">{testingOcuTakeRate !== null ? `${testingOcuTakeRate.toFixed(1)}%` : '—'}</p><p className="text-[11px] text-muted-foreground">of $67 buyers</p></div>
+                  <div><p className="text-xl font-black">{fmtDollars(testingOcuRevenue)}</p><p className="text-[11px] text-muted-foreground">revenue</p></div>
+                </div>
               </div>
             </div>
             {otoCount > 0 && (
               <p className="text-xs text-muted-foreground mt-3 text-center">
-                {otoCount} people bought the $67 OTO → {upsellCount} took the current $199 OCUS
-                {upsellTakeRate !== null && ` (${upsellTakeRate.toFixed(1)}% take rate)`}
+                {otoCount} people bought the $67 OTO. Each current OCU take rate is shown independently; one buyer can accept both offers.
               </p>
             )}
             <div className="mt-3 border-t border-amber-200/70 dark:border-amber-800/60 pt-2 text-center text-xs text-muted-foreground">
               Historical $299 reference (all-time audited): {historical299Count} recorded purchases
               {historical299TakeRate !== null && ` (${historical299TakeRate.toFixed(1)}% of ${historical299EntryPurchases} entry buyers)`}
-              {historical299Revenue > 0 && ` · ${fmtDollars(historical299Revenue)} revenue`}. This is a legacy benchmark, not the current $199 result or current-period ROAS.
+              {historical299Revenue > 0 && ` · ${fmtDollars(historical299Revenue)} revenue`}. This is a legacy benchmark, not either current OCU or current-period ROAS.
             </div>
             {otoCount === 0 && funnelLoading && (
               <div className="flex justify-center mt-2"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>

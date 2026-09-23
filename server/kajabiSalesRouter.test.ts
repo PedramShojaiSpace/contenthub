@@ -21,10 +21,11 @@ function transaction(
 }
 
 describe("summarizeCurrentInterconnectedTransactions", () => {
-  it("includes only the active $67 entry offer and current $199 OCUS within the selected date range", () => {
+  it("includes only the active $67 entry offer and current $99/$199 OCUs within the selected date range", () => {
     const summary = summarizeCurrentInterconnectedTransactions([
       transaction("entry-1", "2151314475", 6700),
       transaction("entry-2", "2151314475", 6700),
+      transaction("upstream-ocus-1", "2151104453", 9900),
       transaction("ocus-1", "2151333044", 19900),
       transaction("legacy-299", "2151318548", 29900),
       transaction("unrelated-199", "9999999999", 19900),
@@ -34,10 +35,11 @@ describe("summarizeCurrentInterconnectedTransactions", () => {
 
     expect(summary.tiers).toEqual([
       { tier: "67", label: "Interconnected $67 Bundle OTO", priceCents: 6700, count: 2, revenueCents: 13400 },
+      { tier: "99_upstream_ocus", label: "Upstream: Complete Microbiome Solution ($99 OCUS)", priceCents: 9900, count: 1, revenueCents: 9900 },
       { tier: "199", label: "Gut Permeability + Food Sensitivity Test w/ Coach ($199 OCUS)", priceCents: 19900, count: 1, revenueCents: 19900 },
     ]);
-    expect(summary.totalPurchases).toBe(3);
-    expect(summary.totalRevenueCents).toBe(33300);
+    expect(summary.totalPurchases).toBe(4);
+    expect(summary.totalRevenueCents).toBe(43200);
     expect(summary.apiMethod).toBe("transactions_by_site_exact_offer");
   });
 

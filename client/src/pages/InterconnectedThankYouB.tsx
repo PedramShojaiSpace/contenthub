@@ -41,6 +41,11 @@ export type InterconnectedThankYouPriceConfig = {
   checkoutUrl?: string;
   /** Keep treatment timers separate from the long-standing $67 thank-you page state. */
   countdownStorageKey?: string;
+  /** The $99 treatment includes the published bonus tenth episode. */
+  episodeCount?: number;
+  includeBonusEpisodeTen?: boolean;
+  /** Optional price-specific graphic that also acts as a checkout call-to-action. */
+  checkoutGraphicSrc?: string;
 };
 
 const CONTROL_PRICE_CONFIG: InterconnectedThankYouPriceConfig = {
@@ -99,8 +104,9 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const BUNDLE_ITEMS = [
-  { text: "Instant, On-Demand Access to All 9 Episodes of Interconnected — yours forever, no viewing window", value: null },
+const getBundleItems = (episodeCount: number) => [
+  { text: `Instant, On-Demand Access to All ${episodeCount} Episodes of Interconnected — yours forever, no viewing window`, value: null },
+  { text: "BONUS: Interconnected Director’s Cut — additional conversations and deeper context not included in the free screening", value: "$79" },
   { text: "The Interconnected Companion Guide — episode-by-episode protocols and action steps from all 70 experts", value: "$97" },
   { text: "The Gut Restoration Starter Protocol — Dr. Shojai's 30-day reset plan used with his own patients", value: "$79" },
   { text: "Private Healing Community Access — thousands of members on the same journey, with weekly Q&A", value: "$197/yr" },
@@ -154,6 +160,12 @@ const EPISODES = [
     desc: "Dr. Pedram Shojai synthesizes everything from the series into a concrete, step-by-step 90-day healing protocol. This is the episode that turns information into transformation — with specific labs to order, supplements to consider, dietary shifts to make, and lifestyle changes that compound over time into lasting health.",
   },
 ];
+
+const BONUS_EPISODE_TEN = {
+  ep: "BONUS EPISODE 10",
+  title: "The Soil Inside You",
+  desc: "A full-circle look at the microbiome: reconnecting with soil, food, and the everyday practices that support a more resilient inner ecosystem.",
+};
 
 const EXPERTS = [
   {
@@ -225,7 +237,7 @@ const FAQS = [
   },
   {
     q: "What do I get when I purchase the all-access bundle?",
-    a: "You get permanent, on-demand access to all 9 episodes — watch in any order, re-watch as many times as you want, forever. Plus the Companion Guide, the Gut Restoration Starter Protocol, Private Community Access, and the 5 Root Causes Masterclass bonus.",
+    a: "You get permanent, on-demand access to all 9 episodes — watch in any order, re-watch as many times as you want, forever. Plus the Interconnected Director’s Cut, the Companion Guide, the Gut Restoration Starter Protocol, Private Community Access, and the 5 Root Causes Masterclass bonus.",
   },
   {
     q: "How is the content delivered?",
@@ -346,6 +358,15 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
   const countdownStorageKey = priceConfig.countdownStorageKey;
   const entryPrice = `$${(priceConfig.entryPriceCents / 100).toFixed(0)}`;
   const savings = `$${((19700 - priceConfig.entryPriceCents) / 100).toFixed(0)}`;
+  const episodeCount = priceConfig.episodeCount ?? 9;
+  const bundleItems = getBundleItems(episodeCount);
+  const displayEpisodes = priceConfig.includeBonusEpisodeTen ? [...EPISODES, BONUS_EPISODE_TEN] : EPISODES;
+  const faqs = FAQS.map(faq => faq.q === "What exactly is Interconnected?"
+    ? { ...faq, a: `Interconnected is a ${episodeCount}-episode documentary series featuring 70 of the world's leading experts in gut health, functional medicine, and the microbiome. It exposes the root causes of chronic disease and gives you a concrete protocol to heal your gut and reclaim your health.` }
+    : faq.q === "What do I get when I purchase the all-access bundle?"
+      ? { ...faq, a: `You get permanent, on-demand access to all ${episodeCount} episodes — watch in any order, re-watch as many times as you want, forever. Plus the Interconnected Director’s Cut, the Companion Guide, the Gut Restoration Starter Protocol, Private Community Access, and the 5 Root Causes Masterclass bonus.` }
+      : faq
+  );
 
   // A/B tracking: variant is already assigned by the Splitter before this page mounts.
   // The Splitter calls assignVariant (records exposure in DB) and passes the variant
@@ -430,7 +451,7 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
     window.location.href = checkoutUrl;
   };
 
-  const BuyButton = ({ label = "Yes — Give Me Instant Access to All 9 Episodes" }: { label?: string }) => (
+  const BuyButton = ({ label = `Yes — Give Me Instant Access to All ${episodeCount} Episodes` }: { label?: string }) => (
     <div className="text-center">
       <button
         onClick={handleBuyClick}
@@ -501,13 +522,28 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
               ⚡ One-Time Offer — This Page Only
             </p>
             <p className="text-white text-xl font-bold mb-1" style={{ fontFamily: "Georgia, serif" }}>
-              Get All-Access to All 9 Episodes — Own Them Forever
+              Get All-Access to All {episodeCount} Episodes — Own Them Forever
             </p>
             <p className="text-gray-300 text-sm mb-4">
-              Watch at your own pace. Never miss an episode. Includes bonus interviews + transcripts.
+              Watch at your own pace. Never miss an episode. Includes the Director’s Cut, bonus interviews, and transcripts.
             </p>
+            {priceConfig.checkoutGraphicSrc && (
+              <button
+                type="button"
+                onClick={handleBuyClick}
+                aria-label={`Go to secure ${entryPrice} checkout for all ${episodeCount} Interconnected episodes`}
+                className="block w-full mb-5 rounded-xl overflow-hidden transition-transform hover:scale-[1.01] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-300"
+              >
+                <img
+                  src={priceConfig.checkoutGraphicSrc}
+                  alt={`Interconnected: The Complete Healing Protocol — ${episodeCount} episodes, 70 experts, ${entryPrice} one-time`}
+                  className="w-full h-auto block"
+                  loading="eager"
+                />
+              </button>
+            )}
             <div className="flex items-center justify-center gap-3 mb-4">
-              <span className="text-gray-400 line-through text-lg">$97</span>
+              <span className="text-gray-400 line-through text-lg">Normally $197</span>
               <span className="text-3xl font-bold text-white">{entryPrice}</span>
               <span className="text-yellow-300 text-sm font-semibold">TODAY ONLY</span>
             </div>
@@ -533,7 +569,7 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
             But before you go, here's what you need to know…
           </h2>
           <p className="text-gray-300 text-lg leading-relaxed mb-6">
-            <strong className="text-white">Interconnected</strong> has 9 episodes and each episode will be
+            <strong className="text-white">Interconnected</strong> has {episodeCount} episodes and each episode will be
             available for just <strong className="text-white">24 hours</strong>.{" "}
             <em className="text-red-300">If you miss a day, you will miss that episode… forever.</em>
           </p>
@@ -542,7 +578,7 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
           </h2>
           <p className="text-gray-300 text-lg leading-relaxed mb-4">
             If you act before the timer below expires, you can secure{" "}
-            <strong style={{ color: BLUE }}>instant, permanent access to all 9 episodes</strong> right now.
+            <strong style={{ color: BLUE }}>instant, permanent access to all {episodeCount} episodes</strong> right now.
           </p>
           <p className="text-gray-300 text-lg leading-relaxed mb-4">
             You won't need to worry about losing access or missing a day — every episode will be available
@@ -564,7 +600,7 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
           </h2>
           <div className="rounded-2xl p-6 md:p-10 mb-10" style={{ background: BG_CARD, border: `1px solid rgba(46,145,252,0.2)` }}>
             <ul className="space-y-5 mb-10">
-              {BUNDLE_ITEMS.map((item, i) => (
+              {bundleItems.map((item, i) => (
                 <li key={i} className="flex items-start gap-4">
                   <span
                     className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
@@ -625,7 +661,7 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
                 Here's What You'll Receive:
               </p>
               <ul className="space-y-3 mb-8">
-                {BUNDLE_ITEMS.map((item, i) => (
+                {bundleItems.map((item, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ background: BLUE }}>
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 12 12">
@@ -703,10 +739,10 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
             The Groundbreaking Series Brought to You by The Urban Monk
           </p>
           <h2 className="text-3xl md:text-4xl font-bold text-white text-center mb-12" style={{ fontFamily: "Georgia, serif" }}>
-            9 Episodes That Will Change Everything You Know About Your Health
+            {episodeCount} Episodes That Will Change Everything You Know About Your Health
           </h2>
           <div className="space-y-4">
-            {EPISODES.map((ep, i) => (
+            {displayEpisodes.map((ep, i) => (
               <div key={i} className="rounded-xl p-6 md:p-8" style={{ background: BG_CARD, border: `1px solid rgba(46,145,252,0.15)` }}>
                 <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: BLUE }}>{ep.ep}</p>
                 <h3 className="text-xl font-bold text-white mb-3" style={{ fontFamily: "Georgia, serif" }}>{ep.title}</h3>
@@ -736,7 +772,7 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
             </div>
             <div className="p-8 md:p-10" style={{ background: BG_CARD }}>
               <ul className="space-y-3 mb-8">
-                {BUNDLE_ITEMS.map((item, i) => (
+                {bundleItems.map((item, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ background: BLUE }}>
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 12 12">
@@ -747,7 +783,7 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
                   </li>
                 ))}
               </ul>
-              <BuyButton label="YES — I Want Instant Access to All 9 Episodes" />
+              <BuyButton label={`YES — I Want Instant Access to All ${episodeCount} Episodes`} />
             </div>
           </div>
         </div>
@@ -760,7 +796,7 @@ export default function InterconnectedThankYouB({ priceConfig = CONTROL_PRICE_CO
             Frequently Asked Questions
           </h2>
           <div className="space-y-3">
-            {FAQS.map((faq, i) => (
+            {faqs.map((faq, i) => (
               <div key={i} className="rounded-xl overflow-hidden" style={{ background: BG_CARD, border: `1px solid rgba(46,145,252,0.15)` }}>
                 <button
                   className="w-full text-left px-6 py-5 flex items-center justify-between gap-4"

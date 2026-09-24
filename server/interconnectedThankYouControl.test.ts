@@ -114,8 +114,13 @@ describe("Interconnected Thank You control routing", () => {
     expect(p49Source).not.toContain("checkoutUrl:");
     expect(p99Source).toContain('checkoutUrl: "https://theacademy.theurbanmonk.com/offers/ofRhsQvo/checkout"');
     expect(p99Source).toContain('countdownStorageKey: "interconnected_p99_offer_end_time_v1"');
+    expect(p99Source).toContain("episodeCount: 10");
+    expect(p99Source).toContain("includeBonusEpisodeTen: true");
+    expect(p99Source).toContain("Interconnected-Checkout-10-Episodes-Price-99-under-1MB");
     expect(controlSource).toContain("if (!checkoutUrl) return;");
     expect(controlSource).toContain('priceConfig.armId !== "p67"');
     expect(controlSource).toContain('data-price-test-arm={priceConfig.armId}');
+    expect(controlSource).toContain("BONUS_EPISODE_TEN");
+    expect(controlSource).toContain("checkoutGraphicSrc");
   });
 });

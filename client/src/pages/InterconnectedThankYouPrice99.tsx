@@ -12,5 +12,8 @@ export default function InterconnectedThankYouPrice99() {
     entryPriceCents: 9900,
     checkoutUrl: "https://theacademy.theurbanmonk.com/offers/ofRhsQvo/checkout",
     countdownStorageKey: "interconnected_p99_offer_end_time_v1",
+    episodeCount: 10,
+    includeBonusEpisodeTen: true,
+    checkoutGraphicSrc: "/manus-storage/Interconnected-Checkout-10-Episodes-Price-99-under-1MB_4f497a90.jpg",
   }} />;
 }

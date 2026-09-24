@@ -74,6 +74,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 const BUNDLE_ITEMS = [
   { text: "Instant, On-Demand Access to All 9 Episodes of Interconnected — yours forever, no viewing window", value: null },
+  { text: "BONUS: Interconnected Director’s Cut — additional conversations and deeper context not included in the free screening", value: "$79" },
   { text: "The Interconnected Companion Guide — episode-by-episode protocols and action steps from all 70 experts", value: "$97" },
   { text: "The Gut Restoration Starter Protocol — Dr. Shojai's 30-day reset plan used with his own patients", value: "$79" },
   { text: "Private Healing Community Access — thousands of members on the same journey, with weekly Q&A", value: "$197/yr" },
@@ -207,7 +208,7 @@ const FAQS = [
   },
   {
     q: "What do I get when I purchase the all-access bundle?",
-    a: "You get permanent, on-demand access to all 9 episodes — watch in any order, re-watch as many times as you want, forever. Plus the Companion Guide, the Gut Restoration Starter Protocol, Private Community Access, and the 5 Root Causes Masterclass bonus.",
+    a: "You get permanent, on-demand access to all 9 episodes — watch in any order, re-watch as many times as you want, forever. Plus the Interconnected Director’s Cut, the Companion Guide, the Gut Restoration Starter Protocol, Private Community Access, and the 5 Root Causes Masterclass bonus.",
   },
   {
     q: "How is the content delivered?",
@@ -451,7 +452,7 @@ export default function InterconnectedThankYouKlaviyo() {
               Get All-Access to All 9 Episodes — Own Them Forever
             </p>
             <p className="text-gray-300 text-sm mb-4">
-              Watch at your own pace. Never miss an episode. Includes bonus interviews + transcripts.
+              Watch at your own pace. Never miss an episode. Includes the Director’s Cut, bonus interviews, and transcripts.
             </p>
             <div className="flex items-center justify-center gap-3 mb-4">
               <span className="text-gray-400 line-through text-lg">$97</span>

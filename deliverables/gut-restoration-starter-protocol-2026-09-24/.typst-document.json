@@ -1,0 +1,10 @@
+{
+  "entry": "main.typ",
+  "metadata": {
+    "author": "Dr. Pedram Shojai",
+    "subtitle": "A practical 30-day reset plan",
+    "title": "Gut Restoration Starter Protocol"
+  },
+  "mode": "report",
+  "theme": "report-theme.typ"
+}

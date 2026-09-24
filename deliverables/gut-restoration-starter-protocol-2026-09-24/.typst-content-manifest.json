@@ -1,0 +1,11 @@
+{
+  "task_kind": "new-document",
+  "output": "pdf",
+  "signals": [],
+  "hard_constraints": ["polished educational PDF", "Gamma-ready Markdown source", "30-day six-phase protocol", "soft-sell pathways only"],
+  "content_features": {
+    "code_blocks": 0,
+    "defined_terms": 4,
+    "portrait_images": 0
+  }
+}

@@ -38,6 +38,13 @@ describe("Kajabi purchase webhook receiver", () => {
     expect(source).toContain("kajabi-upstream-ocus-${orderId}");
   });
 
+  it("marks only exact base buyers so unified lead nurture can suppress future messages", () => {
+    expect(source).toContain('if (buyerLifecycleEnabled && lifecycleClassification.kind === "base_buyer")');
+    expect(source).toContain("markKlaviyoInterconnectedKajabiBuyer");
+    expect(source).toContain("baseOfferId: lifecycleClassification.baseOfferId");
+    expect(source).toContain("klaviyoBuyerMarker");
+  });
+
   it("does not book an ambiguous zero-value post-purchase webhook as either current OCU", () => {
     expect(source).toContain('reason: "ambiguous_zero_value_post_purchase"');
     expect(source).toContain("isKnownInterconnectedKajabiOcu({ offerId, upsellId })");

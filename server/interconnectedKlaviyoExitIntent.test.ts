@@ -27,4 +27,16 @@ describe("Interconnected Klaviyo treatment exit-intent recovery", () => {
     expect(source).toContain("Secure Kajabi checkout");
     expect(source).not.toContain("Secure Shopify checkout");
   });
+
+  it("presents the $99 ten-episode offer that the live checkout handoff now sells", () => {
+    const source = readFileSync(
+      new URL("../client/src/pages/InterconnectedThankYouKlaviyo.tsx", import.meta.url),
+      "utf8"
+    );
+
+    expect(source).toContain('value: 99');
+    expect(source).toContain("All 10 Episodes");
+    expect(source).toContain("BONUS EPISODE 10");
+    expect(source).not.toContain("Get All-Access for $67 Now");
+  });
 });

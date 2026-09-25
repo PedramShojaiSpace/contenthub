@@ -2019,6 +2019,33 @@ async function startServer() {
         }
       }
 
+      // The unified LP-3 lead nurture checks this marker immediately before each
+      // email and SMS action. Set it only after the signed Kajabi webhook has
+      // classified an exact base offer. This neither grants consent nor enrolls
+      // a customer in a Klaviyo buyer flow; Kajabi remains the fulfillment owner.
+      let klaviyoBuyerMarker: { attempted: boolean; accepted: boolean } = {
+        attempted: false,
+        accepted: false,
+      };
+      if (buyerLifecycleEnabled && lifecycleClassification.kind === "base_buyer") {
+        try {
+          const { markKlaviyoInterconnectedKajabiBuyer } = await import("../klaviyo");
+          const receipt = await markKlaviyoInterconnectedKajabiBuyer({
+            email,
+            firstName: name.split(/\s+/)[0] || undefined,
+            baseOfferId: lifecycleClassification.baseOfferId,
+            baseOfferTier: lifecycleClassification.baseOfferTier,
+            purchaseKey: orderId,
+          });
+          klaviyoBuyerMarker = { attempted: true, accepted: receipt.accepted };
+          if (!receipt.accepted) {
+            console.warn(`[kajabi/purchase] Klaviyo buyer suppression marker was not accepted (${receipt.httpStatus})`);
+          }
+        } catch (klaviyoMarkerError: any) {
+          console.warn(`[kajabi/purchase] Klaviyo buyer suppression marker failed: ${klaviyoMarkerError?.message ?? "unknown"}`);
+        }
+      }
+
       const capiReceipt = await sendCapiEventWithReceipt({
         eventName: "Purchase",
         eventId: purchaseEventId,
@@ -2078,6 +2105,7 @@ async function startServer() {
         funnelSource,
         isMetaAttributed,
         klaviyoBuyerEvent,
+        klaviyoBuyerMarker,
       });
     } catch (err: any) {
       console.error("[kajabi/purchase] Error:", err);

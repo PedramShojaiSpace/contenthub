@@ -1,12 +1,12 @@
 export const INTERCONNECTED_67_CART_PERMALINK = "https://shop.theurbanmonk.com/cart/48959577653402:1";
-// The Klaviyo thank-you treatment now enters the same Kajabi $67 offer and
-// native post-purchase OCU stack as the Kajabi control. The first-party bridge
-// still records the Klaviyo closing touch before redirecting to Kajabi.
+// The live Klaviyo thank-you treatment enters the verified Kajabi $99 offer.
+// The first-party bridge retains the closing-touch attribution before redirecting
+// to Kajabi, whose native purchase flow owns the downstream one-click upsells.
 export const INTERCONNECTED_KLAVIYO_THANK_YOU_CHECKOUT_URL =
-  "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout";
-export const INTERCONNECTED_KLAVIYO_TREATMENT_CONTENT = "ty_b_klaviyo_v1_67_checkout";
+  "https://theacademy.theurbanmonk.com/offers/ofRhsQvo/checkout";
+export const INTERCONNECTED_KLAVIYO_TREATMENT_CONTENT = "ty_b_klaviyo_v2_99_checkout";
 export const INTERCONNECTED_KLAVIYO_THANK_YOU_FUNNEL_PATH = "ko_klaviyo";
-export const INTERCONNECTED_KLAVIYO_THANK_YOU_MESSAGE_KEY = "ty_b_klaviyo_v1_67_checkout";
+export const INTERCONNECTED_KLAVIYO_THANK_YOU_MESSAGE_KEY = "ty_b_klaviyo_v2_99_checkout";
 export const INTERCONNECTED_199_CART_PERMALINK = "https://shop.theurbanmonk.com/cart/48994340077722:1";
 export const INTERCONNECTED_KLAVIYO_199_CONTENT = "post_purchase_199_klaviyo_v1_checkout";
 

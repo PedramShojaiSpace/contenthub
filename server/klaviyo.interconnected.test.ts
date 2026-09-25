@@ -13,10 +13,10 @@ afterEach(() => {
 });
 
 describe("pushInterconnectedEmailLead", () => {
-  it("adds an Interconnected lead only to the isolated unified LP-3 intake list", async () => {
+  it("subscribes an Interconnected lead to email only on the isolated unified LP-3 intake list", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ data: { id: "profile_123" } }), { status: 201 }))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+      .mockResolvedValueOnce(new Response(null, { status: 202 }));
     globalThis.fetch = fetchMock as typeof fetch;
 
     const result = await pushInterconnectedEmailLead({
@@ -25,18 +25,20 @@ describe("pushInterconnectedEmailLead", () => {
       smsConsent: false,
     });
 
-    expect(result).toEqual({ profileId: "profile_123", smsSubscribed: false });
+    expect(result).toEqual({ profileId: "profile_123", emailSubscribed: true, smsSubscribed: false });
     expect(INTERCONNECTED_EMAIL_LIST_ID).toBe("VWhddE");
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[1]?.[0]).toBe(`https://a.klaviyo.com/api/lists/${INTERCONNECTED_EMAIL_LIST_ID}/relationships/profiles/`);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/");
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ method: "POST" });
+    expect(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body)).toContain(`"id":"${INTERCONNECTED_EMAIL_LIST_ID}"`);
+    expect(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body)).toContain('"email":{"marketing":{"consent":"SUBSCRIBED"}}');
   });
 
   it("establishes explicit SMS consent before the unified list can trigger Day 0", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ data: { id: "profile_456" } }), { status: 201 }))
       .mockResolvedValueOnce(new Response(null, { status: 202 }))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+      .mockResolvedValueOnce(new Response(null, { status: 202 }));
     globalThis.fetch = fetchMock as typeof fetch;
 
     const result = await pushInterconnectedEmailLead({
@@ -45,9 +47,10 @@ describe("pushInterconnectedEmailLead", () => {
       smsConsent: true,
     });
 
-    expect(result).toEqual({ profileId: "profile_456", smsSubscribed: true });
+    expect(result).toEqual({ profileId: "profile_456", emailSubscribed: true, smsSubscribed: true });
     expect(fetchMock.mock.calls[1]?.[0]).toContain("profile-subscription-bulk-create-jobs");
-    expect(fetchMock.mock.calls[2]?.[0]).toBe(`https://a.klaviyo.com/api/lists/${INTERCONNECTED_EMAIL_LIST_ID}/relationships/profiles/`);
+    expect(fetchMock.mock.calls[2]?.[0]).toContain("profile-subscription-bulk-create-jobs");
+    expect(String((fetchMock.mock.calls[2]?.[1] as RequestInit).body)).toContain('"email":{"marketing":{"consent":"SUBSCRIBED"}}');
   });
 });
 

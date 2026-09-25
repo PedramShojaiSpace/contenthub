@@ -11,10 +11,11 @@ import {
 } from "../client/src/lib/interconnectedKlaviyoCheckout";
 
 describe("Klaviyo Thank You B treatment checkout handoff", () => {
-  it("uses the first-party bridge and the approved Kajabi $67 checkout", () => {
+  it("uses the first-party bridge and the approved Kajabi $99 checkout", () => {
     const url = new URL(buildInterconnectedKlaviyoCheckoutUrl("?utm_medium=email&fbclid=meta-click"), "https://content.theurbanmonk.com");
     expect(url.pathname).toBe("/r/checkout");
     expect(url.searchParams.get("destination")).toBe(INTERCONNECTED_KLAVIYO_THANK_YOU_CHECKOUT_URL);
+    expect(url.searchParams.get("destination")).toBe("https://theacademy.theurbanmonk.com/offers/ofRhsQvo/checkout");
     expect(url.searchParams.get("utm_source")).toBe("klaviyo");
     expect(url.searchParams.get("utm_medium")).toBe("email");
     expect(url.searchParams.get("utm_campaign")).toBe("interconnected_14day");

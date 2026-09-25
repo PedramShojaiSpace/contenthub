@@ -73,7 +73,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const BUNDLE_ITEMS = [
-  { text: "Instant, On-Demand Access to All 9 Episodes of Interconnected — yours forever, no viewing window", value: null },
+  { text: "Instant, On-Demand Access to All 10 Episodes of Interconnected — yours forever, no viewing window", value: null },
   { text: "BONUS: Interconnected Director’s Cut — additional conversations and deeper context not included in the free screening", value: "$79" },
   { text: "The Interconnected Companion Guide — episode-by-episode protocols and action steps from all 70 experts", value: "$97" },
   { text: "The Gut Restoration Starter Protocol — Dr. Shojai's 30-day reset plan used with his own patients", value: "$79" },
@@ -126,6 +126,11 @@ const EPISODES = [
     ep: "EPISODE 9",
     title: "The Healing Protocol: Your 90-Day Roadmap to a New Gut",
     desc: "Dr. Pedram Shojai synthesizes everything from the series into a concrete, step-by-step 90-day healing protocol. This is the episode that turns information into transformation — with specific labs to order, supplements to consider, dietary shifts to make, and lifestyle changes that compound over time into lasting health.",
+  },
+  {
+    ep: "BONUS EPISODE 10",
+    title: "The Soil Inside You",
+    desc: "A full-circle look at the microbiome: reconnecting with soil, food, and the everyday practices that support a more resilient inner ecosystem.",
   },
 ];
 
@@ -200,7 +205,7 @@ const REVIEWS = [
 const FAQS = [
   {
     q: "What exactly is Interconnected?",
-    a: "Interconnected is a 9-episode documentary series featuring 70 of the world's leading experts in gut health, functional medicine, and the microbiome. It exposes the root causes of chronic disease and gives you a concrete protocol to heal your gut and reclaim your health.",
+    a: "Interconnected is a 10-episode documentary series featuring 70 of the world's leading experts in gut health, functional medicine, and the microbiome. It exposes the root causes of chronic disease and gives you a concrete protocol to heal your gut and reclaim your health.",
   },
   {
     q: "Why do the free episodes expire after 24 hours?",
@@ -208,7 +213,7 @@ const FAQS = [
   },
   {
     q: "What do I get when I purchase the all-access bundle?",
-    a: "You get permanent, on-demand access to all 9 episodes — watch in any order, re-watch as many times as you want, forever. Plus the Interconnected Director’s Cut, the Companion Guide, the Gut Restoration Starter Protocol, Private Community Access, and the 5 Root Causes Masterclass bonus.",
+    a: "You get permanent, on-demand access to all 10 episodes — watch in any order, re-watch as many times as you want, forever. Plus the Interconnected Director’s Cut, the Companion Guide, the Gut Restoration Starter Protocol, Private Community Access, and the 5 Root Causes Masterclass bonus.",
   },
   {
     q: "How is the content delivered?",
@@ -371,15 +376,15 @@ export default function InterconnectedThankYouKlaviyo() {
     const checkoutEventId = `ic_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     sessionStorage.setItem('__capi_checkout_event_id', checkoutEventId);
     firePixel("InitiateCheckout", {
-      value: 67,
+      value: 99,
       currency: "USD",
       content_name: "Interconnected All-Access Bundle",
-      content_category: "klaviyo_ty_b_treatment",
+      content_category: "klaviyo_ty_b_treatment_99",
     }, checkoutEventId);
     window.location.href = buildInterconnectedKlaviyoCheckoutUrl(window.location.search);
   };
 
-  const BuyButton = ({ label = "Yes — Give Me Instant Access to All 9 Episodes" }: { label?: string }) => (
+  const BuyButton = ({ label = "Yes — Give Me Instant Access to All 10 Episodes" }: { label?: string }) => (
     <div className="text-center">
       <button
         onClick={handleBuyClick}
@@ -449,14 +454,14 @@ export default function InterconnectedThankYouKlaviyo() {
               ⚡ One-Time Offer — This Page Only
             </p>
             <p className="text-white text-xl font-bold mb-1" style={{ fontFamily: "Georgia, serif" }}>
-              Get All-Access to All 9 Episodes — Own Them Forever
+              Get All-Access to All 10 Episodes — Own Them Forever
             </p>
             <p className="text-gray-300 text-sm mb-4">
               Watch at your own pace. Never miss an episode. Includes the Director’s Cut, bonus interviews, and transcripts.
             </p>
             <div className="flex items-center justify-center gap-3 mb-4">
-              <span className="text-gray-400 line-through text-lg">$97</span>
-              <span className="text-3xl font-bold text-white">$67</span>
+              <span className="text-gray-400 line-through text-lg">Normally $197</span>
+              <span className="text-3xl font-bold text-white">$99</span>
               <span className="text-yellow-300 text-sm font-semibold">TODAY ONLY</span>
             </div>
             <button
@@ -464,7 +469,7 @@ export default function InterconnectedThankYouKlaviyo() {
               className="w-full py-4 px-8 rounded-xl text-white font-bold text-lg transition-transform hover:scale-105"
               style={{ background: "linear-gradient(135deg, #e67e22, #f39c12)", boxShadow: "0 4px 20px rgba(230,126,34,0.5)" }}
             >
-              YES — Get All-Access for $67 Now →
+              YES — Get All-Access for $99 Now →
             </button>
             <p className="text-gray-500 text-xs mt-2">Secure Kajabi checkout · immediate access to the complete protocol · 30-day guarantee</p>
           </div>
@@ -481,7 +486,7 @@ export default function InterconnectedThankYouKlaviyo() {
             But before you go, here's what you need to know…
           </h2>
           <p className="text-gray-300 text-lg leading-relaxed mb-6">
-            <strong className="text-white">Interconnected</strong> has 9 episodes and each episode will be
+            <strong className="text-white">Interconnected</strong> has 10 episodes and each episode will be
             available for just <strong className="text-white">24 hours</strong>.{" "}
             <em className="text-red-300">If you miss a day, you will miss that episode… forever.</em>
           </p>
@@ -490,7 +495,7 @@ export default function InterconnectedThankYouKlaviyo() {
           </h2>
           <p className="text-gray-300 text-lg leading-relaxed mb-4">
             If you act before the timer below expires, you can secure{" "}
-            <strong style={{ color: BLUE }}>instant, permanent access to all 9 episodes</strong> right now.
+            <strong style={{ color: BLUE }}>instant, permanent access to all 10 episodes</strong> right now.
           </p>
           <p className="text-gray-300 text-lg leading-relaxed mb-4">
             You won't need to worry about losing access or missing a day — every episode will be available
@@ -566,8 +571,8 @@ export default function InterconnectedThankYouKlaviyo() {
             <div className="p-8 md:p-10" style={{ background: BG_CARD }}>
               <div className="text-center mb-6">
                 <p className="text-gray-500 line-through text-xl mb-1">Normally $197</p>
-                <p className="font-black text-6xl text-white mb-1">$67</p>
-                <p className="text-sm font-semibold" style={{ color: GOLD }}>You save $130 — today only</p>
+                <p className="font-black text-6xl text-white mb-1">$99</p>
+                <p className="text-sm font-semibold" style={{ color: GOLD }}>You save $98 — today only</p>
               </div>
               <p className="text-center font-bold text-sm uppercase tracking-widest mb-6" style={{ color: BLUE }}>
                 Here's What You'll Receive:
@@ -651,7 +656,7 @@ export default function InterconnectedThankYouKlaviyo() {
             The Groundbreaking Series Brought to You by The Urban Monk
           </p>
           <h2 className="text-3xl md:text-4xl font-bold text-white text-center mb-12" style={{ fontFamily: "Georgia, serif" }}>
-            9 Episodes That Will Change Everything You Know About Your Health
+            10 Episodes That Will Change Everything You Know About Your Health
           </h2>
           <div className="space-y-4">
             {EPISODES.map((ep, i) => (
@@ -703,7 +708,7 @@ export default function InterconnectedThankYouKlaviyo() {
             style={{ border: `2px solid ${BLUE}`, boxShadow: `0 0 60px ${BLUE_GLOW}` }}
           >
             <div className="py-4 px-6 text-center" style={{ background: BLUE }}>
-              <p className="font-black text-white text-sm uppercase tracking-widest">All-Access Bundle — $67 One-Time</p>
+              <p className="font-black text-white text-sm uppercase tracking-widest">All-Access Bundle — $99 One-Time</p>
             </div>
             <div className="p-8 md:p-10" style={{ background: BG_CARD }}>
               <ul className="space-y-3 mb-8">
@@ -718,7 +723,7 @@ export default function InterconnectedThankYouKlaviyo() {
                   </li>
                 ))}
               </ul>
-              <BuyButton label="YES — I Want Instant Access to All 9 Episodes" />
+              <BuyButton label="YES — I Want Instant Access to All 10 Episodes" />
             </div>
           </div>
         </div>
@@ -785,14 +790,14 @@ export default function InterconnectedThankYouKlaviyo() {
               Keep every episode when you need it most.
             </h2>
             <p className="mb-6 text-gray-300">
-              Get permanent access to all 9 episodes, the companion guide, and the healing community for the private $67 member offer.
+              Get permanent access to all 10 episodes, the Director’s Cut, the companion guide, and the healing community for the private $99 member offer.
             </p>
             <button
               onClick={handleBuyClick}
               className="w-full rounded-xl px-6 py-4 text-base font-black uppercase tracking-wide transition-transform hover:scale-[1.02]"
               style={{ background: `linear-gradient(135deg, ${GOLD} 0%, #e8b800 100%)`, color: "#0a0a0a", boxShadow: `0 8px 32px rgba(245,200,66,0.35)` }}
             >
-              Yes — Unlock All 9 Episodes for $67
+              Yes — Unlock All 10 Episodes for $99
             </button>
             <button
               onClick={() => setShowExitIntent(false)}

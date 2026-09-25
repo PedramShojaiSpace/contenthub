@@ -346,6 +346,76 @@ export async function createKlaviyoPurchaseLifecycleEvent(input: {
 }
 
 /**
+ * Marks an exact, confirmed Kajabi base buyer on their existing Klaviyo profile.
+ * The unified LP-3 nurture uses this property as a per-message suppression filter,
+ * so a purchaser stops receiving lead-nurture messages while Kajabi owns access,
+ * post-purchase routing, and the native upsell sequence.
+ *
+ * This does not subscribe a profile to any marketing channel or enroll it in a
+ * buyer flow; it only records the purchase state after the signed Kajabi webhook.
+ */
+export async function markKlaviyoInterconnectedKajabiBuyer(input: {
+  email: string;
+  firstName?: string;
+  baseOfferId: string;
+  baseOfferTier: string;
+  purchaseKey: string;
+}): Promise<{ accepted: boolean; httpStatus: number; error?: string }> {
+  if (!ENV.klaviyoPrivateKey) {
+    return { accepted: false, httpStatus: 0, error: "Klaviyo private key is unavailable" };
+  }
+
+  const properties = {
+    interconnected_kajabi_buyer: true,
+    interconnected_kajabi_buyer_offer_id: input.baseOfferId,
+    interconnected_kajabi_buyer_tier: input.baseOfferTier,
+    interconnected_kajabi_buyer_purchase_key: input.purchaseKey,
+    interconnected_kajabi_buyer_recorded_at: new Date().toISOString(),
+  };
+
+  const create = await fetch(`${KLAVIYO_BASE}/profiles/`, {
+    method: "POST",
+    headers: klaviyoHeaders(),
+    body: JSON.stringify({
+      data: {
+        type: "profile",
+        attributes: {
+          email: input.email,
+          ...(input.firstName ? { first_name: input.firstName } : {}),
+          properties,
+        },
+      },
+    }),
+  });
+
+  if (create.ok) return { accepted: true, httpStatus: create.status };
+
+  const createJson = await create.json().catch(() => null) as any;
+  if (create.status === 409) {
+    const profileId = createJson?.errors?.[0]?.meta?.duplicate_profile_id;
+    if (!profileId) {
+      return { accepted: false, httpStatus: create.status, error: "Klaviyo duplicate profile response lacked profile ID" };
+    }
+    try {
+      await patchProfile(profileId, { properties });
+      return { accepted: true, httpStatus: 200 };
+    } catch (error) {
+      return {
+        accepted: false,
+        httpStatus: 0,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  return {
+    accepted: false,
+    httpStatus: create.status,
+    error: JSON.stringify(createJson).slice(0, 1000),
+  };
+}
+
+/**
  * Lightweight API test — verifies the key works by fetching account info.
  */
 export async function testKlaviyoConnection(): Promise<{ ok: boolean; accountName?: string; error?: string }> {

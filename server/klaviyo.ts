@@ -280,14 +280,17 @@ export async function pushInterconnectedEmailLead(opts: {
     source: "interconnected-optin",
   });
 
-  await addProfileToList(profileId, INTERCONNECTED_EMAIL_LIST_ID);
-
   let smsSubscribed = false;
 
+  // The unified LP-3 flow may evaluate its Day 0 consent gate as soon as list
+  // membership arrives. For an explicitly consented lead, establish Klaviyo SMS
+  // marketing consent first so the consent-only branch has the correct state.
   if (opts.smsConsent && opts.phone && INTERCONNECTED_SMS_LIST_ID) {
     await subscribeToSmsList(profileId, INTERCONNECTED_SMS_LIST_ID, opts.phone);
     smsSubscribed = true;
   }
+
+  await addProfileToList(profileId, INTERCONNECTED_EMAIL_LIST_ID);
 
   return { profileId, smsSubscribed };
 }

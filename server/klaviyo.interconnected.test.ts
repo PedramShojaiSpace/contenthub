@@ -31,6 +31,24 @@ describe("pushInterconnectedEmailLead", () => {
     expect(fetchMock.mock.calls[1]?.[0]).toBe(`https://a.klaviyo.com/api/lists/${INTERCONNECTED_EMAIL_LIST_ID}/relationships/profiles/`);
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ method: "POST" });
   });
+
+  it("establishes explicit SMS consent before the unified list can trigger Day 0", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: { id: "profile_456" } }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    const result = await pushInterconnectedEmailLead({
+      email: "consented-test@example.com",
+      phone: "555 222 1000",
+      smsConsent: true,
+    });
+
+    expect(result).toEqual({ profileId: "profile_456", smsSubscribed: true });
+    expect(fetchMock.mock.calls[1]?.[0]).toContain("profile-subscription-bulk-create-jobs");
+    expect(fetchMock.mock.calls[2]?.[0]).toBe(`https://a.klaviyo.com/api/lists/${INTERCONNECTED_EMAIL_LIST_ID}/relationships/profiles/`);
+  });
 });
 
 describe("createKlaviyoPurchaseLifecycleEvent", () => {

@@ -4,6 +4,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { sendCapiEvent } from "./capiHelper";
 import { getDb } from "./db";
 import { interconnectedLeads } from "../drizzle/schema";
+import { pushInterconnectedEmailLead } from "./klaviyo";
 
 export const UNBOUNCE_INTERCONNECTED_ORIGIN = "https://try.theurbanmonk.com";
 export const UNBOUNCE_INTERCONNECTED_FORM_ID = "SJAKDW";
@@ -18,6 +19,8 @@ const bridgePayload = z.object({
   eventId: z.string().regex(/^ub_ic_[A-Za-z0-9_-]{12,96}$/),
   formId: z.literal(UNBOUNCE_INTERCONNECTED_FORM_ID),
   email: z.string().email().max(255).optional(),
+  phone: z.string().max(30).optional(),
+  smsConsent: z.boolean().optional(),
   pageUrl: z.string().url().max(1024),
   fbp: z.string().max(256).optional(),
   fbc: z.string().max(256).optional(),
@@ -130,6 +133,10 @@ export function registerUnbounceKlaviyoLeadBridge(app: Express) {
 
     const input = parsed.data;
     const email = input.email?.trim().toLowerCase();
+    const phone = input.phone?.trim() || undefined;
+    // A phone value by itself is never marketing consent. The browser only
+    // sends true after the LP-3 checkbox is affirmatively selected.
+    const smsConsent = input.smsConsent === true && Boolean(phone);
     const clientIp = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim()
       || req.socket.remoteAddress
       || null;
@@ -197,7 +204,7 @@ export function registerUnbounceKlaviyoLeadBridge(app: Express) {
               fbc: input.fbc ?? null,
               clientIp,
               userAgent,
-              klaviyoSynced: true,
+              klaviyoSynced: false,
               capiLeadEventId: input.eventId,
               createdAt: Date.now(),
             });
@@ -207,6 +214,27 @@ export function registerUnbounceKlaviyoLeadBridge(app: Express) {
       }
     } catch (error) {
       console.error("[unbounce-lead] Local lead record error:", error);
+    }
+
+    if (email) {
+      try {
+        // The native Unbounce form does not submit to a Klaviyo form directly.
+        // This browser bridge is therefore the authoritative LP-3 handoff for
+        // form entries that do not arrive through the secret-scoped webhook.
+        await pushInterconnectedEmailLead({ email, phone, smsConsent });
+        if (leadId) {
+          const db = await getDb();
+          if (db) {
+            await db
+              .update(interconnectedLeads)
+              .set({ klaviyoSynced: true, klaviyoSyncedAt: Date.now(), smsConsent })
+              .where(eq(interconnectedLeads.id, leadId));
+          }
+        }
+      } catch (error) {
+        console.error("[unbounce-lead] Klaviyo delivery error:", error);
+        return res.status(502).json({ error: "Klaviyo delivery unavailable" });
+      }
     }
 
     if (eventAlreadySent) {

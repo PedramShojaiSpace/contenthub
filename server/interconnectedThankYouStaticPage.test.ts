@@ -21,4 +21,26 @@ describe("live Interconnected Kajabi thank-you headline experiment", () => {
     expect(page).toContain("testId: HEADLINE_AB_TEST_ID");
     expect(page).toContain("conversionType: 'checkout_start'");
   });
+
+  it("renders the isolated Klaviyo treatment with the $99 Kajabi checkout bridge", () => {
+    const klaviyoPage = renderInterconnectedThankYouPage({
+      treatment: "klaviyo99",
+      medium: "sms",
+      fbclid: "test.click-123",
+    });
+
+    expect(klaviyoPage).toContain("All 10 Episodes of Interconnected");
+    expect(klaviyoPage).toContain("BONUS: Interconnected Director’s Cut");
+    expect(klaviyoPage).toContain("BONUS EPISODE 10");
+    expect(klaviyoPage).toContain("The Soil Inside You");
+    expect(klaviyoPage).toContain("value: 99");
+    expect(klaviyoPage).toContain("destination=https%3A%2F%2Ftheacademy.theurbanmonk.com%2Foffers%2FofRhsQvo%2Fcheckout");
+    expect(klaviyoPage).toContain("utm_source=klaviyo");
+    expect(klaviyoPage).toContain("utm_medium=sms");
+    expect(klaviyoPage).toContain("utm_content=ty_b_klaviyo_v2_99_checkout");
+    expect(klaviyoPage).toContain("funnel_path=ko_klaviyo");
+    expect(klaviyoPage).toContain("email_key=ty_b_klaviyo_v2_99_checkout");
+    expect(klaviyoPage).toContain("fbclid=test.click-123");
+    expect(klaviyoPage).not.toContain("offers/57E3XFtT/checkout");
+  });
 });

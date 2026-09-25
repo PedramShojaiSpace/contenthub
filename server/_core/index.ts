@@ -1349,6 +1349,29 @@ async function startServer() {
     }
   });
 
+  // The Unbounce/KO acquisition path uses this isolated static treatment rather
+  // than the SPA fallback. It must preserve the confirmed $99 Kajabi checkout
+  // and attribution bridge, because Kajabi owns the native downstream OCU.
+  app.get("/interconnected/thank-you-klaviyo", async (req, res) => {
+    try {
+      const fbclid = typeof req.query.fbclid === "string" ? req.query.fbclid : undefined;
+      const medium = req.query.utm_medium === "sms" ? "sms" : "email";
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      return res.send(
+        renderInterconnectedThankYouPage({
+          treatment: "klaviyo99",
+          fbclid,
+          medium,
+        }),
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[interconnected-ty-klaviyo] Error:`, msg);
+      return res.status(500).send(`<html><body><h2>Error</h2><p>${msg}</p></body></html>`);
+    }
+  });
+
   // Contextual KO/Klaviyo sales page for email subscribers. The legacy generic
   // route remains an alias so previously delivered KO emails retain Shopify attribution.
   app.get(["/interconnected/offer", "/interconnected/offer-ko"], async (req, res) => {

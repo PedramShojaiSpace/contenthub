@@ -5,14 +5,50 @@
  * No React, no 324KB CSS bundle, no framework overhead.
  */
 
-export function renderInterconnectedThankYouPage(): string {
+export type InterconnectedThankYouPageTreatment = "kajabi67" | "klaviyo99";
+
+type RenderInterconnectedThankYouPageOptions = {
+  treatment?: InterconnectedThankYouPageTreatment;
+  fbclid?: string;
+  medium?: "email" | "sms";
+};
+
+const KLAVIYO_99_CHECKOUT = "https://theacademy.theurbanmonk.com/offers/ofRhsQvo/checkout";
+
+function buildKlaviyo99CheckoutPath(options: RenderInterconnectedThankYouPageOptions): string {
+  const params = new URLSearchParams({
+    destination: KLAVIYO_99_CHECKOUT,
+    utm_source: "klaviyo",
+    utm_medium: options.medium === "sms" ? "sms" : "email",
+    utm_campaign: "interconnected_14day",
+    utm_content: "ty_b_klaviyo_v2_99_checkout",
+    funnel_path: "ko_klaviyo",
+    email_key: "ty_b_klaviyo_v2_99_checkout",
+  });
+  if (options.fbclid && /^[A-Za-z0-9._%-]{1,512}$/.test(options.fbclid)) {
+    params.set("fbclid", options.fbclid);
+  }
+  return `/r/checkout?${params.toString()}`;
+}
+
+export function renderInterconnectedThankYouPage(
+  options: RenderInterconnectedThankYouPageOptions = {},
+): string {
   const CDN = "/manus-storage/";
   const LOGO = CDN + "urban-monk-logo-white_bea7991f.png";
-  const OTO_URL = "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout";
+  const isKlaviyo99 = options.treatment === "klaviyo99";
+  const episodeCount = isKlaviyo99 ? 10 : 9;
+  const offerPrice = isKlaviyo99 ? 99 : 67;
+  const OTO_URL = isKlaviyo99
+    ? buildKlaviyo99CheckoutPath(options)
+    : "https://theacademy.theurbanmonk.com/offers/57E3XFtT/checkout";
   const year = new Date().getFullYear();
 
   const BUNDLE_ITEMS = [
-    { text: "Instant, On-Demand Access to All 9 Episodes of Interconnected — yours forever, no viewing window", value: null },
+    { text: `Instant, On-Demand Access to All ${episodeCount} Episodes of Interconnected — yours forever, no viewing window`, value: null },
+    ...(isKlaviyo99
+      ? [{ text: "BONUS: Interconnected Director’s Cut — additional conversations and deeper context not included in the free screening", value: "$79" }]
+      : []),
     { text: "The Interconnected Companion Guide — episode-by-episode protocols and action steps from all 70 experts", value: "$97" },
     { text: "The Gut Restoration Starter Protocol — Dr. Shojai's 30-day reset plan used with his own patients", value: "$79" },
     { text: "Private Healing Community Access — thousands of members on the same journey, with weekly Q&A", value: "$197/yr" },
@@ -41,20 +77,27 @@ export function renderInterconnectedThankYouPage(): string {
     { ep: "EPISODE 8", title: "Children's Health: Protecting the Next Generation's Microbiome", desc: "The most urgent episode in the series. Dr. Zach Bush and Dr. Alessio Fassano discuss the alarming rise in childhood autoimmune disease and the direct link to the destruction of the infant microbiome." },
     { ep: "EPISODE 9", title: "The Healing Protocol: Your 90-Day Roadmap to a New Gut", desc: "Dr. Pedram Shojai synthesizes everything from the series into a concrete, step-by-step 90-day healing protocol with specific labs to order, supplements to consider, and lifestyle changes that compound into lasting health." },
   ];
+  if (isKlaviyo99) {
+    EPISODES.push({
+      ep: "BONUS EPISODE 10",
+      title: "The Soil Inside You",
+      desc: "A full-circle look at the microbiome: reconnecting with soil, food, and the everyday practices that support a more resilient inner ecosystem.",
+    });
+  }
 
   const REVIEWS = [
     { name: "Sarah M., Austin TX", text: "I've watched dozens of health documentaries. This is the first one that gave me a complete picture AND a clear protocol to follow. My gut issues of 12 years are finally improving." },
     { name: "David K., Portland OR", text: "Dr. Fassano's episode alone was worth 10× the price. I finally understand why my autoimmune condition keeps flaring — and what to actually do about it." },
-    { name: "Jennifer L., Nashville TN", text: "My functional medicine doctor recommended this series. After watching all 9 episodes I feel like I have a PhD in gut health. The companion guide is incredible." },
+    { name: "Jennifer L., Nashville TN", text: `My functional medicine doctor recommended this series. After watching all ${episodeCount} episodes I feel like I have a PhD in gut health. The companion guide is incredible.` },
     { name: "Michael R., Denver CO", text: "I was skeptical. I've been told 'your labs are normal' for years while feeling terrible. This series validated everything I suspected and gave me the language to advocate for myself." },
     { name: "Amanda T., Seattle WA", text: "The episode on children's health made me cry. I wish I had seen this before my kids were born. Sharing it with every parent I know." },
     { name: "Robert H., Chicago IL", text: "Dr. Kharrazian's episode on the brain-gut connection was mind-blowing. I've been treating my brain fog for years without addressing the gut. Starting the protocol tomorrow." },
   ];
 
   const FAQS = [
-    { q: "What exactly is Interconnected?", a: "Interconnected is a 9-episode documentary series featuring 70 of the world's leading experts in gut health, functional medicine, and the microbiome. It exposes the root causes of chronic disease and gives you a concrete protocol to heal your gut and reclaim your health." },
+    { q: "What exactly is Interconnected?", a: `Interconnected is a ${episodeCount}-episode documentary series featuring 70 of the world's leading experts in gut health, functional medicine, and the microbiome. It exposes the root causes of chronic disease and gives you a concrete protocol to heal your gut and reclaim your health.` },
     { q: "Why do the free episodes expire after 24 hours?", a: "The free series is designed as a daily event — one episode per day for 9 days. Each episode is available for 24 hours only. The all-access bundle removes this limitation entirely — every episode available forever." },
-    { q: "What do I get when I purchase the all-access bundle?", a: "Permanent, on-demand access to all 9 episodes — watch in any order, re-watch as many times as you want, forever. Plus the Companion Guide, the Gut Restoration Starter Protocol, Private Community Access, and the 5 Root Causes Masterclass bonus." },
+    { q: "What do I get when I purchase the all-access bundle?", a: `Permanent, on-demand access to all ${episodeCount} episodes — watch in any order, re-watch as many times as you want, forever. Plus ${isKlaviyo99 ? "the Interconnected Director’s Cut, " : ""}the Companion Guide, the Gut Restoration Starter Protocol, Private Community Access, and the 5 Root Causes Masterclass bonus.` },
     { q: "How is the content delivered?", a: "Everything is delivered through the Urban Monk Academy platform (powered by Kajabi). You'll receive login credentials immediately after purchase. The platform is fully mobile-friendly — watch on your phone, tablet, laptop, or smart TV." },
     { q: "Is this medical advice?", a: "No. This documentary series is for educational and informational purposes only. Nothing in Interconnected is intended to diagnose, treat, cure, or prevent any disease. Always consult your licensed healthcare provider before making changes to your health protocols." },
     { q: "What is the refund policy?", a: "We stand behind this series 100%. You have a full 30-day, no-questions-asked money-back guarantee. If it doesn't deliver the clarity and actionable knowledge you expected, contact our support team and we'll refund every penny." },
@@ -106,7 +149,7 @@ export function renderInterconnectedThankYouPage(): string {
       </div>
     </div>`).join("");
 
-  const buyBtn = (label = "YES — Give Me Instant Access to All 9 Episodes") => `
+  const buyBtn = (label = `YES — Give Me Instant Access to All ${episodeCount} Episodes`) => `
     <div class="buy-wrap">
       <a href="${OTO_URL}" class="buy-btn" onclick="firePixel()">${label}</a>
       <p class="buy-note">🔒 Secure checkout · 30-day money-back guarantee · Instant access · Cancel anytime</p>
@@ -289,7 +332,7 @@ export function renderInterconnectedThankYouPage(): string {
       ✅ You're confirmed for <strong style="color:var(--blue)">Interconnected: The Power to Heal From Within</strong>. Your first episode drops tomorrow.
     </p>
     <p style="color:#d1d5db;font-size:1.1rem;line-height:1.7;margin-bottom:20px;text-align:center">
-      <strong>Here's the problem:</strong> Each of the 9 episodes is only available for <strong>24 hours</strong>. Miss a day — miss that episode. <em style="color:#fca5a5">There is no replay. There is no catch-up. It's gone.</em>
+      <strong>Here's the problem:</strong> Each of the ${episodeCount} episodes is only available for <strong>24 hours</strong>. Miss a day — miss that episode. <em style="color:#fca5a5">There is no replay. There is no catch-up. It's gone.</em>
     </p>
     <p style="color:#d1d5db;font-size:1.1rem;line-height:1.7;margin-bottom:16px;text-align:center">
       <strong style="color:#fff">Dr. Pedram recorded a short message for you</strong> — watch it now to understand why this matters and what to do next:
@@ -310,7 +353,7 @@ export function renderInterconnectedThankYouPage(): string {
 <section style="background:var(--bg1);border-top:1px solid rgba(46,145,252,.12);border-bottom:1px solid rgba(46,145,252,.12)">
   <div class="container-sm">
     <p class="section-eyebrow">Only available on this page — never offered again at this price</p>
-    <h2 class="section-title">Lock In Permanent Access to All 9 Episodes — Right Now</h2>
+    <h2 class="section-title">Lock In Permanent Access to All ${episodeCount} Episodes — Right Now</h2>
     <p style="text-align:center;color:#d1d5db;font-size:1rem;line-height:1.7;margin-bottom:32px">You've already done the hard part — you signed up. Don't let a missed day cost you the episode you needed most. Here's everything you get when you secure your all-access bundle today:</p>
     <div class="bundle-card">
       <ul class="bundle-list">${bundleItemsHtml}</ul>
@@ -334,8 +377,8 @@ export function renderInterconnectedThankYouPage(): string {
         <div style="text-align:center;margin-bottom:8px">
           <span style="text-decoration:line-through;color:#6b7280;font-size:1rem">Regular price: $197</span>
         </div>
-        <p class="price-new">$67</p>
-        <p class="price-save">💰 You save $130 — but only while the timer above is running</p>
+        <p class="price-new">$${offerPrice}</p>
+        <p class="price-save">💰 You save $${197 - offerPrice} — but only while the timer above is running</p>
         <p style="text-align:center;color:#fca5a5;font-size:.875rem;font-weight:600;margin-bottom:20px">⚠️ This price is only available on this page. Once you leave, it's gone.</p>
         <p style="text-align:center;font-weight:700;font-size:.75rem;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:20px">Here's What You'll Receive:</p>
         <ul class="bundle-list">${bundleItemsHtml}</ul>
@@ -358,7 +401,7 @@ export function renderInterconnectedThankYouPage(): string {
 <section style="background:var(--bg0);content-visibility:auto;contain-intrinsic-size:0 1000px">
   <div class="container">
     <p class="section-eyebrow">The Groundbreaking Series Brought to You by The Urban Monk</p>
-    <h2 class="section-title">9 Episodes That Will Change Everything You Know About Your Health</h2>
+    <h2 class="section-title">${episodeCount} Episodes That Will Change Everything You Know About Your Health</h2>
     ${episodesHtml}
     ${buyBtn("Yes, I'm Ready to Unlock the Whole Series Now")}
   </div>
@@ -389,10 +432,10 @@ export function renderInterconnectedThankYouPage(): string {
       <div class="cd-seg"><div class="cd-num" id="cd2-s">--</div><div class="cd-unit">SECONDS</div></div>
     </div>
     <div class="offer-card">
-      <div class="offer-header">All-Access Bundle — $67 One-Time · This Page Only</div>
+      <div class="offer-header">All-Access Bundle — $${offerPrice} One-Time · This Page Only</div>
       <div class="offer-body">
         <ul class="bundle-list">${bundleItemsHtml}</ul>
-        ${buyBtn("YES — I Want Instant Access to All 9 Episodes")}
+        ${buyBtn(`YES — I Want Instant Access to All ${episodeCount} Episodes`)}
       </div>
     </div>
   </div>
@@ -412,8 +455,8 @@ export function renderInterconnectedThankYouPage(): string {
   <div class="container-sm" style="text-align:center">
     <p style="color:#fca5a5;font-size:.875rem;text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:16px">⚠️ Final Warning — Timer Is Running</p>
     <h2 class="section-title">This Is the Last Time You'll See This Price</h2>
-    <p style="color:#d1d5db;font-size:1rem;line-height:1.7;margin-bottom:24px">When the timer hits zero, the $67 price expires and this page will no longer offer the bundle. You'll have watched the series — but without the protocols, the companion guide, and the community to actually implement what you learned.</p>
-    ${buyBtn("YES — Give Me Instant Access to All 9 Episodes")}
+    <p style="color:#d1d5db;font-size:1rem;line-height:1.7;margin-bottom:24px">When the timer hits zero, the $${offerPrice} price expires and this page will no longer offer the bundle. You'll have watched the series — but without the protocols, the companion guide, and the community to actually implement what you learned.</p>
+    ${buyBtn(`YES — Give Me Instant Access to All ${episodeCount} Episodes`)}
     <p style="color:#374151;font-size:.75rem;margin-top:16px;max-width:448px;margin-left:auto;margin-right:auto">30-day money-back guarantee. No questions asked. Instant access delivered to your inbox.</p>
   </div>
 </section>
@@ -610,7 +653,7 @@ document.addEventListener('DOMContentLoaded', function() { initWistiaEmbed(); })
 function firePixel() {
   try {
     var fbq = window.fbq;
-    if (typeof fbq === 'function') fbq('track', 'InitiateCheckout', { value: 67, currency: 'USD', content_name: 'Interconnected All-Access Bundle' });
+    if (typeof fbq === 'function') fbq('track', 'InitiateCheckout', { value: ${offerPrice}, currency: 'USD', content_name: 'Interconnected All-Access Bundle' });
   } catch(_) {}
 
   // Record A/B conversion

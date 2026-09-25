@@ -1,70 +1,67 @@
 # Unified LP-3 Klaviyo Cutover and Kajabi Fulfillment
 
 **Effective date:** 24 September 2026
-**Status:** **Live for future Unbounce LP-3 entrants**
-**Scope:** Unbounce LP-3 form routing, the unified Klaviyo email-and-consent-only-SMS nurture, the $99 Kajabi checkout, native Kajabi upsells, and the Kajabi buyer lifecycle.
+**Current status:** **Unified $99 flow is live; legacy $67 delivery is contained.**
+**Scope:** Unbounce LP-3 opt-in routing, the unified Klaviyo email-and-consent-only-SMS nurture, the $99 Kajabi checkout, Kajabi native upsells, and Kajabi buyer fulfillment.
 
-## Executive record
+## Current operational state
 
-The owner approved activation after Jim’s review. The live Unbounce LP-3 form now sends **only future opt-ins** to an isolated Klaviyo list that triggers a single unified lead flow. This preserves the earlier live flows for their existing in-progress cohort while preventing all future LP-3 entrants from entering any legacy flow.
+The active intended journey is the unified Klaviyo flow, [`THZhTS`](https://www.klaviyo.com/flow/THZhTS/edit): **[LIVE — ACTIVE] UNBOUNCE LP-3 — Interconnected Email + Consent-Only SMS**. It contains 11 live emails and 11 live SMS actions. Its Day 0 SMS explicitly references the **$99** offer, not the former $67 offer. All 11 email actions have Smart Sending disabled.
 
-> **No historical person was moved, re-enrolled, or messaged during this cutover. No test purchase was created.**
+An owner test revealed residual ingestion into the former **Interconnected Free Screening Opt-Ins** list (`Rrx44Q`). That list triggered a separate, wrong-offer $67 automation, `WaMDnA` — **MAIN IC OPT IN UNBOUNCE LP-3 — Interconnected Email + Consent-Only SMS**. At the time of discovery, its Day 0 SMS explicitly referenced $67.
 
-The $99 Kajabi buyer path is also active: a confirmed purchase grants the Interconnected product, passes the purchaser through Kajabi’s existing post-purchase path and native OCU stack, and enrolls that purchaser in the reviewed Kajabi buyer sequence. A confirmed base buyer is simultaneously marked in Klaviyo so future lead-nurture messages are suppressed.
+> **Containment completed:** all 22 outbound actions in `WaMDnA` are now draft. The two earlier legacy flows, `YyFZPu` and `TvXwNj`, are also draft with no live outbound actions. No LP-3 entrant can now receive a $67 email or SMS from those legacy flows.
 
-## Live route map
+No historical person was moved or re-enrolled, and no paid test purchase was created.
 
-| Stage | Live configuration | Verified behavior |
+## Intended $99 route
+
+| Stage | Current configuration | Verified behavior |
 |---|---|---|
-| Paid/Unbounce opt-in | `https://try.theurbanmonk.com/interconnected-lp-3/` embeds Klaviyo form `SJAKDW` | The form’s **published** version submits only to `[LIVE — UNIFIED] Interconnected LP-3 Opt-Ins` (`VWhddE`). |
-| Lead nurture | Klaviyo flow [`THZhTS`](https://www.klaviyo.com/flow/THZhTS/edit) — **[LIVE — ACTIVE] UNBOUNCE LP-3 — Interconnected Email + Consent-Only SMS** | Live, list-filtered to the isolated intake list; 11 email actions, 11 SMS actions, and 11 native SMS-marketing-consent gates. |
-| Thank-you / checkout | `https://content.theurbanmonk.com/interconnected/thank-you-klaviyo` | The public page shows the $99 treatment and all purchase CTAs use the tracked `/r/checkout` bridge. |
-| Kajabi checkout | `https://theacademy.theurbanmonk.com/offers/ofRhsQvo/checkout` | The bridge returns a 302 to the intended published $99 checkout with the Klaviyo attribution parameters intact. |
-| Buyer fulfillment | Kajabi offer `2151402817` — **Interconnected $99 Bundle OTO** | Published; grants **Interconnected Series Self Guided** product access, uses the existing **Interconnected Purchased — Redirect** post-purchase landing page, and has the native $99 Upstream OCU first, followed by the existing $199 testing offer. |
-| Buyer email lifecycle | Kajabi sequence `2148891667` — **[DRAFT] Interconnected Paid Buyer Lifecycle — $67 + $99** | Now has exactly **one live subscribe trigger**: `Offer is purchased: Interconnected: The Complete Healing Protocol` for the exact $99 base offer. It had 0 subscribers and 0 sent messages at activation. |
+| Opt-in page | `https://try.theurbanmonk.com/interconnected-lp-3/` | Native Unbounce form collects email, an optional phone, and a separate SMS-consent checkbox. |
+| Unified intake list | `VWhddE` — **[LIVE — UNIFIED] Interconnected LP-3 Opt-Ins** | This is the only intended list for future LP-3 lead nurture. |
+| Lead nurture | [`THZhTS`](https://www.klaviyo.com/flow/THZhTS/edit) | Live; 11 email actions and 11 consent-gated SMS actions. Day 0 SMS carries the $99 offer. |
+| Thank-you / checkout | `https://content.theurbanmonk.com/interconnected/thank-you-klaviyo` | Public page routes every purchase CTA through the tracked $99 checkout bridge. |
+| Kajabi checkout | `https://theacademy.theurbanmonk.com/offers/ofRhsQvo/checkout` | Published $99 Interconnected base offer. |
+| Kajabi native OCU | Offer `2151402817` | Native purchase flow shows the $99 Upstream OCU first, then the existing $199 testing offer. |
+| Buyer fulfillment | Kajabi sequence `2148891667` | The reviewed buyer lifecycle starts only when the exact $99 base offer is purchased. |
 
-The visible `[DRAFT]` text in the Kajabi sequence title is an old administrative label only. Its one exact-offer purchase trigger is active. The title was intentionally left unchanged during this activation so there was no unrelated rename while the behavior changed.
+## Legacy-flow containment
 
-## Isolation and duplicate-prevention design
+| Flow | Current message status | What it means now |
+|---|---:|---|
+| `THZhTS` — **[LIVE — ACTIVE] UNBOUNCE LP-3 — Interconnected Email + Consent-Only SMS** | 22 live | The single authorized LP-3 nurture sequence. |
+| `WaMDnA` — **MAIN IC OPT IN UNBOUNCE LP-3 — Interconnected Email + Consent-Only SMS** | 22 draft | Former $67 offer sequence; intentionally paused after the wrong-offer SMS incident. |
+| `YyFZPu` — **[LIVE — STRICT 24H] Interconnected Free Screening - KO — APPROVED DESIGN** | 11 draft | Earlier email-only sequence; not delivering. |
+| `TvXwNj` — **[LIVE — COMPLIANT SMS] Interconnected Free Screening - KO** | 11 draft | Earlier SMS-only sequence; not delivering. |
 
-The original live flows were **not** switched to draft because the owner required their existing traffic cohort to continue uninterrupted. They remain live but are triggered only by the former list, **Interconnected Free Screening Opt-Ins**. The published form no longer submits to that list.
+## LP-3 ingestion safeguards
 
-| Flow | Current status | Trigger list | Role after cutover |
-|---|---:|---|---|
-| `THZhTS` — **[LIVE — ACTIVE] UNBOUNCE LP-3 — Interconnected Email + Consent-Only SMS** | Live | `[LIVE — UNIFIED] Interconnected LP-3 Opt-Ins` | Only flow for future LP-3 form submissions. |
-| `WaMDnA` — **MAIN IC OPT IN UNBOUNCE LP-3 — Interconnected Email + Consent-Only SMS** | Live | `Interconnected Free Screening Opt-Ins` | Existing cohort only; it receives no new form submission after this cutover. |
-| `YyFZPu` — **[LIVE — STRICT 24H] Interconnected Free Screening - KO — APPROVED DESIGN** | Live | `Interconnected Free Screening Opt-Ins` | Existing email cohort only. |
-| `TvXwNj` — **[LIVE — COMPLIANT SMS] Interconnected Free Screening - KO** | Live | `Interconnected Free Screening Opt-Ins` | Existing SMS cohort only. |
+The application handoff now creates **email marketing consent before unified-list enrollment** for a completed Unbounce email opt-in. If the person separately checks the SMS box and supplies a phone, it creates **SMS marketing consent before list enrollment**. This order prevents an immediate Day 0 action from being evaluated before the appropriate consent state exists.
 
-The post-cutover verification confirmed the form has one live version pointing only to the isolated list, the isolated unified flow has 22 live outbound messages and 11 consent gates, and none of the three legacy flows point to the isolated list.
+The browser bridge now calls the Klaviyo enrollment helper rather than merely marking an internal lead record as synced. A failure to hand off to Klaviyo is surfaced as a failure rather than being treated as successful enrollment.
 
-## Consent and buyer suppression safeguards
+The native Unbounce form is still creating some legacy-list entries in `Rrx44Q`. The old sequence has been contained, so those entries can no longer result in $67 messages. The remaining configuration task is to remove or redirect the legacy native Unbounce-to-Klaviyo destination so that future entrants appear only on `VWhddE`. This is a data-hygiene correction, not a delivery-risk blocker while the legacy actions remain draft.
 
-Every SMS decision in `THZhTS` is behind a native Klaviyo condition requiring the profile to be currently subscribed to **SMS marketing**. A supplied phone number never implies SMS permission. All 11 SMS gates were read back as requiring `channel = sms`, `can_receive_marketing = true`, and `subscription = subscribed`.
+## Consent and buyer-suppression safeguards
 
-Every email and SMS in `THZhTS` also has a buyer-suppression condition requiring the profile property `interconnected_kajabi_buyer` to be **not set**. The enabled exact-ID Kajabi webhook handoff recognizes only the $67 base offer (`2151314475`) and the $99 base offer (`2151402817`) as Interconnected base buyers. After Kajabi confirms the purchase, it records the buyer marker in Klaviyo without subscribing the person to email or SMS marketing. Future lead-nurture actions are then skipped while Kajabi owns fulfillment.
+Every SMS decision in `THZhTS` is behind a native Klaviyo condition requiring the profile to be currently subscribed to **SMS marketing**. A supplied phone number never implies SMS permission.
 
-## Buyer sequence trigger
+Every email and SMS in `THZhTS` also has a buyer-suppression condition requiring the profile property `interconnected_kajabi_buyer` to be **not set**. The exact-offer Kajabi purchase receiver recognizes only the $67 base offer (`2151314475`) and the $99 base offer (`2151402817`) as Interconnected base buyers. After Kajabi confirms the purchase, it records the buyer marker in Klaviyo without changing marketing consent; future lead-nurture messages are then skipped while Kajabi owns fulfillment.
 
-The Kajabi buyer lifecycle now starts only when the current $99 **base offer** is purchased. It does **not** start merely because someone opts in, and it does **not** use the $99 Upstream OCU as a second sequence-entry trigger. This avoids restarting the buyer sequence after the native OCU is accepted.
+## Next verification sequence
 
-The first buyer email remains scheduled immediately after purchase and the rest retain the approved cadence already configured in Kajabi. The buyer sequence had zero subscribers before activation; therefore, the new trigger does not backfill prior purchasers.
+Without creating a paid test order or sending catch-up SMS, verify the next genuine LP-3 opt-in as follows:
 
-## Operational observation
-
-Use aggregate operational evidence after the next organic entrant and confirmed buyer activity. Verify all of the following without creating a paid test order or sending catch-up SMS:
-
-1. A new non-consenting LP-3 lead is counted only on the isolated intake list and receives the email path, not SMS.
-2. An explicitly SMS-consenting LP-3 lead is eligible for the gated SMS path only after Klaviyo recognizes current marketing consent.
-3. A $99 base purchaser receives Kajabi product access, the configured post-purchase page, the native OCU opportunity, and the Kajabi buyer sequence.
-4. The confirmed buyer’s future unified lead-nurture email/SMS actions are suppressed by the Kajabi buyer marker.
+1. Confirm the profile enters `VWhddE` and receives the Day 0 unified email.
+2. For a person with affirmative SMS consent, confirm only the $99 Day 0 SMS sends from `THZhTS`.
+3. Confirm no message is sent from `WaMDnA`, `YyFZPu`, or `TvXwNj`; their message actions are draft.
+4. Confirm a $99 base purchaser receives Kajabi product access, its native OCU opportunity, and the buyer sequence; thereafter, confirm future unified nurture is suppressed by the Kajabi buyer marker.
 
 ## References
 
 [1]: https://www.klaviyo.com/flow/THZhTS/edit "Live unified LP-3 Klaviyo flow"
-
-[2]: https://app.kajabi.com/admin/email_sequences/2148891667 "Kajabi buyer lifecycle sequence"
-
-[3]: https://app.kajabi.com/admin/offers/2151402817/upsells "Kajabi $99 Interconnected offer purchase flow"
-
-[4]: https://content.theurbanmonk.com/interconnected/thank-you-klaviyo "Live Klaviyo thank-you page"
+[2]: https://www.klaviyo.com/flow/WaMDnA/edit "Paused legacy $67 flow"
+[3]: https://app.kajabi.com/admin/email_sequences/2148891667 "Kajabi buyer lifecycle sequence"
+[4]: https://app.kajabi.com/admin/offers/2151402817/upsells "Kajabi $99 Interconnected offer purchase flow"
+[5]: https://content.theurbanmonk.com/interconnected/thank-you-klaviyo "Live Klaviyo thank-you page"

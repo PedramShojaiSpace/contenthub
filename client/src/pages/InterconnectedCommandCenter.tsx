@@ -272,9 +272,9 @@ export default function InterconnectedCommandCenter() {
   const [startDate, setStartDate] = useState(todayStr());
   const [endDate, setEndDate] = useState(todayStr());
 
-  // Direct Kajabi transaction data for exactly the current $67 entry offer and
-  // current $199 OCUS. This avoids the lagging webhook ledger and does not pool
-  // KO/Klaviyo, Shopify, historical $299, or unrelated Kajabi-offer revenue.
+  // Direct Kajabi transaction data for the current $67/$99 entry offers and
+  // current $99/$199 OCUs. Exact offer IDs keep the two $99 revenue sources
+  // separate and avoid pooling unrelated Kajabi revenue.
   const {
     data: funnelData,
     isLoading: funnelLoading,
@@ -320,7 +320,7 @@ export default function InterconnectedCommandCenter() {
   const checkoutRate = leads > 0 ? (checkouts / leads) * 100 : null;
   const kajabiRevenue = funnelData ? funnelData.totalRevenueCents / 100 : 0;
   const kajabiPurchases = funnelData?.totalPurchases ?? 0;
-  // The direct query returns only the two current Interconnected offers.
+  // The direct query returns only current Interconnected entry offers and OCUs.
   const metaAttributedRevenue = kajabiRevenue;
   const metaAttributedPurchases = kajabiPurchases;
   const roas = spend > 0 && metaAttributedRevenue > 0 ? metaAttributedRevenue / spend : null;
@@ -344,9 +344,12 @@ export default function InterconnectedCommandCenter() {
     void Promise.all([refetchOptPerf(), refetchFunnel()]);
   }
 
-  // ── Current Kajabi OCUs and separate historical $299 benchmark ──────────────
-  // Both live post-purchase offers are reported by their exact Kajabi offer ID.
+  // ── Current Kajabi entry offers / OCUs and historical $299 benchmark ─────────
+  // Both $99 paths are reported by their own exact Kajabi offer IDs.
   // The $299 figure remains an all-time historical comparison only.
+  const frontEnd99Tier = funnelData?.tiers?.find(t => t.tier === '99_front_end');
+  const frontEnd99Count = frontEnd99Tier?.count ?? 0;
+  const frontEnd99Revenue = (frontEnd99Tier?.revenueCents ?? 0) / 100;
   const upstreamOcuTier = funnelData?.tiers?.find(t => t.tier === '99_upstream_ocus');
   const upstreamOcuCount = upstreamOcuTier?.count ?? 0;
   const upstreamOcuRevenue = (upstreamOcuTier?.revenueCents ?? 0) / 100;
@@ -358,8 +361,9 @@ export default function InterconnectedCommandCenter() {
   const historical299EntryPurchases = historical299Data?.entryPurchases ?? 0;
   const otoTier = funnelData?.tiers?.find(t => t.tier === '67');
   const otoCount = otoTier?.count ?? 0;
-  const upstreamOcuTakeRate = otoCount > 0 ? (upstreamOcuCount / otoCount) * 100 : null;
-  const testingOcuTakeRate = otoCount > 0 ? (testingOcuCount / otoCount) * 100 : null;
+  const eligibleBaseBuyerCount = otoCount + frontEnd99Count;
+  const upstreamOcuTakeRate = eligibleBaseBuyerCount > 0 ? (upstreamOcuCount / eligibleBaseBuyerCount) * 100 : null;
+  const testingOcuTakeRate = eligibleBaseBuyerCount > 0 ? (testingOcuCount / eligibleBaseBuyerCount) * 100 : null;
   const historical299TakeRate = historical299Data?.takeRatePct ?? null;
 
   // Tier breakdown — from funnel-only DB source
@@ -416,16 +420,23 @@ export default function InterconnectedCommandCenter() {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <FlaskConical className="h-5 w-5 text-amber-600" />
-                <span className="font-bold text-sm text-amber-800 dark:text-amber-300">CURRENT KAJABI OCUs — tracked separately by exact offer ID</span>
+                <span className="font-bold text-sm text-amber-800 dark:text-amber-300">CURRENT KAJABI ENTRY + OCUs — tracked separately by exact offer ID</span>
               </div>
               <Badge className="bg-amber-500 text-white text-xs">Direct Kajabi source</Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-lg border border-blue-200 bg-white/70 dark:bg-black/10 p-3">
+                <p className="text-xs font-bold text-blue-800 dark:text-blue-300">$99 Interconnected front-end</p>
+                <div className="grid grid-cols-2 gap-2 mt-2 text-center">
+                  <div><p className="text-xl font-black text-blue-700 dark:text-blue-300">{frontEnd99Count}</p><p className="text-[11px] text-muted-foreground">Purchased</p></div>
+                  <div><p className="text-xl font-black">{fmtDollars(frontEnd99Revenue)}</p><p className="text-[11px] text-muted-foreground">revenue</p></div>
+                </div>
+              </div>
               <div className="rounded-lg border border-emerald-200 bg-white/70 dark:bg-black/10 p-3">
                 <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">$99 Upstream: Complete Microbiome Solution</p>
                 <div className="grid grid-cols-3 gap-2 mt-2 text-center">
                   <div><p className="text-xl font-black text-emerald-700 dark:text-emerald-300">{upstreamOcuCount}</p><p className="text-[11px] text-muted-foreground">Accepted</p></div>
-                  <div><p className="text-xl font-black text-emerald-600">{upstreamOcuTakeRate !== null ? `${upstreamOcuTakeRate.toFixed(1)}%` : '—'}</p><p className="text-[11px] text-muted-foreground">of $67 buyers</p></div>
+                  <div><p className="text-xl font-black text-emerald-600">{upstreamOcuTakeRate !== null ? `${upstreamOcuTakeRate.toFixed(1)}%` : '—'}</p><p className="text-[11px] text-muted-foreground">of base buyers</p></div>
                   <div><p className="text-xl font-black">{fmtDollars(upstreamOcuRevenue)}</p><p className="text-[11px] text-muted-foreground">revenue</p></div>
                 </div>
               </div>
@@ -433,14 +444,14 @@ export default function InterconnectedCommandCenter() {
                 <p className="text-xs font-bold text-amber-800 dark:text-amber-300">$199 Testing + Coach Consultation</p>
                 <div className="grid grid-cols-3 gap-2 mt-2 text-center">
                   <div><p className="text-xl font-black text-amber-700 dark:text-amber-300">{testingOcuCount}</p><p className="text-[11px] text-muted-foreground">Accepted</p></div>
-                  <div><p className="text-xl font-black text-amber-600">{testingOcuTakeRate !== null ? `${testingOcuTakeRate.toFixed(1)}%` : '—'}</p><p className="text-[11px] text-muted-foreground">of $67 buyers</p></div>
+                  <div><p className="text-xl font-black text-amber-600">{testingOcuTakeRate !== null ? `${testingOcuTakeRate.toFixed(1)}%` : '—'}</p><p className="text-[11px] text-muted-foreground">of base buyers</p></div>
                   <div><p className="text-xl font-black">{fmtDollars(testingOcuRevenue)}</p><p className="text-[11px] text-muted-foreground">revenue</p></div>
                 </div>
               </div>
             </div>
-            {otoCount > 0 && (
+            {eligibleBaseBuyerCount > 0 && (
               <p className="text-xs text-muted-foreground mt-3 text-center">
-                {otoCount} people bought the $67 OTO. Each current OCU take rate is shown independently; one buyer can accept both offers.
+                {eligibleBaseBuyerCount} people bought a current base offer ({otoCount} at $67, {frontEnd99Count} at $99). Each OCU take rate is independent; one buyer can accept both offers.
               </p>
             )}
             <div className="mt-3 border-t border-amber-200/70 dark:border-amber-800/60 pt-2 text-center text-xs text-muted-foreground">
@@ -448,7 +459,7 @@ export default function InterconnectedCommandCenter() {
               {historical299TakeRate !== null && ` (${historical299TakeRate.toFixed(1)}% of ${historical299EntryPurchases} entry buyers)`}
               {historical299Revenue > 0 && ` · ${fmtDollars(historical299Revenue)} revenue`}. This is a legacy benchmark, not either current OCU or current-period ROAS.
             </div>
-            {otoCount === 0 && funnelLoading && (
+            {eligibleBaseBuyerCount === 0 && funnelLoading && (
               <div className="flex justify-center mt-2"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
             )}
           </CardContent>

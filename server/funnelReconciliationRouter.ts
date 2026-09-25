@@ -94,6 +94,8 @@ interface FunnelDef {
   metaKeywords: string[];
   /** Kajabi price points (amount_in_cents) that belong to this funnel */
   kajabSkus: Record<number, { tier: string; label: string }>;
+  /** Exact Kajabi offer IDs needed where price alone is ambiguous. */
+  kajabiExactOfferTiers?: Record<string, { tier: string; label: string; priceCents: number }>;
   /** Shopify product IDs that belong to this funnel */
   shopifyProducts: ShopifyProductDef[];
   /** Whether Kajabi data is live */
@@ -117,6 +119,12 @@ export const FUNNELS: FunnelDef[] = [
       49900:  { tier: "499",  label: "Supported Package ($499)" },
       145000: { tier: "1450", label: "Explore Tier ($1,450)" },
       165000: { tier: "1650", label: "Explore Testing Tier DSS ($1,650)" },
+    },
+    // The $99 entry offer and $99 Upstream OCU share a price. Count both only
+    // when their verified offer identifiers are present in Kajabi transactions.
+    kajabiExactOfferTiers: {
+      "2151402817": { tier: "99_front_end", label: "Interconnected $99 Bundle OTO", priceCents: 9900 },
+      "2151104453": { tier: "99_upstream_ocus", label: "Upstream: Complete Microbiome Solution ($99 OCUS)", priceCents: 9900 },
     },
     // Shopify products exist but funnel is NOT currently being pushed through Shopify
     shopifyProducts: [
@@ -744,6 +752,7 @@ async function fetchKajabiForFunnel(
       data?: Array<{
         id: string;
         attributes: { amount_in_cents: number; state: string; action: string; created_at: string };
+        relationships?: { offer?: { data?: { id: string } } };
       }>;
       links?: { next?: string };
     };
@@ -763,7 +772,10 @@ async function fetchKajabiForFunnel(
       const amount = row.attributes?.amount_in_cents || 0;
       if (amount <= 0 || state === "failed" || state === "refunded" || action === "refund") continue;
 
-      const skuDef = funnel.kajabSkus[amount];
+      const offerId = row.relationships?.offer?.data?.id || "";
+      const exactSkuDef = funnel.kajabiExactOfferTiers?.[offerId];
+      if (exactSkuDef && amount !== exactSkuDef.priceCents) continue;
+      const skuDef = exactSkuDef ?? funnel.kajabSkus[amount];
       if (!skuDef) continue;
 
       const key = skuDef.tier;

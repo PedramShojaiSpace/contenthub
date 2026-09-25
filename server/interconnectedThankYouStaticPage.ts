@@ -14,6 +14,7 @@ type RenderInterconnectedThankYouPageOptions = {
 };
 
 const KLAVIYO_99_CHECKOUT = "https://theacademy.theurbanmonk.com/offers/ofRhsQvo/checkout";
+const KLAVIYO_THANK_YOU_VIDEO_ID = "223ond81ki";
 
 function buildKlaviyo99CheckoutPath(options: RenderInterconnectedThankYouPageOptions): string {
   const params = new URLSearchParams({
@@ -166,6 +167,7 @@ export function renderInterconnectedThankYouPage(
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=optional" rel="stylesheet" />
+  <script src="https://fast.wistia.net/assets/external/E-v1.js" async></script>
   <!-- Meta Pixel — the browser Lead fires only with the CAPI event ID stored after a confirmed form submission. -->
   <script>
     !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
@@ -293,10 +295,6 @@ export function renderInterconnectedThankYouPage(
     footer img{width:96px;opacity:.5;margin:0 auto 16px;display:block}
     .footer-legal{color:#4b5563;font-size:.75rem;max-width:672px;margin:0 auto 8px;line-height:1.6}
   </style>
-  <!-- Wistia player library — loaded early so thumbnail appears immediately -->
-  <script src="https://fast.wistia.com/assets/external/E-v1.js" async></script>
-  <script src="https://fast.wistia.com/embed/medias/hobj7srg3q.jsonp" async></script>
-  <script src="https://fast.wistia.com/embed/medias/10cdtpm3il.jsonp" async></script>
 </head>
 <body>
 
@@ -324,9 +322,23 @@ export function renderInterconnectedThankYouPage(
     <p style="text-align:center;font-size:.875rem;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:8px">⚠️ IMPORTANT — Read This Before You Leave</p>
     <h1 id="headline-ab-test" class="section-title" style="margin-bottom:8px">Wait, one more thing!</h1>
     <p style="text-align:center;color:#fca5a5;font-weight:600;font-size:1rem;margin-bottom:24px">This offer only appears once — and it disappears when you close this tab.</p>
-    <!-- Wistia native embed — Wistia handles its own thumbnail, play button, and controls -->
-    <div class="wistia-container">
-      <div id="wistia-embed-container" class="wistia_embed wistia_async_hobj7srg3q videoFoam=true" style="height:360px;position:relative">&nbsp;</div>
+    <!-- Owner-approved Wistia video — direct iframe avoids asynchronous-player blank states. -->
+    <div class="video-wrap">
+      <div class="video-ratio">
+        <iframe
+          src="https://fast.wistia.net/embed/iframe/${KLAVIYO_THANK_YOU_VIDEO_ID}"
+          title="IC TY 99 - Descript Video"
+          allow="autoplay; fullscreen"
+          allowfullscreen
+          allowtransparency="true"
+          frameborder="0"
+          scrolling="no"
+          loading="eager"
+          class="wistia_embed"
+          name="wistia_embed"
+          msallowfullscreen
+        ></iframe>
+      </div>
     </div>
     <p style="color:#d1d5db;font-size:1.1rem;line-height:1.7;margin-bottom:20px;text-align:center">
       ✅ You're confirmed for <strong style="color:var(--blue)">Interconnected: The Power to Heal From Within</strong>. Your first episode drops tomorrow.
@@ -510,18 +522,12 @@ function toggleFaq(i) {
   if (btn) btn.setAttribute('aria-expanded', String(!open));
 }
 
-// ── A/B Test Tracking ────────────────────────────────────────────────────────
-// The static TY page bypasses the React SPA, so we call assignVariant directly.
-// The existing video test and the approved headline test are intentionally
-// independent: headline copy is the only change in test 30001.
-// Video A (control) = hobj7srg3q | Video B (treatment) = 10cdtpm3il
-var TY_AB_TEST_ID = 1;
+// ── Headline A/B Test ────────────────────────────────────────────────────────
+// The video experiment is closed. All visitors receive the owner-approved Wistia
+// video above. The existing headline test remains independent.
 var HEADLINE_AB_TEST_ID = 30001;
-var VIDEO_A = 'hobj7srg3q';
-var VIDEO_B = '10cdtpm3il';
 var HEADLINE_A = 'Wait, one more thing!';
 var HEADLINE_B = 'You are registered. Listen to this important message first.';
-var currentVideoId = VIDEO_A; // default; updated after variant assignment
 
 function getOrCreateVisitorId() {
   var key = 'ty_visitor_id';
@@ -532,65 +538,6 @@ function getOrCreateVisitorId() {
   }
   return id;
 }
-
-function getCachedTyVariant() {
-  var v = localStorage.getItem('ty_ab_variant');
-  return (v === 'A' || v === 'B') ? v : null;
-}
-
-(function initAbTracking() {
-  var visitorId = getOrCreateVisitorId();
-  var cached = getCachedTyVariant();
-
-  function applyVariant(variant, variantId) {
-    localStorage.setItem('ty_ab_variant', variant);
-    sessionStorage.setItem('__ab_variant_id', String(variantId));
-    currentVideoId = variant === 'B' ? VIDEO_B : VIDEO_A;
-    // Swap the Wistia embed to the correct video for this variant
-    if (typeof initWistiaEmbed === 'function') initWistiaEmbed();
-  }
-
-  if (cached) {
-    // Sticky: re-apply cached variant without a new API call
-    applyVariant(cached, cached === 'B' ? 2 : 1);
-    return;
-  }
-
-  // New visitor — call assignVariant to get a fresh 50/50 assignment
-  var params = new URLSearchParams(window.location.search);
-  var lpVariant = localStorage.getItem('ic_lp_variant') || 'unknown';
-  var baseCampaign = params.get('utm_campaign') || 'organic';
-  var campaignWithLp = lpVariant !== 'unknown' ? baseCampaign + '__lp_' + lpVariant : baseCampaign;
-
-  var payload = JSON.stringify({
-    json: {
-      testId: TY_AB_TEST_ID,
-      visitorId: visitorId,
-      utmSource: params.get('utm_source') || undefined,
-      utmCampaign: campaignWithLp
-    }
-  });
-
-  fetch('/api/trpc/abTest.assignVariant', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: payload
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    var result = data && data.result && data.result.data && data.result.data.json;
-    if (result) {
-      var variant = result.isControl ? 'A' : 'B';
-      applyVariant(variant, result.variantId);
-    }
-  })
-  .catch(function() {
-    // Fallback: random 50/50
-    var fallback = Math.random() < 0.5 ? 'A' : 'B';
-    applyVariant(fallback, fallback === 'B' ? 2 : 1);
-  });
-})();
 
 // ── Headline A/B Test (Kajabi control only) ──────────────────────────────────
 (function initHeadlineAbTracking() {
@@ -636,19 +583,6 @@ function getCachedTyVariant() {
   });
 })();
 
-// ── Wistia native embed — A/B variant swap ───────────────────────────────────
-// applyVariant (above) sets currentVideoId; we swap the embed class so Wistia
-// re-initialises with the correct video. Called once on DOMContentLoaded.
-function initWistiaEmbed() {
-  var container = document.getElementById('wistia-embed-container');
-  if (!container) return;
-  // Remove any existing wistia_async_* class and set the correct video
-  container.className = container.className.replace(/wistia_async_\S+/, '').trim();
-  container.className += ' wistia_embed wistia_async_' + currentVideoId + ' videoFoam=true';
-}
-// Run after A/B tracking has set currentVideoId (initAbTracking is synchronous for cached variants)
-document.addEventListener('DOMContentLoaded', function() { initWistiaEmbed(); });
-
 // ── Pixel fire on buy click ──────────────────────────────────────────────────
 function firePixel() {
   try {
@@ -656,29 +590,7 @@ function firePixel() {
     if (typeof fbq === 'function') fbq('track', 'InitiateCheckout', { value: ${offerPrice}, currency: 'USD', content_name: 'Interconnected All-Access Bundle' });
   } catch(_) {}
 
-  // Record A/B conversion
-  try {
-    var storedVariantId = sessionStorage.getItem('__ab_variant_id');
-    var vid = getOrCreateVisitorId();
-    if (storedVariantId && vid) {
-      fetch('/api/trpc/abTest.recordConversion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          json: {
-            testId: TY_AB_TEST_ID,
-            visitorId: vid,
-            conversionType: 'checkout_start',
-            revenueCents: 6700
-          }
-        })
-      }).catch(function() {});
-    }
-  } catch(_) {}
-
-  // Record the same checkout-start conversion separately for the headline test.
-  // This deliberately does not change the older video-test measurement.
+  // Record the checkout-start conversion for the independent headline test.
   try {
     var headlineVariantId = sessionStorage.getItem('__headline_ab_variant_id');
     var headlineVisitorId = getOrCreateVisitorId();

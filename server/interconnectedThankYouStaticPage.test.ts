@@ -16,8 +16,17 @@ describe("live Interconnected Kajabi thank-you headline experiment", () => {
     expect(page).toContain("ic_ty_headline_ab_variant_30001");
   });
 
-  it("records checkout starts for the headline test without replacing the video-test attribution", () => {
-    expect(page).toContain("testId: TY_AB_TEST_ID");
+  it("uses the approved Wistia video for every visitor and closes the older video split", () => {
+    expect(page).toContain("https://fast.wistia.net/embed/iframe/223ond81ki");
+    expect(page).toContain("https://fast.wistia.net/assets/external/E-v1.js");
+    expect(page).toContain('title="IC TY 99 - Descript Video"');
+    expect(page).not.toContain("hobj7srg3q");
+    expect(page).not.toContain("10cdtpm3il");
+    expect(page).not.toContain("TY_AB_TEST_ID");
+  });
+
+  it("records checkout starts only for the retained headline test", () => {
+    expect(page).not.toContain("testId: TY_AB_TEST_ID");
     expect(page).toContain("testId: HEADLINE_AB_TEST_ID");
     expect(page).toContain("conversionType: 'checkout_start'");
   });

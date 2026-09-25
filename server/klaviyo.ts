@@ -162,6 +162,58 @@ async function subscribeToSmsList(profileId: string, listId: string, phone?: str
 }
 
 /**
+ * Subscribe an affirmative LP-3 email opt-in to the exact unified intake list.
+ * A list relationship without email marketing consent can create a visible list
+ * member that Klaviyo will correctly suppress from every marketing email.
+ */
+async function subscribeToEmailList(profileId: string, listId: string, email: string): Promise<void> {
+  const body = {
+    data: {
+      type: "profile-subscription-bulk-create-job",
+      attributes: {
+        profiles: {
+          data: [
+            {
+              type: "profile",
+              id: profileId,
+              attributes: {
+                email,
+                subscriptions: {
+                  email: {
+                    marketing: {
+                      consent: "SUBSCRIBED",
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+      relationships: {
+        list: {
+          data: {
+            type: "list",
+            id: listId,
+          },
+        },
+      },
+    },
+  };
+
+  const res = await fetch(`${KLAVIYO_BASE}/profile-subscription-bulk-create-jobs/`, {
+    method: "POST",
+    headers: klaviyoHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok && res.status !== 202) {
+    const json = await res.json();
+    throw new Error(`Klaviyo subscribeToEmailList failed (${res.status}): ${JSON.stringify(json)}`);
+  }
+}
+
+/**
  * Add a profile to a list (without subscription — for email lists).
  */
 async function addProfileToList(profileId: string, listId: string): Promise<void> {
@@ -266,10 +318,10 @@ export async function pushInterconnectedEmailLead(opts: {
   firstName?: string;
   phone?: string;
   smsConsent?: boolean;
-}): Promise<{ profileId: string; smsSubscribed: boolean }> {
+}): Promise<{ profileId: string; emailSubscribed: boolean; smsSubscribed: boolean }> {
   if (!ENV.klaviyoPrivateKey) {
     console.warn("[Klaviyo] KLAVIYO_PRIVATE_KEY not set — skipping push");
-    return { profileId: "", smsSubscribed: false };
+    return { profileId: "", emailSubscribed: false, smsSubscribed: false };
   }
 
   const profileId = await upsertProfile({
@@ -290,9 +342,12 @@ export async function pushInterconnectedEmailLead(opts: {
     smsSubscribed = true;
   }
 
-  await addProfileToList(profileId, INTERCONNECTED_EMAIL_LIST_ID);
+  // The completed LP-3 form is the affirmative email opt-in. Create email
+  // marketing consent and unified-list membership in one Klaviyo job so the
+  // Day 0 email cannot be evaluated before the subscription exists.
+  await subscribeToEmailList(profileId, INTERCONNECTED_EMAIL_LIST_ID, opts.email);
 
-  return { profileId, smsSubscribed };
+  return { profileId, emailSubscribed: true, smsSubscribed };
 }
 
 /**

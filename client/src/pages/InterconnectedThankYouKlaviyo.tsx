@@ -431,8 +431,8 @@ export default function InterconnectedThankYouKlaviyo() {
                 style={{ height: "100%", left: 0, position: "absolute", top: 0, width: "100%" }}
               >
                 <iframe
-                  src="https://fast.wistia.net/embed/iframe/89xb1oskij?seo=true&videoFoam=true"
-                  title="Interconnected Thank You Video — Klaviyo Treatment"
+                  src="https://fast.wistia.net/embed/iframe/223ond81ki?seo=true&videoFoam=true"
+                  title="Interconnected Thank You Video"
                   allow="autoplay; fullscreen"
                   allowTransparency
                   frameBorder={0}

@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 describe("pushInterconnectedEmailLead", () => {
-  it("adds an Interconnected lead to the list that triggers the KO automation", async () => {
+  it("adds an Interconnected lead only to the isolated unified LP-3 intake list", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ data: { id: "profile_123" } }), { status: 201 }))
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
@@ -26,6 +26,7 @@ describe("pushInterconnectedEmailLead", () => {
     });
 
     expect(result).toEqual({ profileId: "profile_123", smsSubscribed: false });
+    expect(INTERCONNECTED_EMAIL_LIST_ID).toBe("VWhddE");
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1]?.[0]).toBe(`https://a.klaviyo.com/api/lists/${INTERCONNECTED_EMAIL_LIST_ID}/relationships/profiles/`);
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ method: "POST" });

@@ -1,0 +1,169 @@
+{
+  "status": "draft-template-library-staged",
+  "sourceFlow": "THZhTS",
+  "templateCount": 20,
+  "created": 20,
+  "reused": 0,
+  "templates": [
+    {
+      "number": 1,
+      "day": 0,
+      "kind": "primary",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 0 Primary",
+      "templateId": "TFa7t5",
+      "outcome": "created"
+    },
+    {
+      "number": 2,
+      "day": 0,
+      "kind": "follow-up",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 0 Follow-Up (+4h)",
+      "templateId": "WCYPRq",
+      "outcome": "created"
+    },
+    {
+      "number": 3,
+      "day": 1,
+      "kind": "primary",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 1 Primary",
+      "templateId": "XNpEKg",
+      "outcome": "created"
+    },
+    {
+      "number": 4,
+      "day": 1,
+      "kind": "follow-up",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 1 Follow-Up (+4h)",
+      "templateId": "XbnC8D",
+      "outcome": "created"
+    },
+    {
+      "number": 5,
+      "day": 2,
+      "kind": "primary",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 2 Primary",
+      "templateId": "UKVFZx",
+      "outcome": "created"
+    },
+    {
+      "number": 6,
+      "day": 2,
+      "kind": "follow-up",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 2 Follow-Up (+4h)",
+      "templateId": "VVkwTp",
+      "outcome": "created"
+    },
+    {
+      "number": 7,
+      "day": 3,
+      "kind": "primary",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 3 Primary",
+      "templateId": "WtJjaC",
+      "outcome": "created"
+    },
+    {
+      "number": 8,
+      "day": 3,
+      "kind": "follow-up",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 3 Follow-Up (+4h)",
+      "templateId": "VQHgxZ",
+      "outcome": "created"
+    },
+    {
+      "number": 9,
+      "day": 4,
+      "kind": "primary",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 4 Primary",
+      "templateId": "SNfhNg",
+      "outcome": "created"
+    },
+    {
+      "number": 11,
+      "day": 5,
+      "kind": "primary",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 5 Primary",
+      "templateId": "YbwWjH",
+      "outcome": "created"
+    },
+    {
+      "number": 13,
+      "day": 6,
+      "kind": "primary",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 6 Primary",
+      "templateId": "VL62cB",
+      "outcome": "created"
+    },
+    {
+      "number": 14,
+      "day": 6,
+      "kind": "follow-up",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 6 Follow-Up (+4h)",
+      "templateId": "Rydcz2",
+      "outcome": "created"
+    },
+    {
+      "number": 15,
+      "day": 7,
+      "kind": "primary",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 7 Primary",
+      "templateId": "RtzWdC",
+      "outcome": "created"
+    },
+    {
+      "number": 16,
+      "day": 7,
+      "kind": "follow-up",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 7 Follow-Up (+4h)",
+      "templateId": "V4rHeA",
+      "outcome": "created"
+    },
+    {
+      "number": 17,
+      "day": 8,
+      "kind": "primary",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 8 Primary",
+      "templateId": "WdQy8s",
+      "outcome": "created"
+    },
+    {
+      "number": 18,
+      "day": 8,
+      "kind": "follow-up",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 8 Follow-Up (+4h)",
+      "templateId": "VAPvvP",
+      "outcome": "created"
+    },
+    {
+      "number": 19,
+      "day": 9,
+      "kind": "primary",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 9 Primary",
+      "templateId": "UXNsTc",
+      "outcome": "created"
+    },
+    {
+      "number": 20,
+      "day": 9,
+      "kind": "follow-up",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 9 Follow-Up (+4h)",
+      "templateId": "SymwL6",
+      "outcome": "created"
+    },
+    {
+      "number": 21,
+      "day": 10,
+      "kind": "primary",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 10 Primary",
+      "templateId": "XiC8EU",
+      "outcome": "created"
+    },
+    {
+      "number": 22,
+      "day": 10,
+      "kind": "follow-up",
+      "name": "[DRAFT — V2 REVIEW] Interconnected Screening — Day 10 Follow-Up (+4h)",
+      "templateId": "W4A3rE",
+      "outcome": "created"
+    }
+  ]
+}

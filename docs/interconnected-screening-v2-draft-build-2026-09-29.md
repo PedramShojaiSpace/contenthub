@@ -1,7 +1,7 @@
 # Interconnected Screening V2 — Draft Build and Kajabi Handoff
 
 **Date:** 29 September 2026  
-**Status:** **Staged only — no recipient was enrolled or contacted.**
+**Status:** **Draft-only. No recipient was enrolled or contacted.**
 
 ## What is complete
 
@@ -31,7 +31,14 @@ The matching **20 Kajabi-safe HTML bodies** were generated. They:
 - retain all other owner-approved CTA URLs;
 - intentionally leave the owner-supplied $499 bundle on its supplied Shopify destination because no Kajabi offer equivalent was provided.
 
-A separate **draft-only Kajabi email sequence** still needs to be created in the authenticated Kajabi admin. Its required name and exact delay logic are in the implementation guide. It must remain at zero subscribers and without a trigger until the owner approves activation.
+A separate **draft-only Kajabi email sequence** now exists in the authenticated Kajabi admin:
+
+> `[DRAFT — V2 REVIEW] Interconnected Screening — 20 Email Cadence`
+> Sequence ID: `2148896062`
+
+It has **0 subscribers** and **0 subscribe triggers**. The first email was added as a working visual/HTML validation of the Kajabi editor, with the approved Day 0 primary body, immediate Day 0 timing, and approved subject. No preview text was supplied for that message. The sequence remains entirely non-enrolling and will not send.
+
+The remaining 19 generated HTML bodies are preserved in the packet for controlled import. They have not been added as incomplete/broken shell messages; this keeps the draft reviewable and avoids a misleading partially filled 20-message sequence. The required scheduling logic is in the implementation guide.
 
 ### Kajabi episode-page visual kit
 
@@ -51,17 +58,17 @@ A 10-file full-width custom-code kit recreates the Interconnected visual system 
 | Day 4 / Day 5 second emails | Excluded |
 | Klaviyo template staging | 20 custom-HTML standalone templates created |
 | Kajabi HTML files | 20 generated; no Klaviyo access token or `person.*` token remains |
+| Kajabi draft sequence | Created; ID `2148896062`, 0 subscribers, 0 triggers, 1 Day 0 email loaded |
 | Visual kit | 10 sections generated; 9 approved Wistia embeds, 1 explicit Episode 3 placeholder |
 | Current live Unified LP-3 flow | Unchanged |
 | Recipient enrollment / sends | None created by this work |
 
 ## Remaining controlled steps
 
-1. Create the Kajabi sequence **`[DRAFT — V2 REVIEW] Interconnected Screening — 20 Email Cadence`** while authenticated in Kajabi.
-2. Paste each matching `kajabi-html` body in order and configure the documented cadence. Add no trigger and no recipients.
-3. Preview with an entitled test account; verify every CTA, desktop/mobile rendering, and Episode 3 native-video source.
-4. Obtain owner approval before connecting new content to the current Klaviyo live flow or activating the Kajabi sequence.
-5. Only in an approved cutover window, exchange old actions/templates or use a new reviewed V2 flow atomically—never mix the two live cadences in a way that can create duplicates.
+1. Paste the remaining 19 matching `kajabi-html` bodies in order and configure the documented cadence. Add no trigger and no recipients.
+2. Preview with an entitled test account; verify every CTA, desktop/mobile rendering, and Episode 3 native-video source.
+3. Obtain owner approval before connecting new content to the current Klaviyo live flow or activating the Kajabi sequence.
+4. Only in an approved cutover window, exchange old actions/templates or use a new reviewed V2 flow atomically—never mix the two live cadences in a way that can create duplicates.
 
 ## Artifacts
 

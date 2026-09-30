@@ -1,0 +1,1212 @@
+{
+  "optimizedAt": "2026-09-30T15:39:44.205Z",
+  "source": "Content Hub Email Optimizer (same cleaner used by the app)",
+  "emailCount": 20,
+  "totalOriginalBytes": 105693,
+  "totalOptimizedBytes": 101260,
+  "totalReductionPercent": 4,
+  "totalScoreBefore": 24,
+  "totalScoreAfter": 24,
+  "results": [
+    {
+      "file": "01-day-0-primary.html",
+      "originalBytes": 4411,
+      "optimizedBytes": 4208,
+      "reductionPercent": 5,
+      "scoreBefore": 2,
+      "scoreAfter": 2,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 9 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "24%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "4 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 17,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 2,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "file": "02-day-0-follow-up.html",
+      "originalBytes": 3716,
+      "optimizedBytes": 3532,
+      "reductionPercent": 5,
+      "scoreBefore": 2,
+      "scoreAfter": 2,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 5 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "26%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "3 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 12,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 4,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "file": "03-day-1-primary.html",
+      "originalBytes": 5790,
+      "optimizedBytes": 5584,
+      "reductionPercent": 4,
+      "scoreBefore": 2,
+      "scoreAfter": 2,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 9 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "37%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "5 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 20,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 4,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "file": "04-day-1-follow-up.html",
+      "originalBytes": 6827,
+      "optimizedBytes": 6618,
+      "reductionPercent": 3,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 8 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "40%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "6 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 24,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "05-day-2-primary.html",
+      "originalBytes": 5026,
+      "optimizedBytes": 4666,
+      "reductionPercent": 7,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 2 button-style link(s) to simple underlined text links",
+        "Normalized 7 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 2,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "25%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "5 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 17,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "06-day-2-follow-up.html",
+      "originalBytes": 5961,
+      "optimizedBytes": 5756,
+      "reductionPercent": 3,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 5 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "35%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "6 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 22,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "07-day-3-primary.html",
+      "originalBytes": 5144,
+      "optimizedBytes": 4935,
+      "reductionPercent": 4,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 13 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "32%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "5 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 18,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "08-day-3-follow-up.html",
+      "originalBytes": 6156,
+      "optimizedBytes": 5954,
+      "reductionPercent": 3,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 5 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "39%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "6 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 21,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "09-day-4-primary.html",
+      "originalBytes": 4645,
+      "optimizedBytes": 4447,
+      "reductionPercent": 4,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 7 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "30%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "4 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 16,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "11-day-5-primary.html",
+      "originalBytes": 5820,
+      "optimizedBytes": 5586,
+      "reductionPercent": 4,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 20 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "32%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "5 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 22,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "13-day-6-primary.html",
+      "originalBytes": 5418,
+      "optimizedBytes": 5192,
+      "reductionPercent": 4,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 17 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "31%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "5 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 20,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "14-day-6-follow-up.html",
+      "originalBytes": 5105,
+      "optimizedBytes": 4903,
+      "reductionPercent": 4,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 9 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "33%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "5 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 18,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "15-day-7-primary.html",
+      "originalBytes": 5596,
+      "optimizedBytes": 5364,
+      "reductionPercent": 4,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 19 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "31%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "5 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 21,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "16-day-7-follow-up.html",
+      "originalBytes": 5296,
+      "optimizedBytes": 5100,
+      "reductionPercent": 4,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 5 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "36%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "5 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 18,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "17-day-8-primary.html",
+      "originalBytes": 5673,
+      "optimizedBytes": 5459,
+      "reductionPercent": 4,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 11 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "35%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "5 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 20,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "18-day-8-follow-up.html",
+      "originalBytes": 4614,
+      "optimizedBytes": 4425,
+      "reductionPercent": 4,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 5 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "36%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "4 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 14,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "19-day-9-primary.html",
+      "originalBytes": 4634,
+      "optimizedBytes": 4422,
+      "reductionPercent": 5,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 12 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "24%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "4 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 18,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "20-day-9-follow-up.html",
+      "originalBytes": 5275,
+      "optimizedBytes": 5076,
+      "reductionPercent": 4,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 5 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "32%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "5 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 19,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    },
+    {
+      "file": "21-day-10-primary.html",
+      "originalBytes": 5624,
+      "optimizedBytes": 5264,
+      "reductionPercent": 6,
+      "scoreBefore": 2,
+      "scoreAfter": 2,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 2 button-style link(s) to simple underlined text links",
+        "Normalized 8 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 2,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "32%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "5 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 17,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "file": "22-day-10-follow-up.html",
+      "originalBytes": 4962,
+      "optimizedBytes": 4769,
+      "reductionPercent": 4,
+      "scoreBefore": 1,
+      "scoreAfter": 1,
+      "warnings": [
+        "Primary eligibility is not guaranteed: Gmail sorts per recipient using sender identity, content, and recipient interaction. This cleanup removes avoidable template signals; authenticate mail and use reader engagement to train placement.",
+        "No visible unsubscribe or preference link was found. Keep Klaviyo/Kajabi's compliant unsubscribe mechanism in the final email."
+      ],
+      "changes": [
+        "Inlined CSS from <style> blocks into inline styles",
+        "Converted 1 button-style link(s) to simple underlined text links",
+        "Normalized 5 non-ASCII characters",
+        "Minified HTML (collapsed whitespace, optimized attributes)"
+      ],
+      "signals": [
+        {
+          "name": "Link count",
+          "value": 1,
+          "severity": "ok"
+        },
+        {
+          "name": "Image count",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Text-to-HTML ratio",
+          "value": "36%",
+          "severity": "ok"
+        },
+        {
+          "name": "CSS classes & IDs",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "HTML comments",
+          "value": 0,
+          "severity": "ok"
+        },
+        {
+          "name": "Email size",
+          "value": "5 KB",
+          "severity": "ok"
+        },
+        {
+          "name": "Per-element font-size styles",
+          "value": 16,
+          "severity": "warning"
+        },
+        {
+          "name": "Promotional language",
+          "value": 0,
+          "severity": "ok"
+        }
+      ]
+    }
+  ]
+}

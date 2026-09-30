@@ -85,6 +85,12 @@ A 10-file full-width custom-code kit recreates the Interconnected visual system 
   - [Final 18px Kajabi HTML ZIP](/home/ubuntu/Downloads/Interconnected-Screening-V2-Kajabi-18pt-Clean-Paste-Ready-2026-09-30.zip)
   - [Final 18px Kajabi paste-ready Word packet](/home/ubuntu/Downloads/Interconnected-Screening-V2-Kajabi-18pt-Clean-Paste-Ready-2026-09-30.docx)
 
+- **Final 18px video-led $99 routing package (30 September):** This is the authoritative replacement for the preceding 18px clean package where the two Day 0 $99 offer CTAs opened the Kajabi offer directly. Email 01 (Day 0 primary) and Email 02 (Day 0 follow-up) now open the approved video-led offer-information page at `https://content.theurbanmonk.com/interconnected/thank-you-klaviyo`. Public validation returned HTTP 200, confirmed approved Wistia video `223ond81ki`, and confirmed the page’s tracked handoff to the Kajabi $99 checkout `ofRhsQvo/checkout`; no order or checkout test was placed. All other 18 HTML files are byte-identical to the prior clean package, and all other copy, CTA labels, CTA URLs, and cadence details are preserved. Automated validation confirms 20 HTML files, exactly two rerouted CTAs, no remaining direct `$99` offer href in email HTML, retained 18px formatting, 20 byte-matched individual text files, clean Day 0 browser renders, and valid full/text ZIP archives. No Kajabi campaign, recipient, trigger, send, live Klaviyo flow, checkout, offer, price, traffic, or automation changed.
+
+  - [Final video-led $99 Kajabi full packet ZIP](/home/ubuntu/Downloads/Interconnected-Screening-V2-Kajabi-18pt-Video-Led-99-Full-Packet-2026-09-30.zip)
+  - [Final video-led $99 Kajabi paste-ready Word packet](/home/ubuntu/Downloads/Interconnected-Screening-V2-Kajabi-18pt-Video-Led-99-Paste-Ready-2026-09-30.docx)
+  - [Final video-led $99 Kajabi separate text-file ZIP](/home/ubuntu/Downloads/Interconnected-Screening-V2-Kajabi-18pt-Video-Led-99-Text-Files-2026-09-30.zip)
+
 - [Draft sequence implementation guide](/home/ubuntu/Downloads/Interconnected-Screening-V2-Draft-Sequence-Implementation-Guide-2026-09-29.docx)
 - [Combined Kajabi/Klaviyo draft packet](/home/ubuntu/Downloads/Interconnected-Screening-V2-Draft-Sequence-and-Kajabi-Design-Kit-2026-09-29.zip)
 - [VA-ready Kajabi HTML Word packet](/home/ubuntu/Downloads/Interconnected-Screening-V2-Kajabi-VA-HTML-Paste-Ready-Packet-2026-09-29.docx)

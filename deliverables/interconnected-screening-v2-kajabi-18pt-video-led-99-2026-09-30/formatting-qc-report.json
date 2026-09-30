@@ -1,0 +1,197 @@
+{
+  "package": "interconnected-screening-v2-kajabi-18pt-video-led-99-2026-09-30",
+  "email_count": 20,
+  "body_font_size": "18px",
+  "body_line_height": "1.6",
+  "fragmented_paragraph_fixes": 22,
+  "validation": [
+    {
+      "file": "01-day-0-primary.html",
+      "fixes": [
+        "merged split 'from Interconnected — ...' sentence",
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "02-day-0-follow-up.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "03-day-1-primary.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "04-day-1-follow-up.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "05-day-2-primary.html",
+      "fixes": [
+        "merged orphan punctuation paragraph",
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 2
+    },
+    {
+      "file": "06-day-2-follow-up.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "07-day-3-primary.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "08-day-3-follow-up.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "09-day-4-primary.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "11-day-5-primary.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "13-day-6-primary.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "14-day-6-follow-up.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "15-day-7-primary.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "16-day-7-follow-up.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "17-day-8-primary.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "18-day-8-follow-up.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "19-day-9-primary.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "20-day-9-follow-up.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    },
+    {
+      "file": "21-day-10-primary.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 2
+    },
+    {
+      "file": "22-day-10-follow-up.html",
+      "fixes": [
+        "combined signature lines"
+      ],
+      "warnings": [],
+      "cta_count": 1
+    }
+  ],
+  "result": "pass",
+  "routing_revision": {
+    "intermediate_offer_page": "https://content.theurbanmonk.com/interconnected/thank-you-klaviyo",
+    "rerouted_emails": [
+      {
+        "number": 1,
+        "file": "01-day-0-primary.html",
+        "previous_href": "https://theacademy.theurbanmonk.com/offers/ofRhsQvo",
+        "current_href": "https://content.theurbanmonk.com/interconnected/thank-you-klaviyo"
+      },
+      {
+        "number": 2,
+        "file": "02-day-0-follow-up.html",
+        "previous_href": "https://theacademy.theurbanmonk.com/offers/ofRhsQvo",
+        "current_href": "https://content.theurbanmonk.com/interconnected/thank-you-klaviyo"
+      }
+    ],
+    "direct_offer_checkout_hrefs_remaining_in_html": 0,
+    "preserved_other_cta_destinations": true,
+    "public_page_validation": {
+      "status": "HTTP 200 verified",
+      "approved_wistia_video": "223ond81ki",
+      "checkout_handoff": "https://content.theurbanmonk.com/r/checkout → Kajabi $99 checkout ofRhsQvo/checkout",
+      "purchase_not_tested": true
+    }
+  }
+}

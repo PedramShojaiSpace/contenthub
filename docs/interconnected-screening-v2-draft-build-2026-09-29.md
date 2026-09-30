@@ -75,6 +75,11 @@ A 10-file full-width custom-code kit recreates the Interconnected visual system 
 
 ## Artifacts
 
+- **Current Kajabi episode URL package (30 September):** The owner published ten new Kajabi-hosted episode pages. A replacement 20-email campaign package now maps each `Watch today’s episode` CTA to those exact published URLs, with no Klaviyo access tokens. All ten new pages and all existing non-episode CTA destinations returned HTTP 200 during validation. The only non-destination adjustments were two inherited `utm_source=klaviyo` values, which were normalized to `utm_source=kajabi` for this Kajabi email package. No Kajabi campaign, recipient, trigger, send, live Klaviyo flow, or existing message was changed. Use the current 30 September package rather than the prior 29 September VA packet for any new Kajabi campaign build.
+
+  - [Current Kajabi campaign HTML ZIP](/home/ubuntu/Downloads/Interconnected-Screening-V2-Kajabi-HTML-Current-Episode-URLs-2026-09-30.zip)
+  - [Current Kajabi campaign paste-ready Word packet](/home/ubuntu/Downloads/Interconnected-Screening-V2-Kajabi-HTML-Current-Episode-URLs-Paste-Ready-2026-09-30.docx)
+
 - [Draft sequence implementation guide](/home/ubuntu/Downloads/Interconnected-Screening-V2-Draft-Sequence-Implementation-Guide-2026-09-29.docx)
 - [Combined Kajabi/Klaviyo draft packet](/home/ubuntu/Downloads/Interconnected-Screening-V2-Draft-Sequence-and-Kajabi-Design-Kit-2026-09-29.zip)
 - [VA-ready Kajabi HTML Word packet](/home/ubuntu/Downloads/Interconnected-Screening-V2-Kajabi-VA-HTML-Paste-Ready-Packet-2026-09-29.docx)

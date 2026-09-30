@@ -1,0 +1,338 @@
+{
+  "packet": "Interconnected Screening V2 \u2014 Kajabi Wide Native-Shell HTML Packet",
+  "validated_at_utc": "2026-09-30T17:02:25+00:00",
+  "source_package": "/home/ubuntu/lights-on-optin/deliverables/interconnected-screening-v2-kajabi-18pt-video-led-99-2026-09-30",
+  "fragment_count": 20,
+  "checks": {
+    "twenty_fragments_present": true,
+    "all_cta_hrefs_preserved": true,
+    "exactly_two_video_led_day0_hrefs": true,
+    "no_direct_99_offer_hrefs": true,
+    "all_per_file_checks_passed": true
+  },
+  "per_file": [
+    {
+      "file": "01-day-0-primary.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://content.theurbanmonk.com/interconnected/thank-you-klaviyo"
+      ]
+    },
+    {
+      "file": "02-day-0-follow-up.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://content.theurbanmonk.com/interconnected/thank-you-klaviyo"
+      ]
+    },
+    {
+      "file": "03-day-1-primary.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://theacademy.theurbanmonk.com/IChtmlEp1408rf"
+      ]
+    },
+    {
+      "file": "04-day-1-follow-up.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://test.theurbanmonk.com"
+      ]
+    },
+    {
+      "file": "05-day-2-primary.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://get.theurbanmonk.com/gut-test?utm_source=kajabi&utm_medium=email&utm_campaign=interconnected_screening&utm_content=episode2_test_offer",
+        "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-2dsfgsd"
+      ]
+    },
+    {
+      "file": "06-day-2-follow-up.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://get.theurbanmonk.com/gut-test"
+      ]
+    },
+    {
+      "file": "07-day-3-primary.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-3afdsgggh"
+      ]
+    },
+    {
+      "file": "08-day-3-follow-up.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://upstream.theurbanmonk.com"
+      ]
+    },
+    {
+      "file": "09-day-4-primary.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-4mdfsaaqa3"
+      ]
+    },
+    {
+      "file": "11-day-5-primary.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-5oiujdfsva2"
+      ]
+    },
+    {
+      "file": "13-day-6-primary.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-6dgfhea56"
+      ]
+    },
+    {
+      "file": "14-day-6-follow-up.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://test.theurbanmonk.com"
+      ]
+    },
+    {
+      "file": "15-day-7-primary.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-7aerfasd45"
+      ]
+    },
+    {
+      "file": "16-day-7-follow-up.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://get.theurbanmonk.com/oral"
+      ]
+    },
+    {
+      "file": "17-day-8-primary.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-8zefgw65"
+      ]
+    },
+    {
+      "file": "18-day-8-follow-up.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://get.theurbanmonk.com/gut-test"
+      ]
+    },
+    {
+      "file": "19-day-9-primary.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-9sgwtr64"
+      ]
+    },
+    {
+      "file": "20-day-9-follow-up.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay"
+      ]
+    },
+    {
+      "file": "21-day-10-primary.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://shop.theurbanmonk.com/products/interconnected-series-platinum-with-testing-and-consultation-bundle?utm_source=kajabi&utm_medium=email&utm_campaign=interconnected_screening&utm_content=episode10_bundle_offer",
+        "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-10dfvaey97k"
+      ]
+    },
+    {
+      "file": "22-day-10-follow-up.html",
+      "checks": {
+        "no_full_document_wrapper": true,
+        "no_fixed_640px_wrapper": true,
+        "native_width_table": true,
+        "cta_hrefs_preserved": true,
+        "body_paragraphs_18px": true,
+        "no_legacy_episode_or_access_path": true,
+        "no_fragmented_interconnected_paragraph": true,
+        "txt_byte_match": true
+      },
+      "hrefs": [
+        "https://test.theurbanmonk.com"
+      ]
+    }
+  ],
+  "overall_pass": true
+}

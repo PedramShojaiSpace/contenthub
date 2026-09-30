@@ -1,0 +1,27 @@
+<!-- Interconnected — Kajabi native-shell fragment. Paste only this fragment into the template's single Text section via Source Code (<>) mode. -->
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;margin:0;padding:0;width:100%;" width="100%">
+<tr><td style="background:#071d2d;border-bottom:4px solid #287fbb;padding:24px 28px;">
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#8fd3ee;font-weight:700;margin:0 0 6px;">The Urban Monk</div>
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.15;color:#ffffff;font-weight:700;margin:0;">Interconnected</div>
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.4;color:#c7dbe5;margin-top:5px;">Day 8 Screening Update</div>
+</td></tr>
+<tr><td style="background:#ffffff;padding:32px 28px 8px;">
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">Episode 8: Ancient Wisdom Meets Modern Tech</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">Next Up- Episode #8: Ancient Wisdom and Modern Technology: The Keys To Personalized, Individualized, Made-For-You Medicine</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">This is where we’re going to take a quantum leap and look at the medicine of the future. Plus we’re going to deal with POOP.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">Right now, a rather unconventional treatment called fecal transplants is saving lives and restoring microbial balance in horribly sick patients.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">Yes, the stool of a happy person can even help somebody suffering with depression.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">I know, I know... but before you gag, you’ve got to watch this episode.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">How to start living probiotically. We can’t just rely on popping a probiotic pill, we need to make subtle changes to diet and lifestyle to get the full health-enhancing effect...</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">Do liver, breast and pancreatic cancer originate from some flaw in the gut microbiome?</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">The bleeding-edge technology that analyzes data in your gut and then gives personalized recommendations on what you (and you alone) should eat to heal, to get better, to upgrade your overall health...</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">I STRONGLY recommend taking the time to see this episode.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">What an exciting time to be alive! To think the technology is available right now that delivers personalized healthcare based on our own unique microbiome and gut lining readings.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">You’ll hear from people like Patti who suffered with poor health for 33 years but now... at the age of 63... is enjoying the best health of her life. And it’s all thanks to this particular kind of personalized health care. Jump in...</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">If you or someone you know has ANY kind of health challenge, they need to see this episode.</p>
+<p style="margin:4px 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.55;color:#263746">Warmly,<br/>Dr. Pedram Shojai<br/>Host of the Interconnected Series</p>
+</td></tr>
+<tr><td align="center" style="background:#ffffff;padding:4px 28px 24px;text-align:center;">
+<a href="https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-8zefgw65" style="display:inline-block;background:#287fbb;color:#ffffff;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:700;line-height:1.3;padding:16px 26px;border-radius:5px;">Watch today’s episode</a>
+</td></tr>
+</table>

@@ -1,0 +1,753 @@
+{
+  "source_document": "/home/ubuntu/upload/Interconnected-Two-Emails-Daily-Editable-for-Kajabi-DONE.docx",
+  "intended_usage": "Draft-only staging; no live automation is activated by this packet.",
+  "send_count": 20,
+  "cadence": {
+    "day_0_primary": "Immediately after the completed opt-in",
+    "follow_ups": "Four hours after the primary on Days 0, 1, 2, 3, 6, 7, 8, 9, and 10",
+    "next_primary": "Twenty hours after the preceding follow-up, preserving 24 hours between primary sends",
+    "excluded_follow_ups": [
+      "Day 4",
+      "Day 5"
+    ]
+  },
+  "emails": [
+    {
+      "number": 1,
+      "day": 0,
+      "kind": "primary",
+      "subject": "Your spot is confirmed. Here's what happens next.",
+      "preview": "",
+      "body": [
+        "Your episode schedule and one optional way to watch the complete series today.",
+        "You’re in. Interconnected starts tomorrow.",
+        "Hi {{first_name}},",
+        "I’m glad you joined us. Over the next nine days, I’ll send you one episode at a time from Interconnected — a series about the connections among our environment, our health, and the choices we make every day.",
+        "What happens next",
+        "Your first episode arrives tomorrow. Then you’ll receive one episode each day for nine days.",
+        "Before the series begins, I wanted to make one optional choice available. If you would like permanent access to the complete 10-part series today, you can redeem the one-time $99 offer below. This is the only time this price is available.",
+        "If you have questions along the way, simply reply to any email and my team will help.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "Redeem your one-time $99 offer",
+          "href": "https://theacademy.theurbanmonk.com/offers/ofRhsQvo"
+        }
+      ],
+      "source_message": "Day 0 opt in EG sp26",
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 2,
+      "day": 0,
+      "kind": "follow-up",
+      "subject": "Your Series Screening Starts Tomorrow [this special offer ends today]",
+      "preview": "Get the entire series with bonuses for a special price",
+      "body": [
+        "Hey there! Just a quick reminder: your series starts tomorrow, and you will get an email with links. You will have 24 hours to watch each episode and enjoy the powerful series called Interconnected.",
+        "In case you missed it, we have a special one-time offer that expires today and is really worth your consideration.",
+        "What you need is trustworthy information from the smartest people around, and this is exactly that.",
+        "Have a look and take advantage of this today.",
+        "If you choose not to, that's 100% okay. I encourage you to watch the entire free screening and really dive in because this information can radically change your life.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "See special offer →",
+          "href": "https://theacademy.theurbanmonk.com/offers/ofRhsQvo"
+        }
+      ],
+      "source_message": null,
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 3,
+      "day": 1,
+      "kind": "primary",
+      "subject": "Your free access to groundbreaking INTERCONNECTED health discoveries starts now",
+      "preview": "",
+      "body": [
+        "Your free access to groundbreaking INTERCONNECTED health discoveries starts now",
+        "Welcome. I'm glad you're here.",
+        "What you're about to discover in the next 10 days has the potential to change how you understand your health — not through fear, but through genuine insight.",
+        "Your free 10-day access to INTERCONNECTED: The Power to Heal From Within starts right now.",
+        "Episode 1 is called \"The Invisible Organ: The Missing Piece in Health and Longevity.\" In it, you'll begin to understand why so many people are doing everything right — eating well, exercising, sleeping — and still feeling like something is off.",
+        "The answer has been hiding in plain sight.",
+        "Over the next 10 days, I'll be sending you direct links to each episode as they become available, along with things I've learned from 25 years of clinical practice that will help you get the most out of what you're watching.",
+        "There are also free downloadable resources on each episode page — take advantage of them.",
+        "A quick note: this free access window is 10 days. After that, the series goes back into the vault. I'd encourage you to start watching today while it's fresh.",
+        "On each episode page, you'll find free downloadable resources to guide your healing journey.",
+        "Keep an eye on your inbox - I'll be sharing more patient stories and sending you direct links to each episode as they become available.",
+        "Don't wait to start watching. This free access period is limited, and the information you'll discover could change everything you thought you knew about health.",
+        "The response to this series has been overwhelming. \"Life-changing,\" \"revolutionary,\" and \"where was this information years ago?\" are just some of the comments we're receiving. Start watching Episode 1 now; the remaining episodes will unlock in your private library every 24 hours.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "Watch today’s episode",
+          "href": "https://theacademy.theurbanmonk.com/IChtmlEp1408rf"
+        }
+      ],
+      "source_message": "IC Free Screening - Episode 1",
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 4,
+      "day": 1,
+      "kind": "follow-up",
+      "subject": "Your root cause won't fix itself",
+      "preview": "You've been treating the symptoms. The webinar replay shows you what to treat instead—and it's closing soon.",
+      "body": [
+        "There's a lot of guessing going on in the healthcare space.",
+        "Traditional medical doctors are pretty much bound by the rules that they follow and the education that is mostly sponsored by Big Pharma.",
+        "Wellness is now the Wild West, with everyone trying to sell you supplements or gadgets that promise to make you healthy.",
+        "Functional medicine takes a much more sane approach.",
+        "You have to dig and find the root cause of what it is that is harming you, and from there, find lifestyle solutions to adjust diet, exercise, sleep, mindset, and even supplements and drugs to actually solve the problem.",
+        "If you're frustrated with the medical system and/or the alternative healthcare system and have been bouncing around like a ping pong ball, this webinar is for you.",
+        "I've been in this industry for almost 30 years and have owned multiple clinics, sleep labs, brain labs, and multi-specialty practices. I'm also a New York Times best-selling author of eight books, and I've made over a dozen films and series, and know everybody in the functional medicine and alternative medical space.",
+        "Let me clear that up…",
+        "I know the people worth knowing.",
+        "The wellness space has now been flooded with ex-management consultants and real estate people who find some supplement or some diet that gets them better, and they suddenly become a self-proclaimed wellness expert. What helped them must certainly be good for you…",
+        "These people are giving all sorts of health advice and don't really understand what the science says because they never read the books or studies.",
+        "It's really important that you are careful where you get your information in this day and age, because it truly is the wild west.",
+        "Your average medical doctor is about 15 to 17 years behind in medical research, and your average wellness influencer has not read a single book on biology.",
+        "Strange times indeed.",
+        "Having spent 18 months making the interconnected Series and then filming several series to follow this subject matter on gut health and oral health, I have sat in the rooms where the science has been conducted and have gotten to know the smartest people in the world of medicine.",
+        "I invite you to listen to this webinar I just conducted on this topic.",
+        "If you're tired of being jerked around and told things that sound too good to be true, you are not alone. I'll see you in the webinar.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "See the Webinar →",
+          "href": "https://test.theurbanmonk.com"
+        }
+      ],
+      "source_message": null,
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 5,
+      "day": 2,
+      "kind": "primary",
+      "subject": "The Human Microbiome: The Raging Battle Within - [Interconnected Episode 2]",
+      "preview": "",
+      "body": [
+        "The Human Microbiome: The Raging Battle Within - [Interconnected Episode 2]",
+        "Episode 2 is ready for you.",
+        "\"The Raging Battle Within \"",
+        "This one tends to shift things for people. This is likely the reason you have inflammation that's setting off a cascade of issues downstream.",
+        "Once you understand why this is happening, you understand how you can fix it.",
+        "Most people are treating the symptoms. This episode helps you understand the system.",
+        "The full Upstream Bundle — including the gut microbiome test, the 6R Protocol course, and the supplement kit — is available now..",
+        "Early viewers get the best pricing.",
+        "The human microbiome is vast and it needs to be diverse but the foods we eat have everything to do with how this plays out. Learning about food sensitivities is the critical first step in bringing down inflammation and calming the immune system. Here's how...",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "Explore the testing + consultation option",
+          "href": "https://get.theurbanmonk.com/gut-test?utm_source=kajabi&utm_medium=email&utm_campaign=interconnected_screening&utm_content=episode2_test_offer"
+        },
+        {
+          "label": "Watch today’s episode",
+          "href": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-2dsfgsd"
+        }
+      ],
+      "source_message": "IC FS Ep 2",
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 6,
+      "day": 2,
+      "kind": "follow-up",
+      "subject": "The foods you love may be the problem",
+      "preview": "How hidden food sensitivities may be harming you",
+      "body": [
+        "In functional medicine, we look for the root cause.",
+        "In conventional medicine, we are looking at multiple issues that are downstream from something that is usually originating in the gut or the mouth.",
+        "We know this and have known this for at least 15 years, but conventional medicine has simply not caught up.",
+        "The key is always to look upstream and see where the inflammation or immune activation is coming from.",
+        "More often than not, that is coming from the gut lining, which is where most of our nervous system and immune system are lined up to protect us from the outside world.",
+        "The body is really good at this until it isn't, and then, when things break down, we have conditions like autoimmunity and chronic disease that are rampant in the modern world.",
+        "A lot of this comes from the foods that we're eating.",
+        "In the early days of microbiome research, myself and many other doctors were very excited about testing the microbiome and making adjustments to heal people.",
+        "This worked okay, but it certainly did not work well enough.",
+        "What we were missing was gut permeability and food sensitivities.",
+        "When I activated this in my practice, my results went through the roof, and my patients got better so much faster.",
+        "I invite you to see this special conversation I just had with James White, the CEO of KBMO Labs, who is one of the pioneers in this space.",
+        "It's important to understand that there is usually an answer out there, and nobody has taken the time to help you find it.",
+        "Swimming upstream to get to your answer oftentimes leads us to the foods we're eating, and the ones that we think are healthy are sometimes the culprit. You'll get a better sense of this when you watch the interview.",
+        "I'll see you in the next episode of Interconnected tomorrow.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "See the interview —>",
+          "href": "https://get.theurbanmonk.com/gut-test"
+        }
+      ],
+      "source_message": null,
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 7,
+      "day": 3,
+      "kind": "primary",
+      "subject": "The Truth About Probiotics [Interconnected Episode 3]",
+      "preview": "",
+      "body": [
+        "The Truth About Probiotics [Interconnected Episode 3]",
+        "A quick question before you watch Episode 3 today:",
+        "When you think about your health — the things that aren't quite right, the symptoms you've been managing — do you know where they're actually coming from?",
+        "Most people don't. Not because they haven't tried. But because the conventional model doesn't look upstream far enough.",
+        "Episode 3 — \"The antibiotic crisis and probiotic hype. \" — is where this starts to get very specific.",
+        "Intestinal permeability isn't a fringe concept anymore. The research is clear. And once you understand what's happening at the cellular level, a lot of things that seemed mysterious start to make sense. Antibiotics are killing the good guys as well as the bad guys.",
+        "Don’t miss this one. We’re exposing the dirty, rotten lies of the supplement industry. Specifically, why most of the store-bought probiotics out there are next to useless.",
+        "And as for antibiotics? They may have saved millions of lives but you’ll be shocked to discover the damage left behind on our delicate microbiomes.",
+        "What can we do about it? And how can we restore balance to our bodies if most probiotics are a waste of money?",
+        "Your private episode link is ready now, so jump in when you can give it your attention.",
+        "Keep up with each new release—the screening closes 24 hours after Episode 10 unlocks.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "Watch today’s episode",
+          "href": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-3afdsgggh"
+        }
+      ],
+      "source_message": "IC FS Ep 3 1/2",
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 8,
+      "day": 3,
+      "kind": "follow-up",
+      "subject": "Your doctor was never trained for this",
+      "preview": "Functional medicine fills in what conventional training missed.",
+      "body": [
+        "The supplement industry has us believing that there's a magic probiotic that'll solve all of our problems.",
+        "That is simply not true and cannot be true ever.",
+        "Why?",
+        "Because each of us has a very unique signature to our microbiome, with different species that are in excess or deficiency",
+        "A proper mapping of the microbiome goes a long way to get to this answer.",
+        "Over the years, I've had patients who have very specific species that needed to be replaced, and others that had particular species that needed specific botanicals or even antibiotics to get rid of.",
+        "The supplement guys want you to think that it's simple, so you keep buying their stuff, but ask yourself this: Why don't you feel better?",
+        "The sad truth is that it doesn't work.",
+        "What does work is swimming upstream to find the answer.",
+        "I created a very powerful tool for my doctors to be able to trust the research they were looking at. ChatGPT is now flooded with marketing information, and what it purports to be true is often gamed by the marketers. On the flip side, open evidence is where all the medical doctors are using AI to get their answers, and that subset of white males out of the Mayo Clinic were only given pharma-driven solutions.",
+        "Neither of those is a good source of truth. That's why I created my own. We uploaded all of the medical textbooks and all of the vetted studies, and then created a vetting tool for new studies that come out (so that we can actually track the good science and help our doctors make informed decisions for the patients in our programs).",
+        "I'd like to invite you to see this conversation about what it is that I created for our doctors, because we have now made it available to you.",
+        "The program is called the Upstream Navigator, and we put 2,000 people in it who are raving about how incredible it has been for them to learn about their own health and troubleshoot their problems swimming upstream to get the answers they actually deserve.",
+        "You deserve to get the answers, and you deserve to feel better. I invite you to listen in and see what resonates with you.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "See the talk →",
+          "href": "https://upstream.theurbanmonk.com"
+        }
+      ],
+      "source_message": null,
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 9,
+      "day": 4,
+      "kind": "primary",
+      "subject": "Episode 4: Staying alive in a toxic world",
+      "preview": "Poisons are everywhere. How do we deal with it?",
+      "body": [
+        "Episode 4: Staying alive in a toxic world",
+        "This new episode is important to every one of us. We’re talking about the impact of everyday toxins on our lives.",
+        "Because make no mistake, each and every day we are practically smothered in invisible toxins.",
+        "Toxins in the food we eat, the water we drink, even the air we breathe.",
+        "There’s no avoiding them.",
+        "Because of our microbiomes, the trillions of bacteria residing in our digestive system are also our defense mechanism against toxins and the disease they spread.",
+        "All we need to know is how to fortify, strengthen and protect our microbiomes so they can function optimally.",
+        "In this episode you'll learn about the microbiome's role in the detoxification process. We simply can't detox properly without a healthy microbiome.",
+        "It's important to know the state of our gut lining and see what's breaking through right now. As we remove toxins and begin to heal our guts, these systems come online and begin to help us move the toxins out better. It all starts with knowing our current state. See the video below for more...",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "Watch today’s episode",
+          "href": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-4mdfsaaqa3"
+        }
+      ],
+      "source_message": "IC FS Ep 4 1/2",
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 11,
+      "day": 5,
+      "kind": "primary",
+      "subject": "Episode 5: The microbiome — your kid's inner ecosystem",
+      "preview": "38 trillion organisms. They're running the show.",
+      "body": [
+        "Episode 5: The microbiome — your kid's inner ecosystem",
+        "Next Episode: The Kids Aren’t All Right: Leaky Gut - Leaky Brain - Leaky Kids",
+        "As a father myself, this episode is particularly fascinating. We’re talking about how what we feed our children can impact their behavior, their social skills, their progress through life.",
+        "You’ll hear from Tara and how her daughter had problems with her motor skills. They went to the doctor, they tried occupational therapy, but never got to the root of the problem, UNTIL...",
+        "They focused on Tara’s daughter’s gut, her microbiome and they cared for, fed and nurtured it.",
+        "The changes were almost immediate. Now she’s a healthy 14 year old who loves horse riding, has her own dog-walking business and gets on well in a mainstream school.",
+        "None of this would have been possible without first looking inward, to the gut.",
+        "You see, what we put in our guts directly affects what goes on in our brains.",
+        "The world is finally beginning to wake up to the gut-brain connection.",
+        "Do not miss this episode.",
+        "It turns out, what happens in the gut triggers a reaction in the brain.",
+        "Feel depressed? Have trouble remembering where you left the keys?",
+        "It may be down to the gut-brain connection called the vagus nerve.",
+        "Feed your gut the right things and your thinking can dramatically improve.",
+        "You’ll also enjoy a segment titled “The Unhealthy Brain”. Amazingly, we’re now finding certain bacteria in the gut can predict Alzheimer’s or Parkinson’s years later. It’s fascinating stuff.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "Watch today’s episode",
+          "href": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-5oiujdfsva2"
+        }
+      ],
+      "source_message": "IC FS Ep 5 1/2",
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 13,
+      "day": 6,
+      "kind": "primary",
+      "subject": "Episode 6: Thyroid, obesity, and diabetes",
+      "preview": "How they're all connected to the microbiome",
+      "body": [
+        "Episode 6: Thyroid, obesity, and diabetes",
+        "Now, this episode is very special. As you know, we’ve started getting really specific on health challenges and how each one can be targeted by working with your microbiome.",
+        "In this episode we’re going to cover the thyroid (your metabolic regulator)... obesity issues and diabetes.",
+        "Did you know all of these can be controlled, prevented and even reversed by tapping into the healing power of the microbiome?",
+        "In Episode 6 you’ll find out:",
+        "3 tell-tale signs of an under active thyroid...",
+        "How the care and feeding of your microbiome can help your body rebalance and reverse Hashimoto’s disease...",
+        "Why trendy, restrictive diets are triggering chaos in your gut flora...",
+        "Craving chocolate cookies at 10pm? Here’s why your microbiome is triggering your weight gain (and how to fix it so you can melt fat away simply, quickly and easily)...",
+        "Surprising everyday items to stay away from (in addition to microbiome-killing antibiotics)...",
+        "You’re going to find out how you can reverse Hashimoto’s... turn an obese body into a lean one... and even reverse diabetes through taking control of your gut’s microbiome.",
+        "It’s the most important discovery in medical science for decades and I’m so glad you’re on this journey with me. But enough talk, let’s get to the good stuff:",
+        "Please don't miss this one and kick yourself later.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "Watch today’s episode",
+          "href": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-6dgfhea56"
+        }
+      ],
+      "source_message": "IC FS Ep 6 1/2",
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 14,
+      "day": 6,
+      "kind": "follow-up",
+      "subject": "Too many specialists, no good answers…",
+      "preview": "You’ve sat in their waiting rooms and still feel aweful",
+      "body": [
+        "The joke in conventional medicine is that there is an \"ologist\" for everything.",
+        "You go to the rheumatologist for your joints, the neurologist for your nerves, the cardiologist for your heart, and the psychologist for your mood.",
+        "Your internist is basically a quarterback that isn't allowed to do much and just has to send you to the specialists downstream, where you have the distinct pleasure of sitting in yet another waiting room, waiting for yet another person to spend maybe 7 minutes with you.",
+        "I can't tell you how many thousands of patients have come to me complaining about how frustrating this is.",
+        "It's dehumanizing and an incredibly disrespectful way to have someone spend their time.",
+        "It would all be worth it if you felt great, but there's the rub.",
+        "Most people are getting sicker and sicker and being put on more and more drugs despite all their efforts to go visit these “ologists.” Many of my patients have complained that they see the specialists more often than they see their loved ones.",
+        "If you can relate, you're not alone.",
+        "Here's an important conversation I have had recently with a number of our patients about this very subject.",
+        "There is a way out of this mess, but it's going to involve you.",
+        "It's time for you to take a more active role in your healing, and on the other side of this comes wisdom, knowledge, and, yes, better results.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "See the conversation →",
+          "href": "https://test.theurbanmonk.com"
+        }
+      ],
+      "source_message": null,
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 15,
+      "day": 7,
+      "kind": "primary",
+      "subject": "Episode 7: Cancer, Immunity and Heart Disease",
+      "preview": "Your body detoxes every day. The question is whether it's keeping up.",
+      "body": [
+        "Episode 7: Cancer, Immunity and Heart Disease",
+        "In this episode, we’re diving into the second part of The Microbiome Solution and focusing on immunity, heart disease and the Big C... Cancer.",
+        "Episode #7: The Microbiome Solution (Part II): Cancer, Immunity and Heart Disease",
+        "Can our microbiome really help us predict and prevent cancer? The experts in this episode say “YES!”. I know you’re going to love this episode. This is revolutionary stuff, rocking the foundations of medicine.",
+        "Here’s a tiny taste of what you’ll learn:",
+        "1. As cancer is rising, microbial diversity is decreasing...is there any connection?",
+        "2. Skin disorders, allergies, migraines, sinusitis, and hormonal problems.... Do they really all trace back to the gut and an unhealthy microbiome?",
+        "3. Is the microbiome the ‘missing link’ between the rising epidemic in heart disease?",
+        "Like I said, you can’t afford to miss this one.",
+        "Our immune system starts in our gut lining. You’ll see how inflammation, bacteria and the gut are connected to heart disease...and... you’ll discover the different types of bacteria present in cancerous cells versus healthy cells.",
+        "Could this be the key to unlocking a cure for cancer?",
+        "This is another episode you’re not going to want to miss.",
+        "Watch Episode 7 NOW Only 2 episodes to go! I’m so glad we’re taking this journey together.",
+        "The microbiome really is the next frontier of medicine.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "Watch today’s episode",
+          "href": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-7aerfasd45"
+        }
+      ],
+      "source_message": "IC FS Ep 7 1/2",
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 16,
+      "day": 7,
+      "kind": "follow-up",
+      "subject": "The mouth is the Gateway to Health",
+      "preview": "Oral bacteria drive several downstream conditions",
+      "body": [
+        "Did you know that there are dozens of studies now mapping heart disease to bacteria in your mouth?",
+        "We've known this for years, but I know maybe three cardiologists that are talking about this.",
+        "I found the top experts in the dental space who were at the forefront of this research and working with cardiology teams, and I hired them. My wife is a dentist and was very excited about this research, so we built an entire department around oral health and have now integrated it with our gut health programs.",
+        "The results have been stunning, to the degree to which the American Dental Association invited us to come to their headquarters and present to them what we are doing.",
+        "Here's a conversation with my wife and Laura Hooper, who's one of the leading experts in the space.",
+        "If you have oral health issues and a history of lots of problems here, you need to listen to this conversation.",
+        "It's much more connected to your heart, your brain, and your mood than most people know.",
+        "Again, your conventional doctor is not talking about this, but they should be. These guys are being flown around and given free golf trips by the pharma companies and told exactly what to prescribe for what conditions, and they're never taught to dig a bit further and look upstream.",
+        "Hopefully, we look back on this era as the dark ages of healthcare.",
+        "All that being said, you don't have time to wait 15 to 17 years for your conventional doc to wake up and smell the science.",
+        "I invite you to listen in on this conversation right now and start making better decisions for yourself today.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "See the conversation →",
+          "href": "https://get.theurbanmonk.com/oral"
+        }
+      ],
+      "source_message": null,
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 17,
+      "day": 8,
+      "kind": "primary",
+      "subject": "Episode 8: Ancient Wisdom Meets Modern Tech",
+      "preview": "70% of your immune system is right here.",
+      "body": [
+        "Episode 8: Ancient Wisdom Meets Modern Tech",
+        "Next Up- Episode #8: Ancient Wisdom and Modern Technology: The Keys To Personalized, Individualized, Made-For-You Medicine",
+        "This is where we’re going to take a quantum leap and look at the medicine of the future. Plus we’re going to deal with POOP.",
+        "Right now, a rather unconventional treatment called fecal transplants is saving lives and restoring microbial balance in horribly sick patients.",
+        "Yes, the stool of a happy person can even help somebody suffering with depression.",
+        "I know, I know... but before you gag, you’ve got to watch this episode.",
+        "How to start living probiotically. We can’t just rely on popping a probiotic pill, we need to make subtle changes to diet and lifestyle to get the full health-enhancing effect...",
+        "Do liver, breast and pancreatic cancer originate from some flaw in the gut microbiome?",
+        "The bleeding-edge technology that analyzes data in your gut and then gives personalized recommendations on what you (and you alone) should eat to heal, to get better, to upgrade your overall health...",
+        "I STRONGLY recommend taking the time to see this episode.",
+        "What an exciting time to be alive! To think the technology is available right now that delivers personalized healthcare based on our own unique microbiome and gut lining readings.",
+        "You’ll hear from people like Patti who suffered with poor health for 33 years but now... at the age of 63... is enjoying the best health of her life. And it’s all thanks to this particular kind of personalized health care. Jump in...",
+        "If you or someone you know has ANY kind of health challenge, they need to see this episode.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "Watch today’s episode",
+          "href": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-8zefgw65"
+        }
+      ],
+      "source_message": "IC FS Ep 8 1/2",
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 18,
+      "day": 8,
+      "kind": "follow-up",
+      "subject": "The hidden culprit: The foods you love?!??",
+      "preview": "How hidden food sensitivities may be harming your health",
+      "body": [
+        "Today's episode is one of the most important ones in the series. If you haven't seen it already, I implore you to do so.",
+        "We now live in the age of specificity. We don't need to guess what's wrong with us. There are tests that have gotten so good that we can save thousands of dollars and several months trying to figure out what's wrong with us.",
+        "If you haven't done so already, I would start with the KBMO gut permeability and food sensitivity panel.",
+        "I have now begun doing this on all my patients before we test anything in their microbiome because the information we get from this test is quick, it's effective, and it is cheap.",
+        "With this information, we can immediately start taking action to help people feel better. From there, we can make all sorts of necessary adjustments for their inflammation, their hormones, their headaches, or whatever it is that is ailing them downstream.",
+        "I highly recommend this test and have negotiated a great deal for our members with the lab. We've also included a 60-minute consultation with one of our health coaches because there are a lot of companies out there that sell you tests, and then you end up with a bunch of information and no plan. That doesn't help you either.",
+        "You need quality information, and you need smart people in your corner. With this, you get both.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "You can learn more about it here —>",
+          "href": "https://get.theurbanmonk.com/gut-test"
+        }
+      ],
+      "source_message": null,
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 19,
+      "day": 9,
+      "kind": "primary",
+      "subject": "Episode 9: A Personalized Approach to Medicine",
+      "preview": "Your gut is running your hormones. Not the other way around.",
+      "body": [
+        "Episode 9: A Personalized Approach to Medicine",
+        "The last episode: Episode #9: Healing Yourself: A Brighter Future",
+        "Here’s a taste of what you’ll discover...",
+        "How to tend to your ‘inner garden’ for health and vitality...",
+        "The truth behind ‘an apple a day keeps the doctor away’ and WHY it really works...",
+        "The one jar you should always have in your kitchen cupboard...",
+        "Why you should never exercise TOO hard...",
+        "The #1 thing you must eat to maintain a diverse microbiome...",
+        "We’re talking about what you can do right now to help foster a healthy microbiome.",
+        "Whether you want to heal from a disease or bulletproof your body for the future... There is no better health resource than this, the final episode of INTERCONNECTED.",
+        "And thank you once again for joining me on this journey into the microbiome.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "Watch today’s episode",
+          "href": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-9sgwtr64"
+        }
+      ],
+      "source_message": "IC FS Ep 9 1/2",
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 20,
+      "day": 9,
+      "kind": "follow-up",
+      "subject": "Why your body won't let you sleep",
+      "preview": "There's a subconscious system deciding if you're safe enough to sleep. Is yours saying no?",
+      "body": [
+        "I had a bout of insomnia after a trip to Europe, and it was very uncommon for me to suffer from something like this. My mind was racing, and the chatter was loud.",
+        "That sounds like a normal thing to say, but I am a monk who has studied with the Dalai Lama and spent over 40 years in meditation.",
+        "This was not mind chatter.",
+        "So, what was it?",
+        "A good functional medicine doctor and a good functional medicine patient become an investigator.",
+        "Instead of trying to shush \"the baby,\" I decided to ask the baby what was the matter.",
+        "As I felt into it, I realized that my gut was unsettled after a summer of eating gluten and dairy in Europe.",
+        "Because I wasn't sleeping, it made sense to get up and get on PubMed.",
+        "That was a rabbit hole that took me far, far down into the depths of many studies on endotoxemia, gut permeability, immunology, and the connection of the gut-associated lymphoid tissue with anxiety, depression, and, yes, insomnia.",
+        "If you're having trouble sleeping and you've had pills thrown at you, you know that's not the solution.",
+        "Watch this talk I recently gave on the topic and see if this relates to you.",
+        "Not all insomnia comes from the gut, but at this stage in my career, I'm realizing that most of it has some cross-correlation.",
+        "It's important for you to understand where you are in this, and it's important for you to consider what I'm talking about in this video.",
+        "Enjoy, Dr Pedram Shojai"
+      ],
+      "ctas": [
+        {
+          "label": "Fixing my sleep —>",
+          "href": "https://theacademy.theurbanmonk.com/the-restorative-sleep-masterclass-replay"
+        }
+      ],
+      "source_message": null,
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 21,
+      "day": 10,
+      "kind": "primary",
+      "subject": "Episode 10 is here — the final piece of the puzzle...a BONUS",
+      "preview": "Everything we've covered comes together in this one.",
+      "body": [
+        "Episode 10 is here — the final piece of the puzzle...a BONUS",
+        "I have one more episode for you!",
+        "We filmed a final episode that covered THE SOIL and all of the wonderful bacterial goodness that begins in the earth and must transfer to you through the microbiome.",
+        "This is truly the missing ingredient and you'll learn how the use of pesticides is disrupting Mother Earth's microbial balance. It translated into our food and our own microbiome constitution.",
+        "This episode is the glue and you NEED to see it. It's available for 24 hours before the screening expires.",
+        "I encourage you to click the image above and go see it right now.",
+        "There will NOT be a replay weekend of the series so this is the absolute last chance to see this episode. If you want to keep the complete series, the Interconnected Platinum testing and consultation bundle is available now.",
+        "There's way too much goodness in there to pass it up. The bundle includes the complete 10-episode library, audio, transcripts, the Director's Cut, companion guides, and the listed bonus materials.",
+        "It also includes the KBMO Gut Permeability Panel, the KBMO FIT 22 Food Sensitivity Panel, and a 60-minute consultation with a qualified health coach.",
+        "By getting the series, you will help heal your own body and also help us make more content like this to continue our mission in supporting people's health.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "Review the complete $499 bundle →",
+          "href": "https://shop.theurbanmonk.com/products/interconnected-series-platinum-with-testing-and-consultation-bundle?utm_source=kajabi&utm_medium=email&utm_campaign=interconnected_screening&utm_content=episode10_bundle_offer"
+        },
+        {
+          "label": "Watch today’s episode",
+          "href": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-10dfvaey97k"
+        }
+      ],
+      "source_message": "IC FS Ep 10 1/2",
+      "live_action_id": null,
+      "status": "draft"
+    },
+    {
+      "number": 22,
+      "day": 10,
+      "kind": "follow-up",
+      "subject": "$12,000 in supplements. Still tired?",
+      "preview": "Your body was never going to respond to a one-size-fits-all fix.",
+      "body": [
+        "I want to thank you for joining me in this series. As I said, it took over 18 months to travel the world filming these interviews, and I truly believe that this information will revolutionize the way we provide healthcare in the future.",
+        "There are a lot of inspiring stories and gut-wrenching tales that we went through in these 9 episodes. There's a lot of science that we covered, and I hope we were able to make it all come down to earth and get you inspired to heal your microbiome and fix your food.",
+        "If you haven't done so already, I highly recommend getting one of the testing packages to figure out what is specifically going on with your gut and your microbiome.",
+        "As I mentioned in the video, I have no vested interest in any of these labs and have simply negotiated better rates for our patients with the lab owners.",
+        "Health care is expensive and complicated. I've spent the last 15 years of my career, more so on the public health side, trying to get information interconnected and more freely available for you.",
+        "I hope you can see, after enjoying this series, that this was a labor of love.",
+        "I invite you to stay in our community and spread this knowledge far and wide.",
+        "Again, your average conventional doctor won't be up on this information for another 15 years or so, and you have people in your life that need to know this.",
+        "Thanks for spending this time with me, and I look forward to seeing you around somewhere in our community.",
+        "Warmly, Dr. Pedram Shojai Host of the Interconnected Series"
+      ],
+      "ctas": [
+        {
+          "label": "See the packages here —>",
+          "href": "https://test.theurbanmonk.com"
+        }
+      ],
+      "source_message": null,
+      "live_action_id": null,
+      "status": "draft"
+    }
+  ],
+  "url_policy": {
+    "klaviyo_html": "Preserves source destination URLs, including Klaviyo personalization tokens.",
+    "kajabi_html": "Maps episode links to Kajabi episode-view pages and the $99 offer to the Kajabi offer URL; all other owner-approved URLs remain unchanged."
+  },
+  "package_status": "Final VA paste packet; no campaign/trigger/subscriber changes made.",
+  "current_episode_urls": {
+    "1": "https://theacademy.theurbanmonk.com/IChtmlEp1408rf",
+    "2": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-2dsfgsd",
+    "3": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-3afdsgggh",
+    "4": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-4mdfsaaqa3",
+    "5": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-5oiujdfsva2",
+    "6": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-6dgfhea56",
+    "7": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-7aerfasd45",
+    "8": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-8zefgw65",
+    "9": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-9sgwtr64",
+    "10": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-10dfvaey97k"
+  },
+  "episode_email_map": {
+    "03-day-1-primary.html": 1,
+    "05-day-2-primary.html": 2,
+    "07-day-3-primary.html": 3,
+    "09-day-4-primary.html": 4,
+    "11-day-5-primary.html": 5,
+    "13-day-6-primary.html": 6,
+    "15-day-7-primary.html": 7,
+    "17-day-8-primary.html": 8,
+    "19-day-9-primary.html": 9,
+    "21-day-10-primary.html": 10
+  },
+  "package_changes": [
+    {
+      "file": "03-day-1-primary.html",
+      "type": "episode",
+      "episode": 1,
+      "old": "https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-1-SP26",
+      "new": "https://theacademy.theurbanmonk.com/IChtmlEp1408rf"
+    },
+    {
+      "file": "05-day-2-primary.html",
+      "type": "episode",
+      "episode": 2,
+      "old": "https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-2-SP26",
+      "new": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-2dsfgsd"
+    },
+    {
+      "file": "05-day-2-primary.html",
+      "type": "utm_source",
+      "old": "https://get.theurbanmonk.com/gut-test?utm_source=klaviyo&utm_medium=email&utm_campaign=interconnected_screening&utm_content=episode2_test_offer",
+      "new": "https://get.theurbanmonk.com/gut-test?utm_source=kajabi&utm_medium=email&utm_campaign=interconnected_screening&utm_content=episode2_test_offer"
+    },
+    {
+      "file": "07-day-3-primary.html",
+      "type": "episode",
+      "episode": 3,
+      "old": "https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-3",
+      "new": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-3afdsgggh"
+    },
+    {
+      "file": "09-day-4-primary.html",
+      "type": "episode",
+      "episode": 4,
+      "old": "https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-4-SP26",
+      "new": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-4mdfsaaqa3"
+    },
+    {
+      "file": "11-day-5-primary.html",
+      "type": "episode",
+      "episode": 5,
+      "old": "https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-5-SP26",
+      "new": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-5oiujdfsva2"
+    },
+    {
+      "file": "13-day-6-primary.html",
+      "type": "episode",
+      "episode": 6,
+      "old": "https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-6-SP26",
+      "new": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-6dgfhea56"
+    },
+    {
+      "file": "15-day-7-primary.html",
+      "type": "episode",
+      "episode": 7,
+      "old": "https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-7-SP26",
+      "new": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-7aerfasd45"
+    },
+    {
+      "file": "17-day-8-primary.html",
+      "type": "episode",
+      "episode": 8,
+      "old": "https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-8-SP26",
+      "new": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-8zefgw65"
+    },
+    {
+      "file": "19-day-9-primary.html",
+      "type": "episode",
+      "episode": 9,
+      "old": "https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-9-SP26",
+      "new": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-9sgwtr64"
+    },
+    {
+      "file": "21-day-10-primary.html",
+      "type": "episode",
+      "episode": 10,
+      "old": "https://theacademy.theurbanmonk.com/episode-view-page-eg-ep-10-SP26",
+      "new": "https://theacademy.theurbanmonk.com/interconnected-free-screening-html-version-episode-10dfvaey97k"
+    },
+    {
+      "file": "21-day-10-primary.html",
+      "type": "utm_source",
+      "old": "https://shop.theurbanmonk.com/products/interconnected-series-platinum-with-testing-and-consultation-bundle?utm_source=klaviyo&utm_medium=email&utm_campaign=interconnected_screening&utm_content=episode10_bundle_offer",
+      "new": "https://shop.theurbanmonk.com/products/interconnected-series-platinum-with-testing-and-consultation-bundle?utm_source=kajabi&utm_medium=email&utm_campaign=interconnected_screening&utm_content=episode10_bundle_offer"
+    }
+  ],
+  "non_episode_ctas": "Retained exactly as approved, except legacy utm_source=klaviyo was normalized to utm_source=kajabi on existing tagged links.",
+  "formatting_standard": {
+    "body_font": "Arial, Helvetica, sans-serif",
+    "body_font_size": "18px",
+    "body_line_height": "1.6",
+    "body_paragraph_spacing": "20px",
+    "source_mode_requirement": "Paste the standalone HTML file in Kajabi HTML/source mode."
+  }
+}

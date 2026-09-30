@@ -80,6 +80,11 @@ A 10-file full-width custom-code kit recreates the Interconnected visual system 
   - [Current Kajabi campaign HTML ZIP](/home/ubuntu/Downloads/Interconnected-Screening-V2-Kajabi-HTML-Current-Episode-URLs-2026-09-30.zip)
   - [Current Kajabi campaign paste-ready Word packet](/home/ubuntu/Downloads/Interconnected-Screening-V2-Kajabi-HTML-Current-Episode-URLs-Paste-Ready-2026-09-30.docx)
 
+- **Final 18px clean-format package (30 September):** This is the authoritative replacement for the preceding current-episode URL and minified/optimized packets. It retains every current Kajabi episode URL and other CTA destination, restores readable 18px Arial/Helvetica body typography with 1.6 line-height and 20px paragraph spacing, combines signatures, repairs 22 formatting fragments (including Day 0’s split `from Interconnected — ...` sentence), and keeps full CTA buttons. Automated validation confirms 20 HTML files, exact source-link preservation, no legacy `interconnected.theurbanmonk.com/episode...` route or `ic_access` token, no orphan `Interconnected`/punctuation paragraphs, and an 18px style on every body paragraph. Browser rendering of Day 0 and Day 2 was visually reviewed. No Kajabi campaign, recipient, trigger, send, live Klaviyo flow, or existing message changed.
+
+  - [Final 18px Kajabi HTML ZIP](/home/ubuntu/Downloads/Interconnected-Screening-V2-Kajabi-18pt-Clean-Paste-Ready-2026-09-30.zip)
+  - [Final 18px Kajabi paste-ready Word packet](/home/ubuntu/Downloads/Interconnected-Screening-V2-Kajabi-18pt-Clean-Paste-Ready-2026-09-30.docx)
+
 - [Draft sequence implementation guide](/home/ubuntu/Downloads/Interconnected-Screening-V2-Draft-Sequence-Implementation-Guide-2026-09-29.docx)
 - [Combined Kajabi/Klaviyo draft packet](/home/ubuntu/Downloads/Interconnected-Screening-V2-Draft-Sequence-and-Kajabi-Design-Kit-2026-09-29.zip)
 - [VA-ready Kajabi HTML Word packet](/home/ubuntu/Downloads/Interconnected-Screening-V2-Kajabi-VA-HTML-Paste-Ready-Packet-2026-09-29.docx)

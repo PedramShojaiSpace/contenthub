@@ -1,0 +1,27 @@
+<!-- Interconnected — Kajabi native-shell fragment. Paste only this fragment into the template's single Text section via Source Code (<>) mode. -->
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;margin:0;padding:0;width:100%;" width="100%">
+<tr><td style="background:#071d2d;border-bottom:4px solid #287fbb;padding:24px 28px;">
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#8fd3ee;font-weight:700;margin:0 0 6px;">The Urban Monk</div>
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.15;color:#ffffff;font-weight:700;margin:0;">Interconnected</div>
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.4;color:#c7dbe5;margin-top:5px;">Day 1 Screening Update</div>
+</td></tr>
+<tr><td style="background:#ffffff;padding:32px 28px 8px;">
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">Your free access to groundbreaking INTERCONNECTED health discoveries starts now</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">Welcome. I'm glad you're here.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">What you're about to discover in the next 10 days has the potential to change how you understand your health — not through fear, but through genuine insight.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">Your free 10-day access to INTERCONNECTED: The Power to Heal From Within starts right now.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">Episode 1 is called "The Invisible Organ: The Missing Piece in Health and Longevity." In it, you'll begin to understand why so many people are doing everything right — eating well, exercising, sleeping — and still feeling like something is off.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">The answer has been hiding in plain sight.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">Over the next 10 days, I'll be sending you direct links to each episode as they become available, along with things I've learned from 25 years of clinical practice that will help you get the most out of what you're watching.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">There are also free downloadable resources on each episode page — take advantage of them.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">A quick note: this free access window is 10 days. After that, the series goes back into the vault. I'd encourage you to start watching today while it's fresh.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">On each episode page, you'll find free downloadable resources to guide your healing journey.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">Keep an eye on your inbox - I'll be sharing more patient stories and sending you direct links to each episode as they become available.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">Don't wait to start watching. This free access period is limited, and the information you'll discover could change everything you thought you knew about health.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;color:#263746">The response to this series has been overwhelming. "Life-changing," "revolutionary," and "where was this information years ago?" are just some of the comments we're receiving. Start watching Episode 1 now; the remaining episodes will unlock in your private library every 24 hours.</p>
+<p style="margin:4px 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.55;color:#263746">Warmly,<br/>Dr. Pedram Shojai<br/>Host of the Interconnected Series</p>
+</td></tr>
+<tr><td align="center" style="background:#ffffff;padding:4px 28px 24px;text-align:center;">
+<a href="https://theacademy.theurbanmonk.com/IChtmlEp1408rf" style="display:inline-block;background:#287fbb;color:#ffffff;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:700;line-height:1.3;padding:16px 26px;border-radius:5px;">Watch today’s episode</a>
+</td></tr>
+</table>

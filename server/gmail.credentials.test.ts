@@ -26,4 +26,28 @@ describe("Gmail credentials", () => {
     expect(url).toContain("gmail");
     expect(url).toContain(process.env.GMAIL_CLIENT_ID!.split(".")[0]);
   });
+
+  it("uses the current client secret to refresh and read the connected Gmail profile", async () => {
+    const { getOwnerCredentials } = await import("./db");
+    const { testGmailConnection } = await import("./gmail");
+    const originalRefreshToken = process.env.GMAIL_REFRESH_TOKEN;
+
+    try {
+      const ownerCredentials = await getOwnerCredentials();
+      if (!process.env.GMAIL_REFRESH_TOKEN && ownerCredentials?.gmailRefreshToken) {
+        process.env.GMAIL_REFRESH_TOKEN = ownerCredentials.gmailRefreshToken;
+      }
+
+      expect(process.env.GMAIL_REFRESH_TOKEN).toBeTruthy();
+      const result = await testGmailConnection();
+      expect(result.ok, result.error ?? "Gmail profile request failed").toBe(true);
+      expect(result.email).toContain("@");
+    } finally {
+      if (originalRefreshToken === undefined) {
+        delete process.env.GMAIL_REFRESH_TOKEN;
+      } else {
+        process.env.GMAIL_REFRESH_TOKEN = originalRefreshToken;
+      }
+    }
+  }, 20_000);
 });

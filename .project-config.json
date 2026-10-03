@@ -16,10 +16,10 @@
   ],
   "git_remote": {
     "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663158996687/iUgsiz76NwfDUVHZHV7CyJ",
-    "access_key_id": "ASIAZV3A2ECZLNAKIORV",
-    "secret_access_key": "4l3NytC5FtNClOQHFxlAmAdxbsv2UPUDl/9vz4MA",
-    "session_token": "IQoJb3JpZ2luX2VjENv//////////wEaCXVzLWVhc3QtMSJHMEUCIFQGfAj3O9PAW9szPXLgGsQln5iDN0+7fKXA3aKaWrCaAiEAizzlVqM3+OYsOM5cQgqVlpoZo6w8e8cbTi5iGqHMedIq/gMIo///////////ARAEGgw2NjUzODYwOTg4NjYiDC55yHPNl0UpqKxbdirSAx47NZi5i7FevLJP1oJcxgyLbnIHbS9nxnz2Hf6YFNm0XMoiOnL/E9uZUitl5C5k1VdfXrG5MdhXX5VTuDUA5v1+s+E6RROCQ4W5vetJZgTx788E/AcyumXPOExpfpF71m4OqrUhbNBl4TjgNY8Z962vwN4Z0ILxQkIQb2nmYOq7E2CLUwRa6eTRRM7SruNAwOLxhdh3Gd+xkZNF/dcV3Pm2xJ8toweZnghiOE+US+avOBAfKBMuT7GO98pvae18rDAcJFQ/LLkSEjXYMtEJC0m5XiKAUgrGHXpe+QTQjdIq+CXDDzg1fMp9SmmZHmmGdY70FnEP4hqk52m+msBOItwg98kPfTxEx6ow+EtNgiZUbrptJiNyYGPpidvhVzaHHIQHC3xCGO657xNGyPdqenc/tXJ31ETI7awplLLOGMhQCNiCzIEhjSjRTbqWfqRTG2UB1DqEktx3RaVYnZrwBz9QiNS2wpLI24TzK6x4eKxbxL6OIBWM57FapPPeLv7BVoBGkBt+FyI5Xgh2feZHtgV6DG3WsZw0E3fvucx72t5Yl3sIXlMmN3XFG+S7XlO8TtZ1cLE4Wrdyg13wcXMaavBI1+uVOswbmjZ/RFBNjnEuwzIwqtWB1gY6nQESjqTFOPqMpo2jYG3+B1SrOSjLjv7qTR5d2Ss4bFPAHVQYtEpPrpLXbClwBOF0Hzoz5h6QckMCKSX9pb0PPnaBuW90SnTit9mqa6w9cuX5MXybfQeUZueXQxcimokdTW86hwS/NYpUdExOh+WCooknm/QXVwHPQhse6MNAQKcHoMuHwsWITyXlCYvcnavo38b5j/G1MB+1+7JfFgs7",
-    "expiration": "2026-10-03T14:38:34.000Z",
+    "access_key_id": "ASIAZV3A2ECZBUXIHAZA",
+    "secret_access_key": "WqWp5ZpOtTZ6ah0Ev56xKtIBOEFhKNO//EGo+ZnF",
+    "session_token": "IQoJb3JpZ2luX2VjEOX//////////wEaCXVzLWVhc3QtMSJHMEUCIQDzwl+RZ8G/TjNRhNkuudO25Z94xqSetNqaAZcxMHmXVwIgZY0bcG9OmloGL6GXM6J2qNjZeTF0XtVTRhkt15ltFvoq/gMIrv//////////ARAEGgw2NjUzODYwOTg4NjYiDOK2wXUMKw6BBtFSNyrSA6hhzVLWJxwly7/WZu7dxBNBuL3d8itN9KrcmcPmOSC2+u/qsxe1OqEAmlta3cCnzg/dHuE03u5Is1n0yJCPsD9lRZDIIZUCl/bmwTdNqS4YZucOLYHYGU782ZhMl1vH0xqgY0Y43U73zMCmAsJNB+9SUAzeuJJSyIZQz1gweRBIdXngKchJ+SDJksZSrkOTWqMpk1CwN3kfgP5Dwfl20zvtUCv8uE9PuW2T3H7y1aLCQgfGqkHNqmizgrNOuGBZGqnNE5+49Pu8YQm+gqHkwps6j0XJ059rLOI622OHTpSOpP2ftoVK4CAs++ZBd4tCX1NxwZnXqYraMGjHwbg5U4zbNZBf/64AY9UV5Zuj8RpCLtuRy2veOkTcz9O2H7vfHIBftGpSF+4SY2VnJPlH9sOL9L7C/Q0SMksToBvIJLb2tCNbL3N2fLem1dYsbBx2leOD1GthlfUZ/quSSQdhT1S6QK7xwLf/r6g58S3xb+8Sw9eoEiNZwye9bDAJITbFC53rahikAEpflGxJduKtsyXFZxCB2ksMoqXZQbrVrviMeieTeKrQm1f/N1N/vVpwdLh03glAt5LEoF/dCCrwoyNwLIeMqm8BW4Mcj3M75Lx9PMow9/mD1gY6nQHYEJYUyhcpLfg4r5g4dQzA5V/Gvy+JxXOKrbNogDYYghxVGgiv+gGP8vKlSABCJT2JaeK8hHWi0a/+M7t9EdK5rbOugoC7VO3bYqYGSZmjqwPCI+P3rmOiznibNzVr+qkLZ2i1AcDZQtDrUAkHdM4wENFOVXQ0RptEtDef5y8BeFoW7mTxhVOfV0mCtJqPc+bGagZXCiNJ1QTQTrW6",
+    "expiration": "2026-10-04T01:02:47.000Z",
     "backend": "GIT_BACKEND_S3"
   },
   "injected_features": [
@@ -40,7 +40,7 @@
     "DESCRIPT_API_KEY": "dx_bearer_62ce28df-327c-49e7-a203-aefeddea54a1:dx_secret_aca6c47d-c805-456e-8f30-2ecc7efd2bda",
     "GAMMA_API_KEY": "sk-gamma-xVJyxS6NKqNCDAh9z7Pqf5QNojKxWirVyXoYaFVFjgg",
     "GMAIL_CLIENT_ID": "877945805124-d9qjjssrnpdbjp655a9dfmncgtbnkdud.apps.googleusercontent.com",
-    "GMAIL_CLIENT_SECRET": "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",
+    "GMAIL_CLIENT_SECRET": "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",
     "GOOGLE_DRIVE_CLIENT_ID": "877945805124-l9e6l0pop2mgpvlg4qpta5l3vjphuo8i.apps.googleusercontent.com",
     "GOOGLE_DRIVE_CLIENT_SECRET": "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",
     "GOOGLE_SEARCH_CONSOLE_CLIENT_ID": "877945805124-3am7b4d62fs5ov4109aohrlmeusls5tt.apps.googleusercontent.com",
@@ -65,6 +65,7 @@
     "OWNER_NAME": "Pedram Shojai",
     "OWNER_OPEN_ID": "6Efk5Rs3uA46PG9TgoeUmf",
     "PEXELS_API_KEY": "WC0ZHUE8kH89dkF9HyVbB907v9rsAb3Q6IUHXFiMURuQBxQteKhONkyv",
+    "RESEND_API_KEY": "re_KTFCMX75_7z2CoUzvH5Rd9vPpzmTGz3oL",
     "SENDY_API_KEY": "0QNtOB8oZwPNTIME9lww",
     "SENDY_BASE_URL": "https://sendy.urbanmonkinsider.com/",
     "SHOPIFY_ADMIN_CLIENT_ID": "315a736972fffcbacbe3bb282e86b6a7",

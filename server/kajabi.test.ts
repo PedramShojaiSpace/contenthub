@@ -1,5 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
-import { env } from "./_core/env";
+import { describe, it, expect } from "vitest";
 
 describe("Kajabi credentials", () => {
   it("should have KAJABI_CLIENT_ID set", () => {
@@ -25,14 +24,11 @@ describe("Kajabi credentials", () => {
       signal: AbortSignal.timeout(12000),
     });
 
-    // 200 = valid credentials, 401 = invalid credentials
-    // We accept both as "reachable" — the important thing is the endpoint responds
-    expect([200, 401, 400, 422]).toContain(response.status);
+    // A rotated credential is accepted only when Kajabi issues an access token.
+    // Do not log the response body: it contains the access token on success.
+    expect(response.status).toBe(200);
     const body = await response.json();
-    console.log("[Kajabi OAuth test] status:", response.status, "body keys:", Object.keys(body));
-
-    if (response.status === 200) {
-      expect(body.access_token).toBeTruthy();
-    }
+    expect(typeof body.access_token).toBe("string");
+    expect(body.access_token.length).toBeGreaterThan(20);
   }, 15000);
 });

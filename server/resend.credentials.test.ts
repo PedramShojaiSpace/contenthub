@@ -24,5 +24,16 @@ describe("Resend credential", () => {
       response.status,
       `Resend read-only domains request failed with HTTP ${response.status}`,
     ).toBe(200);
+
+    const payload = (await response.json()) as {
+      data?: Array<{ name?: string; status?: string }>;
+    };
+    const verifiedDomains = (payload.data ?? [])
+      .filter((domain) => domain.status === "verified")
+      .map((domain) => domain.name)
+      .filter((name): name is string => Boolean(name));
+
+    expect(verifiedDomains, "At least one verified Resend sender domain is required").not.toHaveLength(0);
+    console.info(`Verified Resend sender domains: ${verifiedDomains.join(", ")}`);
   }, 20_000);
 });

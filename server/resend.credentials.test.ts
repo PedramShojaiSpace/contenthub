@@ -1,21 +1,28 @@
-/**
- * Read-only credential validation for the protected Resend API key.
- * This makes no email, contact, audience, domain, or billing change.
- */
 import { describe, expect, it } from "vitest";
 
-describe("Resend credentials", () => {
-  it("authenticates the configured API key against the read-only domains endpoint", async () => {
+/**
+ * Validates only that the protected Resend credential can authenticate against
+ * a read-only endpoint. It does not create, modify, or send anything.
+ */
+describe("Resend credential", () => {
+  it("authenticates with the configured protected API key", async () => {
     const apiKey = process.env.RESEND_API_KEY;
-    expect(apiKey, "RESEND_API_KEY must be present in protected project secrets").toBeTruthy();
+
+    expect(apiKey, "RESEND_API_KEY must be configured in protected project secrets").toBeTruthy();
+    expect(
+      apiKey?.trim(),
+      "RESEND_API_KEY must not contain leading or trailing whitespace",
+    ).toBe(apiKey);
 
     const response = await fetch("https://api.resend.com/domains", {
-      headers: { Authorization: `Bearer ${apiKey}` },
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
     });
 
     expect(
-      response.ok,
-      `Resend read-only credential check returned HTTP ${response.status}`,
-    ).toBe(true);
+      response.status,
+      `Resend read-only domains request failed with HTTP ${response.status}`,
+    ).toBe(200);
   }, 20_000);
 });
